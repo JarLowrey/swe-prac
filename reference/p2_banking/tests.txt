@@ -1,0 +1,519 @@
+# Tests for p2_banking. The 'doc self-check' tests are the original self-check tests for
+# each level: never edit their expectations.
+
+
+=== L1 shown: doc self-check (Level 1)
+create_account(1, "A")           -> True
+create_account(2, "A")           -> False
+create_account(3, "B")           -> True
+deposit(4, "A", 500)            -> 500
+deposit(5, "C", 100)            -> None
+transfer(6, "A", "B", 200)      -> 300
+transfer(7, "A", "B", 400)      -> None
+transfer(8, "A", "A", 10)       -> None
+
+=== L2 shown: doc self-check (Level 2)
+# The doc's Level 2 block continues its Level 1 block, so the Level 1 steps are replayed first.
+create_account(1, "A")           -> True
+create_account(2, "A")           -> False
+create_account(3, "B")           -> True
+deposit(4, "A", 500)            -> 500
+deposit(5, "C", 100)            -> None
+transfer(6, "A", "B", 200)      -> 300
+transfer(7, "A", "B", 400)      -> None
+transfer(8, "A", "A", 10)       -> None
+create_account(9, "C"); deposit(10, "C", 1000)
+transfer(11, "C", "A", 200)     -> 800
+transfer(12, "B", "C", 50)      -> 150
+top_spenders(13, 3)              -> "A(200), C(200), B(50)"
+top_spenders(14, 1)              -> "A(200)"
+
+=== L3 shown: doc self-check (Level 3)
+create_account(1, "A")
+deposit(2, "A", 100)            -> 100
+schedule_payment(3, "A", 30, 5)  -> "payment1"  # due at 8
+schedule_payment(4, "A", 90, 4)  -> "payment2"  # also due at 8
+schedule_payment(5, "A", 10, 10) -> "payment3"  # due at 15
+deposit(8, "A", 5)              -> 75  # payment1 runs, payment2 skipped
+cancel_payment(9, "A", "payment2")  -> False
+cancel_payment(10, "B", "payment3") -> False
+cancel_payment(11, "A", "payment3") -> True
+deposit(16, "A", 5)             -> 80
+top_spenders(17, 1)              -> "A(30)"
+
+=== L4 shown: doc self-check (Level 4)
+create_account(1, "A"); deposit(2, "A", 100)
+create_account(3, "B"); deposit(4, "B", 50)
+schedule_payment(5, "B", 20, 10) -> "payment1"  # due at 15
+merge_accounts(6, "A", "B")      -> True
+cancel_payment(7, "B", "payment1") -> False
+deposit(16, "A", 10)            -> 140  # payment1 ran at 15 from A
+get_balance(17, "A", 2)          -> 100
+get_balance(18, "A", 6)          -> 150
+get_balance(19, "A", 10)         -> 150
+get_balance(20, "A", 16)         -> 140
+get_balance(21, "B", 4)          -> 50
+get_balance(22, "B", 6)          -> None
+get_balance(23, "A", 0)          -> None
+top_spenders(24, 2)              -> "A(20)"
+
+
+# ---------------------------------------------------------------------------------------------
+# Level 1
+# ---------------------------------------------------------------------------------------------
+
+=== L1 shown: deposits add up and a transfer moves money
+create_account(1, "A")          -> True
+create_account(2, "B")          -> True
+deposit(3, "A", 100)            -> 100
+deposit(4, "A", 50)             -> 150
+transfer(5, "A", "B", 70)       -> 80   # returns the sender's balance
+deposit(6, "B", 5)              -> 75   # B received the 70
+
+=== L1 shown: missing accounts
+create_account(1, "A")          -> True
+deposit(2, "A", 40)             -> 40
+transfer(3, "A", "Z", 10)       -> None
+transfer(4, "Z", "A", 10)       -> None
+deposit(5, "A", 1)              -> 41
+
+=== L1 hidden: transferring the whole balance is allowed
+create_account(1, "A"); create_account(2, "B")
+deposit(3, "A", 60)             -> 60
+transfer(4, "A", "B", 60)       -> 0
+transfer(5, "A", "B", 1)        -> None
+deposit(6, "B", 1)              -> 61
+deposit(7, "A", 1)              -> 1
+
+=== L1 hidden: insufficient funds leaves both balances untouched
+create_account(1, "A"); create_account(2, "B")
+deposit(3, "A", 50)             -> 50
+deposit(4, "B", 10)             -> 10
+transfer(5, "A", "B", 51)       -> None
+deposit(6, "A", 1)              -> 51
+deposit(7, "B", 1)              -> 11
+transfer(8, "B", "A", 12)       -> None
+transfer(9, "B", "A", 11)       -> 0
+deposit(10, "A", 1)             -> 63
+
+=== L1 hidden: transfer to self fails even with enough money
+create_account(1, "A")
+deposit(2, "A", 100)            -> 100
+transfer(3, "A", "A", 10)       -> None
+transfer(4, "A", "A", 1000)     -> None
+deposit(5, "A", 1)              -> 101
+
+=== L1 hidden: transfer with a missing side changes nothing
+create_account(1, "A")
+deposit(2, "A", 30)             -> 30
+transfer(3, "A", "B", 10)       -> None
+create_account(4, "B")          -> True
+deposit(5, "B", 1)              -> 1    # B never received the failed transfer
+deposit(6, "A", 1)              -> 31
+transfer(7, "C", "A", 5)        -> None
+transfer(8, "C", "C", 5)        -> None
+deposit(9, "A", 1)              -> 32
+
+=== L1 hidden: duplicate create keeps the existing balance
+create_account(1, "A")          -> True
+deposit(2, "A", 75)             -> 75
+create_account(3, "A")          -> False
+deposit(4, "A", 5)              -> 80
+
+=== L1 hidden: deposit before the account exists
+deposit(1, "A", 5)              -> None
+create_account(2, "A")          -> True
+deposit(3, "A", 5)              -> 5
+
+=== L1 hidden: money flows along a chain of accounts
+create_account(1, "A"); create_account(2, "B"); create_account(3, "C")
+deposit(4, "A", 100)            -> 100
+transfer(5, "A", "B", 60)       -> 40
+transfer(6, "B", "C", 45)       -> 15
+transfer(7, "C", "A", 20)       -> 25
+transfer(8, "B", "A", 16)       -> None
+transfer(9, "A", "B", 60)       -> 0
+deposit(10, "B", 1)             -> 76
+deposit(11, "C", 1)             -> 26
+
+=== L1 hidden: random operations @gen(seed=11, n=200)
+
+=== L1 hidden: random operations, second seed @gen(seed=12, n=150)
+
+
+# ---------------------------------------------------------------------------------------------
+# Level 2
+# ---------------------------------------------------------------------------------------------
+
+=== L2 shown: accounts with zero outgoing fill the list
+create_account(1, "A"); create_account(2, "B"); create_account(3, "C")
+deposit(4, "B", 100)            -> 100
+transfer(5, "B", "C", 40)       -> 60
+top_spenders(6, 2)              -> "B(40), A(0)"
+top_spenders(7, 5)              -> "B(40), A(0), C(0)"
+
+=== L2 shown: totals add up across transfers
+create_account(1, "A"); create_account(2, "B")
+deposit(3, "A", 100)            -> 100
+transfer(4, "A", "B", 10)       -> 90
+transfer(5, "A", "B", 20)       -> 70
+transfer(6, "B", "A", 5)        -> 25
+top_spenders(7, 2)              -> "A(30), B(5)"
+
+=== L2 hidden: ties break by id, not by creation order
+create_account(1, "C"); create_account(2, "B"); create_account(3, "A")
+deposit(4, "A", 100); deposit(5, "B", 100); deposit(6, "C", 100)
+transfer(7, "C", "A", 25)       -> 75
+transfer(8, "B", "A", 25)       -> 75
+transfer(9, "A", "C", 25)       -> 125
+top_spenders(10, 3)             -> "A(25), B(25), C(25)"
+top_spenders(11, 2)             -> "A(25), B(25)"
+top_spenders(12, 1)             -> "A(25)"
+
+=== L2 hidden: nobody has spent yet
+create_account(1, "Z"); create_account(2, "M"); create_account(3, "Q")
+deposit(4, "Z", 500)            -> 500
+top_spenders(5, 3)              -> "M(0), Q(0), Z(0)"
+top_spenders(6, 2)              -> "M(0), Q(0)"
+top_spenders(7, 10)             -> "M(0), Q(0), Z(0)"
+
+=== L2 hidden: totals compare as numbers
+create_account(1, "A"); create_account(2, "B"); create_account(3, "C")
+deposit(4, "A", 1000); deposit(5, "B", 1000)
+transfer(6, "A", "C", 9)        -> 991
+transfer(7, "B", "C", 100)      -> 900
+transfer(8, "C", "A", 10)       -> 99
+top_spenders(9, 3)              -> "B(100), C(10), A(9)"
+
+=== L2 hidden: failed transfers and deposits are not outgoing
+create_account(1, "A"); create_account(2, "B")
+deposit(3, "A", 50)             -> 50
+transfer(4, "A", "B", 80)       -> None  # insufficient funds
+transfer(5, "A", "A", 10)       -> None  # same account
+transfer(6, "A", "X", 10)       -> None  # missing receiver
+deposit(7, "B", 300)            -> 300
+top_spenders(8, 2)              -> "A(0), B(0)"
+transfer(9, "A", "B", 50)       -> 0
+top_spenders(10, 2)             -> "A(50), B(0)"
+
+=== L2 hidden: received money does not count
+create_account(1, "A"); create_account(2, "B"); create_account(3, "C")
+deposit(4, "C", 200)            -> 200
+transfer(5, "C", "B", 150)      -> 50
+transfer(6, "B", "A", 30)       -> 120
+top_spenders(7, 3)              -> "C(150), B(30), A(0)"
+
+=== L2 hidden: spending received money counts for the spender
+create_account(1, "A"); create_account(2, "B"); create_account(3, "C")
+deposit(4, "B", 100)            -> 100
+deposit(5, "A", 60)             -> 60
+transfer(6, "B", "A", 100)      -> 0
+transfer(7, "A", "C", 150)      -> 10
+transfer(8, "C", "B", 150)      -> 0
+top_spenders(9, 3)              -> "A(150), C(150), B(100)"
+top_spenders(10, 2)             -> "A(150), C(150)"
+
+=== L2 hidden: ranking does not change state
+create_account(1, "A"); create_account(2, "B")
+deposit(3, "A", 100)            -> 100
+transfer(4, "A", "B", 40)       -> 60
+top_spenders(5, 1)              -> "A(40)"
+top_spenders(6, 1)              -> "A(40)"
+transfer(7, "A", "B", 60)       -> 0
+deposit(8, "B", 1)              -> 101
+top_spenders(9, 2)              -> "A(100), B(0)"
+
+=== L2 hidden: accounts created later join the ranking
+create_account(1, "A")
+deposit(2, "A", 100)            -> 100
+create_account(3, "B")
+transfer(4, "A", "B", 10)       -> 90
+top_spenders(5, 3)              -> "A(10), B(0)"
+create_account(6, "C")          -> True
+transfer(7, "B", "C", 10)       -> 0
+top_spenders(8, 3)              -> "A(10), B(10), C(0)"
+
+=== L2 hidden: random operations @gen(seed=21, n=250)
+
+=== L2 hidden: random operations, second seed @gen(seed=22, n=150)
+
+
+# ---------------------------------------------------------------------------------------------
+# Level 3
+# ---------------------------------------------------------------------------------------------
+
+=== L3 shown: a due payment runs and counts as outgoing
+create_account(1, "A")
+deposit(2, "A", 100)            -> 100
+schedule_payment(3, "A", 40, 5) -> "payment1"  # due at 8
+deposit(10, "A", 1)             -> 61
+top_spenders(11, 1)             -> "A(40)"
+
+=== L3 shown: a cancelled payment never runs
+create_account(1, "A")
+deposit(2, "A", 50)             -> 50
+schedule_payment(3, "A", 20, 10) -> "payment1"  # due at 13
+cancel_payment(4, "A", "payment1") -> True
+cancel_payment(5, "A", "payment1") -> False
+deposit(20, "A", 1)             -> 51
+
+=== L3 hidden: ids are global and a failed schedule doesn't use one
+create_account(1, "A"); create_account(2, "B")
+schedule_payment(3, "A", 10, 100) -> "payment1"
+schedule_payment(4, "X", 10, 5)   -> None
+schedule_payment(5, "B", 10, 100) -> "payment2"
+cancel_payment(6, "B", "payment2") -> True
+schedule_payment(7, "A", 10, 100) -> "payment3"
+cancel_payment(8, "A", "payment4") -> False
+
+=== L3 hidden: earlier due time runs first, whatever the creation order
+create_account(1, "A")
+deposit(2, "A", 100)            -> 100
+schedule_payment(3, "A", 60, 17) -> "payment1"  # due at 20
+schedule_payment(4, "A", 50, 11) -> "payment2"  # due at 15
+deposit(25, "A", 1)             -> 51   # payment2 at 15 leaves 50, payment1 at 20 is skipped
+top_spenders(26, 1)             -> "A(50)"
+cancel_payment(27, "A", "payment1") -> False
+
+=== L3 hidden: same due time runs in creation order
+create_account(1, "A")
+deposit(2, "A", 100)            -> 100
+schedule_payment(3, "A", 70, 7) -> "payment1"  # due at 10
+schedule_payment(4, "A", 50, 6) -> "payment2"  # due at 10
+schedule_payment(5, "A", 30, 5) -> "payment3"  # due at 10
+deposit(12, "A", 1)             -> 1    # 100-70=30, payment2 skipped, 30-30=0
+top_spenders(13, 1)             -> "A(100)"
+
+=== L3 hidden: a payment due now runs before the operation
+create_account(1, "A"); create_account(2, "B")
+deposit(3, "A", 100)            -> 100
+schedule_payment(4, "A", 80, 6) -> "payment1"  # due at 10
+schedule_payment(5, "A", 5, 10) -> "payment2"  # due at 15
+transfer(10, "A", "B", 50)      -> None  # payment1 already left 20
+cancel_payment(15, "A", "payment2") -> False  # payment2 ran just before this call
+deposit(16, "A", 1)             -> 16
+
+=== L3 hidden: a skipped payment is not retried
+create_account(1, "A")
+deposit(2, "A", 10)             -> 10
+schedule_payment(3, "A", 50, 5) -> "payment1"  # due at 8, only 10 available
+deposit(9, "A", 100)            -> 110
+deposit(30, "A", 1)             -> 111
+top_spenders(31, 1)             -> "A(0)"
+cancel_payment(32, "A", "payment1") -> False
+
+=== L3 hidden: top_spenders runs due payments first
+create_account(1, "A"); create_account(2, "B")
+deposit(3, "A", 50); deposit(4, "B", 50)
+transfer(5, "B", "A", 20)       -> 30
+schedule_payment(6, "A", 30, 2) -> "payment1"  # due at 8
+top_spenders(7, 2)              -> "B(20), A(0)"
+top_spenders(8, 2)              -> "A(30), B(20)"
+
+=== L3 hidden: cancel needs the owning account
+create_account(1, "A"); create_account(2, "B")
+deposit(3, "A", 100)            -> 100
+schedule_payment(4, "A", 30, 10) -> "payment1"  # due at 14
+cancel_payment(5, "B", "payment1") -> False
+cancel_payment(6, "X", "payment1") -> False
+cancel_payment(7, "A", "payment9") -> False
+deposit(15, "A", 1)             -> 71
+cancel_payment(16, "A", "payment1") -> False
+
+=== L3 hidden: an incoming transfer funds a later payment
+create_account(1, "A"); create_account(2, "B")
+deposit(3, "B", 100)            -> 100
+schedule_payment(4, "A", 60, 6) -> "payment1"  # due at 10, A is empty now
+transfer(8, "B", "A", 70)       -> 30
+deposit(11, "A", 1)             -> 11
+top_spenders(12, 2)             -> "B(70), A(60)"
+
+=== L3 hidden: a transfer drains the account before the payment
+create_account(1, "A"); create_account(2, "B")
+deposit(3, "A", 100)            -> 100
+schedule_payment(4, "A", 60, 6) -> "payment1"  # due at 10
+transfer(5, "A", "B", 50)       -> 50
+deposit(11, "A", 1)             -> 51
+top_spenders(12, 2)             -> "A(50), B(0)"
+
+=== L3 hidden: several payments on two accounts due between calls
+create_account(1, "A"); create_account(2, "B")
+deposit(3, "A", 100); deposit(4, "B", 20)
+schedule_payment(5, "B", 30, 10) -> "payment1"  # due at 15
+schedule_payment(6, "A", 40, 4)  -> "payment2"  # due at 10
+schedule_payment(7, "A", 40, 6)  -> "payment3"  # due at 13
+schedule_payment(8, "A", 40, 9)  -> "payment4"  # due at 17
+transfer(9, "A", "B", 15)       -> 85
+top_spenders(30, 2)             -> "A(95), B(30)"  # payment4 skipped (A has 5)
+deposit(31, "A", 1)             -> 6
+deposit(32, "B", 1)             -> 6
+
+=== L3 hidden: random operations @gen(seed=31, n=300)
+
+=== L3 hidden: random operations, second seed @gen(seed=32, n=200)
+
+
+# ---------------------------------------------------------------------------------------------
+# Level 4
+# ---------------------------------------------------------------------------------------------
+
+=== L4 shown: balances over time
+create_account(1, "A")
+deposit(3, "A", 50)             -> 50
+deposit(6, "A", 20)             -> 70
+get_balance(7, "A", 1)          -> 0
+get_balance(8, "A", 4)          -> 50
+get_balance(9, "A", 6)          -> 70
+get_balance(10, "X", 5)         -> None
+
+=== L4 shown: invalid merges
+create_account(1, "A"); create_account(2, "B")
+merge_accounts(3, "A", "A")     -> False
+merge_accounts(4, "A", "X")     -> False
+merge_accounts(5, "X", "B")     -> False
+merge_accounts(6, "A", "B")     -> True
+merge_accounts(7, "A", "B")     -> False
+
+=== L4 hidden: an executed payment is recorded at its due time
+create_account(1, "A")
+deposit(2, "A", 100)            -> 100
+schedule_payment(3, "A", 30, 7) -> "payment1"  # due at 10
+schedule_payment(4, "A", 20, 11) -> "payment2"  # due at 15, same time as the deposit
+deposit(15, "A", 5)             -> 55
+get_balance(21, "A", 9)         -> 100
+get_balance(22, "A", 10)        -> 70
+get_balance(23, "A", 14)        -> 70
+get_balance(24, "A", 15)        -> 55
+get_balance(25, "A", 20)        -> 55
+
+=== L4 hidden: get_balance runs due payments first
+create_account(1, "A")
+deposit(2, "A", 100)            -> 100
+schedule_payment(3, "A", 40, 5) -> "payment1"  # due at 8
+get_balance(12, "A", 10)        -> 60
+get_balance(13, "A", 7)         -> 100
+get_balance(14, "A", 8)         -> 60
+
+=== L4 hidden: merge moves pending payments to the target
+create_account(1, "A"); create_account(2, "B")
+deposit(3, "B", 100)            -> 100
+schedule_payment(4, "B", 30, 20) -> "payment1"  # due at 24
+schedule_payment(5, "B", 10, 30) -> "payment2"  # due at 35
+merge_accounts(6, "A", "B")     -> True
+cancel_payment(7, "B", "payment1") -> False
+cancel_payment(8, "A", "payment1") -> True
+deposit(40, "A", 1)             -> 91   # payment2 ran from A at 35
+top_spenders(41, 1)             -> "A(10)"
+get_balance(42, "A", 34)        -> 100
+get_balance(43, "A", 35)        -> 90
+
+=== L4 hidden: merge moves the outgoing total
+create_account(1, "A"); create_account(2, "B"); create_account(3, "C")
+deposit(4, "A", 100); deposit(5, "B", 100)
+transfer(6, "B", "C", 70)       -> 30
+transfer(7, "A", "C", 10)       -> 90
+top_spenders(8, 3)              -> "B(70), A(10), C(0)"
+merge_accounts(9, "C", "B")     -> True
+top_spenders(10, 3)             -> "C(70), A(10)"
+transfer(11, "C", "A", 100)     -> 10   # C had 70 + 10 received, plus B's 30
+top_spenders(12, 2)             -> "C(170), A(10)"
+
+=== L4 hidden: source history before and after the merge
+create_account(1, "A"); create_account(2, "B")
+deposit(3, "B", 40); deposit(4, "A", 10)
+merge_accounts(6, "A", "B")     -> True
+get_balance(7, "B", 1)          -> None
+get_balance(8, "B", 2)          -> 0
+get_balance(9, "B", 3)          -> 40
+get_balance(10, "B", 5)         -> 40
+get_balance(11, "B", 6)         -> None
+get_balance(12, "B", 9)         -> None
+deposit(13, "B", 5)             -> None
+schedule_payment(14, "B", 5, 5) -> None
+transfer(15, "A", "B", 5)       -> None
+
+=== L4 hidden: the target's earlier history is unchanged
+create_account(1, "A")
+deposit(2, "A", 10); deposit(3, "A", 20)
+create_account(4, "B")
+deposit(5, "B", 100)            -> 100
+merge_accounts(6, "A", "B")     -> True
+get_balance(7, "A", 0)          -> None
+get_balance(8, "A", 2)          -> 10
+get_balance(9, "A", 3)          -> 30
+get_balance(10, "A", 5)         -> 30
+get_balance(11, "A", 6)         -> 130
+deposit(12, "A", 1)             -> 131
+
+=== L4 hidden: a re-created id is a brand-new account
+create_account(1, "A"); create_account(2, "B")
+deposit(3, "B", 40)             -> 40
+transfer(4, "B", "A", 15)       -> 25
+merge_accounts(5, "A", "B")     -> True
+create_account(7, "B")          -> True
+deposit(8, "B", 7)              -> 7
+get_balance(9, "B", 4)          -> 25
+get_balance(10, "B", 5)         -> None
+get_balance(11, "B", 6)         -> None
+get_balance(12, "B", 7)         -> 0
+get_balance(13, "B", 8)         -> 7
+top_spenders(14, 2)             -> "A(15), B(0)"
+get_balance(15, "A", 5)         -> 40
+
+=== L4 hidden: a moved payment stays with the target after the source id is re-created
+create_account(1, "A"); create_account(2, "B")
+deposit(3, "A", 100)            -> 100
+schedule_payment(4, "B", 30, 20) -> "payment1"  # due at 24
+merge_accounts(5, "A", "B")     -> True
+create_account(6, "B")          -> True
+deposit(7, "B", 50)             -> 50
+cancel_payment(8, "B", "payment1") -> False
+deposit(25, "B", 1)             -> 51
+deposit(26, "A", 1)             -> 71
+top_spenders(27, 2)             -> "A(30), B(0)"
+get_balance(28, "A", 23)        -> 100
+get_balance(29, "A", 24)        -> 70
+schedule_payment(30, "B", 5, 5) -> "payment2"
+
+=== L4 hidden: a moved payment that would overdraw the target is skipped
+create_account(1, "A"); create_account(2, "B"); create_account(3, "C")
+deposit(4, "B", 100)            -> 100
+schedule_payment(5, "B", 80, 10) -> "payment1"  # due at 15
+merge_accounts(6, "A", "B")     -> True
+transfer(7, "A", "C", 50)       -> 50
+deposit(16, "A", 1)             -> 51
+top_spenders(17, 2)             -> "A(50), C(0)"
+get_balance(18, "A", 15)        -> 50
+
+=== L4 hidden: chained merges carry payments along
+create_account(1, "A"); create_account(2, "B"); create_account(3, "C")
+deposit(4, "A", 10); deposit(5, "B", 20); deposit(6, "C", 30)
+schedule_payment(7, "B", 5, 20) -> "payment1"  # due at 27
+merge_accounts(8, "A", "B")     -> True
+merge_accounts(9, "C", "A")     -> True
+cancel_payment(10, "A", "payment1") -> False
+get_balance(11, "A", 8)         -> 30
+get_balance(12, "A", 9)         -> None
+get_balance(13, "B", 7)         -> 20
+deposit(30, "C", 1)             -> 56
+top_spenders(31, 3)             -> "C(5)"
+get_balance(32, "C", 26)        -> 60
+get_balance(33, "C", 27)        -> 55
+
+=== L4 hidden: invalid merges leave state untouched
+create_account(1, "A"); create_account(2, "B")
+deposit(3, "A", 10); deposit(4, "B", 20)
+schedule_payment(5, "B", 5, 30) -> "payment1"
+merge_accounts(6, "B", "B")     -> False
+merge_accounts(7, "A", "X")     -> False
+merge_accounts(8, "X", "B")     -> False
+cancel_payment(9, "B", "payment1") -> True
+deposit(10, "A", 1)             -> 11
+deposit(11, "B", 1)             -> 21
+get_balance(12, "B", 8)         -> 20
+get_balance(13, "A", 7)         -> 10
+merge_accounts(14, "A", "B")    -> True
+merge_accounts(15, "A", "B")    -> False
+merge_accounts(16, "B", "A")    -> False
+
+=== L4 hidden: random operations @gen(seed=41, n=300)

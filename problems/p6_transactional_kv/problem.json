@@ -1,0 +1,13 @@
+{
+  "id": "p6_transactional_kv",
+  "number": 6,
+  "title": "Transactional key-value store",
+  "summary": "Build an in-memory key-value store that sets, gets and deletes string keys.",
+  "class_name": "TransactionalKV",
+  "levels": [
+    {"level": 1, "title": "Keys", "methods": ["set", "get", "delete"]},
+    {"level": 2, "title": "Queries", "methods": ["count", "list_keys"]},
+    {"level": 3, "title": "Nested transactions", "methods": ["begin", "commit", "rollback"]},
+    {"level": 4, "title": "Committed history", "methods": ["get_at"]}
+  ]
+}

@@ -1,0 +1,4 @@
+- Keep a stack of dicts (`list[dict]`), one per open transaction, on top of the permanent dict. A read walks the stack from the top down and stops at the first layer that mentions the key.
+- Represent a delete inside a transaction as a tombstone: a unique sentinel object such as `_TOMBSTONE = object()`. A missing entry means "ask the layer below"; a tombstone means "deleted".
+- Build `count` and `list_keys` from one merged view (apply the layers bottom up, then drop tombstones), so they automatically agree with `get`.
+- On the outermost commit, apply each change to permanent storage and append `(commit_ts, value_or_None)` to that key's history. `get_at` is then a `bisect_right` lookup.

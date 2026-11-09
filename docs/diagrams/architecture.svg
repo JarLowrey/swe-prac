@@ -1,0 +1,117 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="792" viewBox="0 0 1080 792" role="img" aria-labelledby="title desc">
+  <title id="title">swe-prac architecture while you practise</title>
+  <desc id="desc">The browser talks JSON over HTTP to a local FastAPI server made of app.py, sessions.py, problems.py and execution.py. sessions.py reads and writes data/prac.db. problems.py reads problems/ and reference/. execution.py starts a fresh subprocess for each action: runner.py for Run and Submit, scratch.py for Run scratch, and ruff for Lint and Format. runner.py and scratch.py work in data/sessions/&lt;id&gt;/.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#9aa3b5"/>
+    </marker>
+  </defs>
+  <style>
+    text { font-family: "Segoe UI", system-ui, -apple-system, Roboto, Helvetica, Arial, sans-serif; font-size: 13px; fill: #9aa3b5; }
+    .t { font-size: 15px; font-weight: 600; fill: #e6e8ee; }
+    .m { font-family: "Cascadia Mono", Consolas, "SFMono-Regular", Menlo, monospace; font-size: 14px; fill: #e6e8ee; }
+    .c { font-family: "Cascadia Mono", Consolas, "SFMono-Regular", Menlo, monospace; font-size: 12.5px; fill: #c9cfdb; }
+    .l { font-size: 12px; fill: #9aa3b5; }
+    .proc { fill: #4f8cff; fill-opacity: 0.1; stroke: #4f8cff; stroke-width: 1.5; }
+    .host { fill: #4f8cff; fill-opacity: 0.04; stroke: #4f8cff; stroke-opacity: 0.6; stroke-width: 1.5; }
+    .mod { fill: #161922; stroke: #3a4154; stroke-width: 1.2; }
+    .file { fill: #d29922; fill-opacity: 0.1; stroke: #d29922; stroke-opacity: 0.8; stroke-width: 1.2; }
+    .edge { fill: none; stroke: #9aa3b5; stroke-width: 1.5; }
+  </style>
+
+  <rect width="1080" height="792" rx="12" fill="#0f1115"/>
+
+  <!-- Browser -->
+  <rect class="proc" x="270" y="28" width="540" height="88" rx="8"/>
+  <text class="t" x="540" y="58" text-anchor="middle">Browser</text>
+  <text x="540" y="80" text-anchor="middle"><tspan class="c">swe_prac/static/</tspan>: app.js and a bundled Monaco editor, works offline</text>
+  <text x="540" y="100" text-anchor="middle">home · session (editor, timer, pause overlay) · review · history</text>
+
+  <path class="edge" d="M540,116 V170" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <text class="l" x="552" y="147">JSON over HTTP, 127.0.0.1 only</text>
+
+  <!-- FastAPI server -->
+  <rect class="host" x="24" y="170" width="720" height="300" rx="10"/>
+  <text x="44" y="200"><tspan class="t">FastAPI server</tspan><tspan class="c" dx="10">python -m swe_prac</tspan></text>
+
+  <rect class="mod" x="48" y="271" width="252" height="124" rx="6"/>
+  <text class="m" x="64" y="300">app.py</text>
+  <text x="64" y="326">HTTP routes</text>
+  <text x="64" y="348">shown tests: full detail</text>
+  <text x="64" y="370">hidden tests: counts per level</text>
+
+  <path class="edge" d="M300,333 H360" marker-end="url(#arrow)"/>
+  <path class="edge" d="M330,249 V417"/>
+  <path class="edge" d="M330,249 H360" marker-end="url(#arrow)"/>
+  <path class="edge" d="M330,417 H360" marker-end="url(#arrow)"/>
+
+  <rect class="mod" x="360" y="216" width="360" height="66" rx="6"/>
+  <text class="m" x="376" y="243">sessions.py</text>
+  <text x="376" y="265">timer, pauses, level unlocks, scoring</text>
+
+  <rect class="mod" x="360" y="300" width="360" height="66" rx="6"/>
+  <text class="m" x="376" y="327">problems.py</text>
+  <text x="376" y="349">loads statements, stubs and tests</text>
+
+  <rect class="mod" x="360" y="384" width="360" height="66" rx="6"/>
+  <text class="m" x="376" y="411">execution.py</text>
+  <text x="376" y="433">one fresh subprocess per action, 10 s limit</text>
+
+  <!-- Files the server reads and writes -->
+  <rect class="file" x="800" y="216" width="256" height="66" rx="6"/>
+  <text class="m" x="816" y="243">data/prac.db</text>
+  <text x="816" y="265">SQLite: your history</text>
+  <path class="edge" d="M720,249 H800" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+
+  <rect class="file" x="800" y="300" width="256" height="66" rx="6"/>
+  <text class="m" x="816" y="327">problems/&lt;pid&gt;/</text>
+  <text x="816" y="349">statements, tests, stubs</text>
+  <path class="edge" d="M800,322 H720" marker-end="url(#arrow)"/>
+
+  <rect class="file" x="800" y="384" width="256" height="66" rx="6"/>
+  <text class="m" x="816" y="411">reference/&lt;pid&gt;/</text>
+  <text x="816" y="433">solution, for the review page</text>
+  <path class="edge" d="M800,417 H772 V348 H720" marker-end="url(#arrow)"/>
+
+  <!-- One subprocess per action -->
+  <path class="edge" d="M540,450 V540" marker-end="url(#arrow)"/>
+  <path class="edge" d="M184,500 H896"/>
+  <path class="edge" d="M184,500 V540" marker-end="url(#arrow)"/>
+  <path class="edge" d="M896,500 V540" marker-end="url(#arrow)"/>
+  <text class="l" x="194" y="526">Run / Submit</text>
+  <text class="l" x="550" y="526">Run scratch</text>
+  <text class="l" x="906" y="526">Lint / Format</text>
+
+  <rect class="proc" x="24" y="540" width="320" height="110" rx="8"/>
+  <text class="m" x="40" y="567">python -I runner.py</text>
+  <text x="40" y="591">imports your solution.py</text>
+  <text x="40" y="611">a new instance of your class per test</text>
+  <text x="40" y="631">writes each result to results.jsonl</text>
+
+  <rect class="proc" x="380" y="540" width="320" height="110" rx="8"/>
+  <text class="m" x="396" y="567">python scratch.py</text>
+  <text x="396" y="591">runs your scratch code after</text>
+  <text x="396" y="611"><tspan class="c">from solution import *</tspan></text>
+  <text x="396" y="631">output shows in the Scratch tab</text>
+
+  <rect class="proc" x="736" y="540" width="320" height="110" rx="8"/>
+  <text class="m" x="752" y="567">python -m ruff</text>
+  <text x="752" y="591">lints and formats your code</text>
+  <text x="752" y="611">rules: <tspan class="c">swe_prac/user_ruff.toml</tspan></text>
+  <text x="752" y="631">lint never blocks a level</text>
+
+  <!-- Session folder -->
+  <path class="edge" d="M184,650 V700" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <path class="edge" d="M540,650 V700" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <rect class="file" x="24" y="700" width="676" height="66" rx="6"/>
+  <text class="m" x="40" y="727">data/sessions/&lt;id&gt;/</text>
+  <text x="40" y="749">solution.py · scratch.py · results.jsonl, one folder per session</text>
+
+  <!-- Legend -->
+  <rect class="proc" x="772" y="706" width="18" height="12" rx="2"/>
+  <text class="l" x="800" y="716">separate process</text>
+  <rect class="mod" x="772" y="728" width="18" height="12" rx="2"/>
+  <text class="l" x="800" y="738">module inside the server</text>
+  <rect class="file" x="772" y="750" width="18" height="12" rx="2"/>
+  <text class="l" x="800" y="760">files on disk</text>
+</svg>

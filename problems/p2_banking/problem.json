@@ -1,0 +1,13 @@
+{
+  "id": "p2_banking",
+  "number": 2,
+  "title": "Banking ledger",
+  "summary": "Build a bank that creates accounts and processes deposits and transfers between them.",
+  "class_name": "Bank",
+  "levels": [
+    {"level": 1, "title": "Accounts and money movement", "methods": ["create_account", "deposit", "transfer"]},
+    {"level": 2, "title": "Ranking", "methods": ["top_spenders"]},
+    {"level": 3, "title": "Scheduled payments", "methods": ["schedule_payment", "cancel_payment"]},
+    {"level": 4, "title": "Merges and history", "methods": ["merge_accounts", "get_balance"]}
+  ]
+}

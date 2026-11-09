@@ -1,0 +1,5 @@
+- Make `sell` a one-line `place_order` from Level 2 on, so there is a single order path.
+- In `place_order`, first combine lines into a `Counter`, then validate every sku and quantity, and only then deduct stock. Never deduct inside the validation loop.
+- Each order stores, per sku, `qty`, `unit_price_paid`, and `returned`. Refunds and return limits read from there, never from the product's current price.
+- Keep a ledger of `(ts, amount)` entries: positive for sales, negative for refunds. `revenue` is a sum over entries in the window, and `top_sellers` is units sold minus units returned.
+- Integer math for discounts: `price * (100 - pct) // 100`.

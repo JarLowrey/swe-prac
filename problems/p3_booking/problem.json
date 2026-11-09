@@ -1,0 +1,13 @@
+{
+  "id": "p3_booking",
+  "number": 3,
+  "title": "Rental booking calendar",
+  "summary": "Build the booking core of a short-term rental marketplace: listings, bookings and cancellations on a calendar of nights.",
+  "class_name": "BookingCalendar",
+  "levels": [
+    {"level": 1, "title": "Listings and bookings", "methods": ["add_listing", "book", "cancel"]},
+    {"level": 2, "title": "Search", "methods": ["search_available", "guest_bookings"]},
+    {"level": 3, "title": "Temporary holds", "methods": ["hold", "confirm_hold"]},
+    {"level": 4, "title": "Dynamic pricing and revenue", "methods": ["set_night_price", "quote", "host_revenue"]}
+  ]
+}

@@ -1,0 +1,25 @@
+# Lint and format rules applied to your solution in the practice app.
+# Informational only: lint issues never block a level from unlocking.
+line-length = 100
+target-version = "py312"
+
+[lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes: unused names, undefined names
+    "I",    # import sorting
+    "B",    # bugbear: likely bugs (mutable defaults, ...)
+    "UP",   # pyupgrade: modern syntax
+    "SIM",  # simplifications
+    "C4",   # comprehensions
+    "N",    # pep8 naming
+    "PERF", # performance anti-patterns
+    "RET",  # return statement consistency
+]
+ignore = [
+    "RET505", # "unnecessary else after return": a style choice, not a problem
+]
+
+[format]
+quote-style = "double"

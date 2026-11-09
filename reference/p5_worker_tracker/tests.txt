@@ -1,0 +1,543 @@
+# Tests for p5_worker_tracker. The 'doc self-check' tests are the original self-check tests for
+# each level: never edit their expectations.
+
+
+=== L1 shown: doc self-check (Level 1)
+add_worker(1, "w1", "dev", 10)  -> True
+add_worker(2, "w1", "dev", 10)  -> False
+register(3, "w1")              -> "registered"  # enters
+register(4, "w2")              -> "invalid_request"
+get(5, "w1")                   -> 0  # session still open
+register(10, "w1")             -> "registered"  # leaves: 7 units
+get(11, "w1")                  -> 7
+register(20, "w1"); register(25, "w1")
+get(26, "w1")                  -> 12
+get(27, "w9")                  -> None
+
+=== L2 shown: doc self-check (Level 2)
+add_worker(1, "a", "dev", 10); add_worker(2, "b", "dev", 10)
+add_worker(3, "c", "pm", 20);  add_worker(4, "d", "dev", 10)
+register(5, "a");  register(15, "a")  # a: 10
+register(16, "b"); register(26, "b")  # b: 10
+register(27, "c"); register(57, "c")  # c: 30
+top_n_workers(58, 5, "dev")      -> "a(10), b(10), d(0)"
+top_n_workers(59, 1, "pm")       -> "c(30)"
+top_n_workers(60, 3, "qa")       -> ""
+
+=== L3 shown: doc self-check (Level 3)
+add_worker(1, "a", "dev", 10)
+register(2, "a");  register(12, "a")  # 10 units at 10
+promote(13, "a", "lead", 20, 20)  -> "success"
+promote(14, "a", "x", 1, 30)      -> "invalid_request"  # one already pending
+register(15, "a"); register(25, "a")  # entered before 20: still dev at 10
+register(30, "a"); register(40, "a")  # entered at 30: lead at 20
+calc_salary(41, "a", 0, 100)    -> 400  # 100 + 100 + 200
+calc_salary(42, "a", 5, 35)     -> 270  # 7×10 + 10×10 + 5×20
+top_n_workers(43, 5, "dev")      -> ""
+top_n_workers(44, 5, "lead")     -> "a(10)"
+calc_salary(45, "zz", 0, 10)    -> None
+promote(46, "a", "x", 1, 50)   -> "success"  # previous one took effect
+
+=== L4 shown: doc self-check (Level 4)
+add_worker(1, "a", "dev", 10)
+register(2, "a"); register(12, "a")  # session [2, 12)
+set_double_time(13, 5, 8)
+set_double_time(14, 7, 10)  # together: [5, 10)
+calc_salary(15, "a", 0, 20)     -> 150  # 100 base + 5 doubled units × 10
+calc_salary(16, "a", 9, 11)     -> 30  # 2 units, 1 of them doubled
+set_double_time(17, 100, 200)
+register(150, "a"); register(160, "a")
+calc_salary(161, "a", 0, 1000)  -> 350  # 150 + 10 × 20
+
+# ---------------------------------------------------------------------------------------
+# Level 1
+# ---------------------------------------------------------------------------------------
+
+=== L1 shown: two workers keep separate sessions
+add_worker(1, "ann", "dev", 5) -> True
+add_worker(2, "bob", "pm", 8) -> True
+register(3, "ann") -> "registered"  # ann enters
+register(4, "bob") -> "registered"  # bob enters
+register(9, "ann") -> "registered"  # ann leaves: 6 units
+get(10, "ann") -> 6
+get(11, "bob") -> 0  # bob is still inside
+register(14, "bob") -> "registered"  # bob leaves: 10 units
+get(15, "bob") -> 10
+
+=== L1 shown: a new worker starts at 0
+add_worker(1, "x", "qa", 3) -> True
+get(2, "x") -> 0
+get(3, "y") -> None
+register(4, "y") -> "invalid_request"
+add_worker(5, "y", "qa", 3) -> True
+register(6, "y") -> "registered"
+register(8, "y") -> "registered"
+get(9, "y") -> 2
+
+=== L1 hidden: a rejected add_worker keeps sessions and the open session
+add_worker(1, "a", "dev", 10) -> True
+register(2, "a"); register(7, "a")  # 5 units
+add_worker(8, "a", "pm", 99) -> False
+get(9, "a") -> 5
+register(10, "a") -> "registered"  # enters
+add_worker(11, "a", "dev", 10) -> False
+get(12, "a") -> 5
+register(15, "a") -> "registered"  # still inside, so this leaves: 5 more
+get(16, "a") -> 10
+
+=== L1 hidden: many sessions accumulate
+add_worker(1, "a", "dev", 1)
+register(2, "a"); register(3, "a")  # 1
+get(4, "a") -> 1
+register(10, "a"); register(20, "a")  # 10
+get(21, "a") -> 11
+register(22, "a"); register(122, "a")  # 100
+get(123, "a") -> 111
+register(200, "a"); register(201, "a")  # 1
+get(202, "a") -> 112
+
+=== L1 hidden: an open session never counts, however long
+add_worker(1, "a", "dev", 1)
+register(2, "a"); register(12, "a")  # 10
+register(20, "a") -> "registered"  # enters
+get(21, "a") -> 10
+get(1000, "a") -> 10
+register(1030, "a") -> "registered"  # leaves: 1010
+get(1031, "a") -> 1020
+
+=== L1 hidden: invalid registers toggle nobody
+add_worker(1, "a", "dev", 1)
+register(2, "a") -> "registered"  # a enters
+register(3, "b") -> "invalid_request"
+register(4, "b") -> "invalid_request"
+register(5, "b") -> "invalid_request"
+register(6, "a") -> "registered"  # a leaves: 4
+get(7, "a") -> 4
+get(8, "b") -> None
+add_worker(9, "b", "dev", 1) -> True
+register(10, "b") -> "registered"  # b's first real call enters
+get(11, "b") -> 0
+register(13, "b") -> "registered"  # b leaves: 3
+get(14, "b") -> 3
+
+=== L1 hidden: interleaved workers
+add_worker(1, "a", "dev", 1); add_worker(2, "b", "dev", 1); add_worker(3, "c", "pm", 1)
+register(4, "a")  # a in
+register(5, "b")  # b in
+register(6, "c")  # c in
+register(7, "b")  # b out: 2
+register(9, "a")  # a out: 5
+register(10, "b")  # b in
+get(11, "a") -> 5
+get(12, "b") -> 2
+get(13, "c") -> 0
+register(20, "c")  # c out: 14
+register(25, "b")  # b out: 15
+get(26, "a") -> 5
+get(27, "b") -> 17
+get(28, "c") -> 14
+
+=== L1 hidden: one-unit sessions
+add_worker(1, "a", "dev", 7)
+register(2, "a"); register(3, "a")
+register(4, "a"); register(5, "a")
+register(6, "a"); register(7, "a")
+get(8, "a") -> 3
+
+=== L1 hidden: a worker added later starts fresh
+add_worker(1, "a", "dev", 1)
+register(2, "a"); register(50, "a")  # 48
+add_worker(51, "b", "dev", 1) -> True
+get(52, "b") -> 0
+get(53, "a") -> 48
+get(54, "c") -> None
+register(55, "b"); register(60, "b")  # 5
+get(61, "b") -> 5
+get(62, "a") -> 48
+
+=== L1 hidden: random sequence @gen(seed=101, n=200)
+
+=== L1 hidden: long random sequence @gen(seed=102, n=350)
+
+# ---------------------------------------------------------------------------------------
+# Level 2
+# ---------------------------------------------------------------------------------------
+
+=== L2 shown: ties break by id ascending, n truncates
+add_worker(1, "zed", "dev", 1); add_worker(2, "amy", "dev", 1); add_worker(3, "kim", "dev", 1)
+register(4, "zed"); register(9, "zed")  # zed: 5
+register(10, "amy"); register(15, "amy")  # amy: 5
+register(16, "kim"); register(18, "kim")  # kim: 2
+top_n_workers(19, 2, "dev") -> "amy(5), zed(5)"
+top_n_workers(20, 10, "dev") -> "amy(5), zed(5), kim(2)"
+
+=== L2 shown: open sessions don't count yet
+add_worker(1, "a", "ops", 1); add_worker(2, "b", "ops", 1)
+register(3, "a"); register(5, "a")  # a: 2
+register(6, "b")  # b enters
+top_n_workers(50, 2, "ops") -> "a(2), b(0)"
+register(60, "b")  # b leaves: 54
+top_n_workers(61, 2, "ops") -> "b(54), a(2)"
+
+=== L2 hidden: ties break by id, not insertion order
+add_worker(1, "d", "dev", 1); add_worker(2, "c", "dev", 1)
+add_worker(3, "b", "dev", 1); add_worker(4, "a", "dev", 1)
+register(5, "d"); register(8, "d")  # d: 3
+register(9, "b"); register(16, "b")  # b: 7
+register(17, "c"); register(20, "c")  # c: 3
+register(21, "a"); register(24, "a")  # a: 3
+top_n_workers(25, 4, "dev") -> "b(7), a(3), c(3), d(3)"
+top_n_workers(26, 3, "dev") -> "b(7), a(3), c(3)"
+top_n_workers(27, 1, "dev") -> "b(7)"
+
+=== L2 hidden: zero-time workers are listed by id
+add_worker(1, "m", "qa", 1); add_worker(2, "c", "qa", 1); add_worker(3, "x", "qa", 1)
+top_n_workers(4, 5, "qa") -> "c(0), m(0), x(0)"
+register(5, "m")  # m inside: still 0
+top_n_workers(6, 2, "qa") -> "c(0), m(0)"
+register(9, "m")  # m: 4
+top_n_workers(10, 5, "qa") -> "m(4), c(0), x(0)"
+
+=== L2 hidden: n below, equal to and above the count
+add_worker(1, "a", "dev", 1); add_worker(2, "b", "dev", 1); add_worker(3, "c", "dev", 1)
+register(4, "a"); register(10, "a")  # a: 6
+register(11, "b"); register(15, "b")  # b: 4
+register(16, "c"); register(18, "c")  # c: 2
+top_n_workers(19, 1, "dev") -> "a(6)"
+top_n_workers(20, 2, "dev") -> "a(6), b(4)"
+top_n_workers(21, 3, "dev") -> "a(6), b(4), c(2)"
+top_n_workers(22, 100, "dev") -> "a(6), b(4), c(2)"
+
+=== L2 hidden: only workers holding the position are listed
+add_worker(1, "a", "dev", 1); add_worker(2, "b", "pm", 1)
+add_worker(3, "c", "qa", 1); add_worker(4, "d", "pm", 1)
+register(5, "a"); register(25, "a")  # a: 20
+register(26, "b"); register(29, "b")  # b: 3
+register(30, "c"); register(40, "c")  # c: 10
+register(41, "d"); register(42, "d")  # d: 1
+register(43, "ghost") -> "invalid_request"
+top_n_workers(44, 5, "pm") -> "b(3), d(1)"
+top_n_workers(45, 5, "dev") -> "a(20)"
+top_n_workers(46, 5, "qa") -> "c(10)"
+top_n_workers(47, 5, "ops") -> ""
+
+=== L2 hidden: several sessions are summed
+add_worker(1, "a", "dev", 1); add_worker(2, "b", "dev", 1)
+register(3, "a"); register(5, "a")  # a: 2
+register(6, "b"); register(11, "b")  # b: 5
+register(12, "a"); register(16, "a")  # a: 2 + 4 = 6
+top_n_workers(17, 2, "dev") -> "a(6), b(5)"
+register(18, "b"); register(19, "b")  # b: 6
+top_n_workers(20, 2, "dev") -> "a(6), b(6)"
+register(21, "b"); register(22, "b")  # b: 7
+top_n_workers(23, 2, "dev") -> "b(7), a(6)"
+
+=== L2 hidden: a rejected add_worker does not change the position
+add_worker(1, "a", "dev", 1) -> True
+add_worker(2, "a", "pm", 5) -> False
+top_n_workers(3, 5, "pm") -> ""
+top_n_workers(4, 5, "dev") -> "a(0)"
+register(5, "a"); register(9, "a")  # a: 4
+add_worker(10, "a", "qa", 1) -> False
+top_n_workers(11, 5, "dev") -> "a(4)"
+top_n_workers(12, 5, "qa") -> ""
+
+=== L2 hidden: rankings use time, agree with get, ignore pay
+add_worker(1, "p", "dev", 3); add_worker(2, "q", "dev", 9)
+register(3, "p"); register(4, "q")  # both enter
+register(10, "p")  # p leaves: 7
+register(30, "q")  # q leaves: 26
+register(31, "p")  # p enters again
+get(32, "p") -> 7
+get(33, "q") -> 26
+top_n_workers(34, 2, "dev") -> "q(26), p(7)"
+register(60, "p")  # p leaves: 7 + 29 = 36
+get(61, "p") -> 36
+top_n_workers(62, 2, "dev") -> "p(36), q(26)"
+
+=== L2 hidden: random sequence @gen(seed=201, n=250)
+
+=== L2 hidden: long random sequence @gen(seed=202, n=400)
+
+# ---------------------------------------------------------------------------------------
+# Level 3
+# ---------------------------------------------------------------------------------------
+
+=== L3 shown: each session is paid at its own rate
+add_worker(1, "a", "dev", 10)
+register(2, "a"); register(6, "a")  # 4 units as dev at 10
+promote(7, "a", "lead", 30, 8) -> "success"
+register(9, "a"); register(11, "a")  # entered at 9 >= 8: 2 units as lead at 30
+calc_salary(12, "a", 0, 20) -> 100  # 40 + 60
+get(13, "a") -> 6
+
+=== L3 shown: a promotion waits for the next entry
+add_worker(1, "a", "dev", 10)
+promote(2, "a", "lead", 20, 5) -> "success"
+top_n_workers(10, 3, "dev") -> "a(0)"  # start_timestamp passed, but no entry yet
+register(11, "a")  # entering applies the promotion
+top_n_workers(12, 3, "lead") -> "a(0)"
+top_n_workers(13, 3, "dev") -> ""
+
+=== L3 shown: the salary window clips sessions
+add_worker(1, "a", "dev", 3)
+register(10, "a"); register(20, "a")
+calc_salary(21, "a", 15, 30) -> 15  # 5 units inside the window
+calc_salary(22, "a", 20, 30) -> 0  # half-open: the session ends at 20
+
+=== L3 hidden: promotion scheduled while inside the office
+add_worker(1, "a", "dev", 10)
+register(2, "a")  # enters as dev
+promote(3, "a", "lead", 50, 4) -> "success"
+register(10, "a")  # leaves: [2, 10) stays dev at 10, although 10 >= 4
+top_n_workers(11, 5, "dev") -> "a(8)"
+top_n_workers(12, 5, "lead") -> ""
+promote(13, "a", "cto", 99, 14) -> "invalid_request"  # still pending
+register(20, "a")  # enters as lead at 50
+top_n_workers(21, 5, "lead") -> "a(0)"
+top_n_workers(22, 5, "dev") -> ""
+register(25, "a")  # leaves: [20, 25) as lead
+calc_salary(26, "a", 0, 100) -> 330  # 8*10 + 5*50
+get(27, "a") -> 13
+top_n_workers(28, 5, "lead") -> "a(5)"
+
+=== L3 hidden: start_timestamp inside a session applies at the next entry
+add_worker(1, "a", "dev", 10)
+promote(2, "a", "pm", 20, 8) -> "success"
+register(5, "a"); register(12, "a")  # [5, 12) contains 8: still dev
+top_n_workers(13, 2, "dev") -> "a(7)"
+top_n_workers(14, 2, "pm") -> ""
+register(15, "a"); register(18, "a")  # [15, 18) as pm
+calc_salary(19, "a", 0, 50) -> 130  # 7*10 + 3*20
+top_n_workers(20, 2, "pm") -> "a(3)"
+top_n_workers(21, 2, "dev") -> ""
+
+=== L3 hidden: an entry exactly at start_timestamp takes the promotion
+add_worker(1, "a", "dev", 10)
+promote(2, "a", "lead", 20, 10) -> "success"
+register(4, "a"); register(6, "a")  # entry at 4 < 10: dev, 2 units
+register(10, "a"); register(13, "a")  # entry at 10 == start: lead, 3 units
+calc_salary(14, "a", 0, 20) -> 80  # 2*10 + 3*20
+top_n_workers(15, 1, "lead") -> "a(3)"
+promote(16, "a", "dev", 15, 20) -> "success"  # the first one took effect
+
+=== L3 hidden: a second promote is rejected until the first takes effect
+add_worker(1, "a", "dev", 10)
+promote(2, "a", "pm", 20, 5) -> "success"
+promote(10, "a", "qa", 30, 12) -> "invalid_request"  # start passed, but no entry yet
+register(11, "a") -> "registered"  # enters: pm applies
+promote(12, "a", "qa", 30, 100) -> "success"
+promote(13, "a", "ops", 1, 14) -> "invalid_request"
+register(15, "a") -> "registered"  # leaves: [11, 15) as pm at 20
+calc_salary(16, "a", 0, 50) -> 80
+top_n_workers(17, 3, "pm") -> "a(4)"
+top_n_workers(18, 3, "qa") -> ""
+top_n_workers(19, 3, "ops") -> ""
+register(100, "a"); register(110, "a")  # entered at 100: qa at 30
+calc_salary(111, "a", 0, 200) -> 380  # 80 + 10*30
+top_n_workers(112, 3, "qa") -> "a(10)"
+
+=== L3 hidden: failed calls on missing workers change nothing
+promote(1, "ghost", "dev", 10, 5) -> "invalid_request"
+calc_salary(2, "nobody", 0, 10) -> None
+add_worker(3, "ghost", "dev", 10) -> True
+calc_salary(4, "ghost", 0, 10) -> 0
+register(5, "ghost"); register(9, "ghost")
+calc_salary(10, "ghost", 0, 100) -> 40  # no stray promotion was stored
+top_n_workers(11, 1, "dev") -> "ghost(4)"
+promote(12, "ghost", "pm", 20, 13) -> "success"
+calc_salary(13, "nobody", 0, 100) -> None
+
+=== L3 hidden: a worker promoted away leaves the old position's ranking
+add_worker(1, "a", "dev", 10); add_worker(2, "b", "dev", 10); add_worker(3, "c", "lead", 30)
+register(4, "a"); register(14, "a")  # a: 10 as dev
+register(15, "b"); register(20, "b")  # b: 5 as dev
+register(21, "c"); register(23, "c")  # c: 2 as lead
+promote(24, "a", "lead", 30, 25) -> "success"
+top_n_workers(26, 5, "dev") -> "a(10), b(5)"  # not in effect yet
+top_n_workers(27, 5, "lead") -> "c(2)"
+register(28, "a")  # a enters as lead
+top_n_workers(29, 5, "dev") -> "b(5)"
+top_n_workers(30, 5, "lead") -> "c(2), a(0)"
+register(33, "a")  # a leaves: 5 as lead
+top_n_workers(34, 5, "lead") -> "a(5), c(2)"
+get(35, "a") -> 15
+
+=== L3 hidden: returning to a former position counts all time held in it
+add_worker(1, "a", "dev", 10); add_worker(2, "b", "dev", 10)
+register(3, "a"); register(7, "a")  # a: 4 as dev
+promote(8, "a", "lead", 20, 9) -> "success"
+register(10, "a"); register(20, "a")  # a: 10 as lead
+promote(21, "a", "dev", 10, 22) -> "success"
+register(23, "a"); register(25, "a")  # a: 2 more as dev
+register(26, "b"); register(31, "b")  # b: 5 as dev
+top_n_workers(32, 5, "dev") -> "a(6), b(5)"
+top_n_workers(33, 5, "lead") -> ""
+calc_salary(34, "a", 0, 40) -> 260  # 4*10 + 10*20 + 2*10
+get(35, "a") -> 16
+
+=== L3 hidden: salary window cutting sessions on both sides
+add_worker(1, "a", "dev", 2)
+register(10, "a"); register(20, "a")  # [10, 20)
+register(30, "a"); register(40, "a")  # [30, 40)
+register(50, "a"); register(60, "a")  # [50, 60)
+calc_salary(61, "a", 15, 55) -> 40  # (5 + 10 + 5) units at 2
+calc_salary(62, "a", 20, 30) -> 0  # exactly the gap between sessions
+calc_salary(63, "a", 19, 31) -> 4  # 1 unit on each side of the gap
+calc_salary(64, "a", 0, 10) -> 0  # ends where the first session starts
+calc_salary(65, "a", 59, 1000) -> 2  # the last unit only
+calc_salary(66, "a", 12, 18) -> 12  # strictly inside one session: 6 units
+calc_salary(67, "a", 0, 1000) -> 60
+
+=== L3 hidden: an open session pays nothing until it completes
+add_worker(1, "a", "dev", 5)
+register(2, "a"); register(4, "a")  # 2 units
+register(10, "a")  # enters
+calc_salary(20, "a", 0, 100) -> 10
+register(30, "a")  # [10, 30) completes
+calc_salary(31, "a", 0, 100) -> 110
+calc_salary(32, "a", 0, 25) -> 85  # 10 + 15*5
+
+=== L3 hidden: windowed salary across a promotion, per worker
+add_worker(1, "a", "dev", 10); add_worker(2, "b", "dev", 7)
+register(3, "a"); register(4, "b")  # both enter
+promote(5, "a", "lead", 40, 6) -> "success"
+register(13, "a")  # a leaves: [3, 13) at 10
+register(14, "a")  # a enters as lead at 40
+register(24, "b")  # b leaves: [4, 24) at 7
+register(30, "a")  # a leaves: [14, 30) at 40
+calc_salary(31, "a", 10, 20) -> 270  # 3*10 + 6*40
+calc_salary(32, "b", 10, 20) -> 70  # b's rate never changed
+calc_salary(33, "a", 0, 100) -> 740  # 10*10 + 16*40
+calc_salary(34, "b", 0, 100) -> 140
+
+=== L3 hidden: a far-off promotion stays pending across sessions
+add_worker(1, "a", "dev", 1)
+promote(2, "a", "pm", 2, 100) -> "success"
+register(10, "a"); register(20, "a")
+register(30, "a"); register(40, "a")
+promote(41, "a", "qa", 3, 50) -> "invalid_request"
+top_n_workers(42, 3, "dev") -> "a(20)"
+register(99, "a"); register(101, "a")  # entered at 99 < 100: still dev
+register(102, "a"); register(110, "a")  # pm at 2
+calc_salary(111, "a", 0, 200) -> 38  # 22*1 + 8*2
+top_n_workers(112, 3, "pm") -> "a(8)"
+top_n_workers(113, 3, "dev") -> ""
+
+=== L3 hidden: random sequence @gen(seed=301, n=300)
+
+# ---------------------------------------------------------------------------------------
+# Level 4
+# ---------------------------------------------------------------------------------------
+
+=== L4 shown: double time also covers future sessions
+add_worker(1, "a", "dev", 4)
+set_double_time(2, 10, 20)
+register(15, "a"); register(25, "a")  # 5 doubled units, then 5 normal ones
+calc_salary(26, "a", 0, 50) -> 60  # 10*4 + 5*4
+get(27, "a") -> 10
+top_n_workers(28, 1, "dev") -> "a(10)"
+
+=== L4 shown: double time set after a session completed
+add_worker(1, "a", "dev", 3)
+register(2, "a"); register(12, "a")
+calc_salary(13, "a", 0, 20) -> 30
+set_double_time(14, 0, 5)
+calc_salary(15, "a", 0, 20) -> 39  # [2, 5) is doubled: 3 extra units
+
+=== L4 hidden: nested periods pay double once
+add_worker(1, "a", "dev", 10)
+set_double_time(2, 0, 100)
+set_double_time(3, 20, 30)
+set_double_time(4, 25, 27)
+register(10, "a"); register(40, "a")  # 30 units, all inside [0, 100)
+calc_salary(41, "a", 0, 100) -> 600
+calc_salary(42, "a", 22, 28) -> 120  # 6 units, doubled
+get(43, "a") -> 30
+
+=== L4 hidden: adjacent periods
+add_worker(1, "a", "dev", 1)
+register(2, "a"); register(22, "a")  # [2, 22)
+set_double_time(23, 5, 10)
+set_double_time(24, 10, 15)
+calc_salary(25, "a", 0, 100) -> 30  # 20 + 10 doubled
+calc_salary(26, "a", 9, 11) -> 4  # 2 units, both doubled
+calc_salary(27, "a", 15, 16) -> 1  # 15 is outside [10, 15)
+calc_salary(28, "a", 4, 5) -> 1  # 4 is before [5, 10)
+calc_salary(29, "a", 14, 15) -> 2
+
+=== L4 hidden: disjoint periods over several sessions
+add_worker(1, "a", "dev", 5)
+register(2, "a"); register(12, "a")  # [2, 12)
+register(25, "a"); register(35, "a")  # [25, 35)
+set_double_time(36, 3, 5)  # 2 units of the first session
+set_double_time(37, 8, 9)  # 1 unit of the first session
+set_double_time(38, 20, 30)  # 5 units of the second session
+calc_salary(39, "a", 0, 100) -> 140  # (20 + 2 + 1 + 5) * 5
+calc_salary(40, "a", 0, 20) -> 65  # (10 + 3) * 5
+calc_salary(41, "a", 12, 25) -> 0
+
+=== L4 hidden: the bonus uses each session's own rate
+add_worker(1, "a", "dev", 10)
+register(2, "a"); register(12, "a")  # dev at 10: [2, 12)
+promote(13, "a", "lead", 30, 14) -> "success"
+register(20, "a"); register(30, "a")  # lead at 30: [20, 30)
+set_double_time(31, 8, 25)  # covers [8, 12) as dev and [20, 25) as lead
+calc_salary(32, "a", 0, 100) -> 590  # 100 + 300 base, 4*10 + 5*30 bonus
+calc_salary(33, "a", 10, 22) -> 160  # 2*10*2 + 2*30*2
+top_n_workers(34, 1, "lead") -> "a(10)"
+
+=== L4 hidden: the window clips both sessions and periods
+add_worker(1, "a", "dev", 1)
+register(2, "a"); register(32, "a")  # [2, 32)
+set_double_time(33, 10, 20)
+calc_salary(34, "a", 15, 25) -> 15  # 10 base + [15, 20) doubled
+calc_salary(35, "a", 5, 12) -> 9  # 7 base + [10, 12) doubled
+calc_salary(36, "a", 20, 32) -> 12  # the period ends at 20
+calc_salary(37, "a", 0, 10) -> 8  # [2, 10); the period starts at 10
+
+=== L4 hidden: applies to every worker, get and rankings unaffected
+add_worker(1, "a", "dev", 2); add_worker(2, "b", "dev", 3)
+register(3, "a"); register(13, "a")  # a: [3, 13)
+register(14, "b"); register(24, "b")  # b: [14, 24)
+set_double_time(25, 0, 50) -> None
+calc_salary(26, "a", 0, 100) -> 40  # 10*2*2
+calc_salary(27, "b", 0, 100) -> 60  # 10*3*2
+get(28, "a") -> 10
+get(29, "b") -> 10
+top_n_workers(30, 5, "dev") -> "a(10), b(10)"
+set_double_time(31, 10, 20) -> None
+calc_salary(32, "b", 0, 100) -> 60
+calc_salary(33, "zz", 0, 100) -> None
+
+=== L4 hidden: the same period set repeatedly
+add_worker(1, "a", "dev", 10)
+register(2, "a"); register(12, "a")  # [2, 12)
+set_double_time(13, 4, 8)
+set_double_time(14, 4, 8)
+calc_salary(15, "a", 0, 20) -> 140  # 100 + 4*10
+set_double_time(16, 4, 8)
+calc_salary(17, "a", 0, 20) -> 140
+
+=== L4 hidden: a chain of overlapping periods, set out of order
+add_worker(1, "a", "dev", 2)
+register(2, "a"); register(27, "a")  # [2, 27)
+set_double_time(28, 7, 12)
+set_double_time(29, 0, 5)
+set_double_time(30, 20, 22)
+set_double_time(31, 3, 8)  # joins [0, 5) and [7, 12) into [0, 12)
+calc_salary(32, "a", 0, 100) -> 74  # (25 + 10 + 2) * 2
+calc_salary(33, "a", 6, 21) -> 44  # (15 + 6 + 1) * 2
+
+=== L4 hidden: a future period and an open session
+add_worker(1, "a", "dev", 10)
+set_double_time(2, 100, 200)
+register(150, "a")  # enters inside the period
+calc_salary(160, "a", 0, 1000) -> 0
+register(210, "a")  # [150, 210): 50 doubled units + 10 normal ones
+calc_salary(211, "a", 0, 1000) -> 1100  # (60 + 50) * 10
+calc_salary(212, "a", 190, 205) -> 250  # (15 + 10) * 10
+
+=== L4 hidden: random sequence @gen(seed=401, n=300)
+
+=== L4 hidden: long random sequence @gen(seed=402, n=400)

@@ -1,0 +1,13943 @@
+{
+ "tests": [
+  {
+   "id": "L1-S1",
+   "level": 1,
+   "visibility": "shown",
+   "name": "doc self-check (Level 1)",
+   "steps": [
+    {
+     "call": "set",
+     "args": [
+      1,
+      "u1",
+      "name",
+      "ann"
+     ]
+    },
+    {
+     "call": "get",
+     "args": [
+      2,
+      "u1",
+      "name"
+     ],
+     "expect": "ann"
+    },
+    {
+     "call": "get",
+     "args": [
+      3,
+      "u1",
+      "age"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      4,
+      "u1",
+      "name",
+      "bo"
+     ]
+    },
+    {
+     "call": "get",
+     "args": [
+      5,
+      "u1",
+      "name"
+     ],
+     "expect": "bo"
+    },
+    {
+     "call": "delete",
+     "args": [
+      6,
+      "u1",
+      "name"
+     ],
+     "expect": true
+    },
+    {
+     "call": "delete",
+     "args": [
+      7,
+      "u1",
+      "name"
+     ],
+     "expect": false
+    },
+    {
+     "call": "get",
+     "args": [
+      8,
+      "u2",
+      "x"
+     ],
+     "expect": null
+    }
+   ]
+  },
+  {
+   "id": "L1-S2",
+   "level": 1,
+   "visibility": "shown",
+   "name": "keys and fields are independent",
+   "steps": [
+    {
+     "call": "set",
+     "args": [
+      1,
+      "user",
+      "name",
+      "ann"
+     ]
+    },
+    {
+     "call": "set",
+     "args": [
+      2,
+      "user",
+      "city",
+      "paris"
+     ]
+    },
+    {
+     "call": "set",
+     "args": [
+      3,
+      "team",
+      "name",
+      "core"
+     ]
+    },
+    {
+     "call": "get",
+     "args": [
+      4,
+      "user",
+      "city"
+     ],
+     "expect": "paris"
+    },
+    {
+     "call": "get",
+     "args": [
+      5,
+      "team",
+      "name"
+     ],
+     "expect": "core"
+    },
+    {
+     "call": "get",
+     "args": [
+      6,
+      "team",
+      "city"
+     ],
+     "expect": null
+    }
+   ]
+  },
+  {
+   "id": "L1-S3",
+   "level": 1,
+   "visibility": "shown",
+   "name": "delete then set again",
+   "steps": [
+    {
+     "call": "set",
+     "args": [
+      1,
+      "k",
+      "f",
+      "1"
+     ]
+    },
+    {
+     "call": "delete",
+     "args": [
+      2,
+      "k",
+      "f"
+     ],
+     "expect": true
+    },
+    {
+     "call": "get",
+     "args": [
+      3,
+      "k",
+      "f"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      4,
+      "k",
+      "f",
+      "2"
+     ]
+    },
+    {
+     "call": "get",
+     "args": [
+      5,
+      "k",
+      "f"
+     ],
+     "expect": "2"
+    }
+   ]
+  },
+  {
+   "id": "L1-H1",
+   "level": 1,
+   "visibility": "hidden",
+   "name": "delete of a missing key or field returns False and changes nothing",
+   "steps": [
+    {
+     "call": "delete",
+     "args": [
+      1,
+      "nokey",
+      "f"
+     ],
+     "expect": false
+    },
+    {
+     "call": "set",
+     "args": [
+      2,
+      "k",
+      "a",
+      "1"
+     ]
+    },
+    {
+     "call": "delete",
+     "args": [
+      3,
+      "k",
+      "b"
+     ],
+     "expect": false
+    },
+    {
+     "call": "delete",
+     "args": [
+      4,
+      "nokey",
+      "a"
+     ],
+     "expect": false
+    },
+    {
+     "call": "get",
+     "args": [
+      5,
+      "k",
+      "a"
+     ],
+     "expect": "1"
+    },
+    {
+     "call": "get",
+     "args": [
+      6,
+      "nokey",
+      "f"
+     ],
+     "expect": null
+    }
+   ]
+  },
+  {
+   "id": "L1-H2",
+   "level": 1,
+   "visibility": "hidden",
+   "name": "delete removes only that field",
+   "steps": [
+    {
+     "call": "set",
+     "args": [
+      1,
+      "k",
+      "a",
+      "1"
+     ]
+    },
+    {
+     "call": "set",
+     "args": [
+      2,
+      "k",
+      "b",
+      "2"
+     ]
+    },
+    {
+     "call": "set",
+     "args": [
+      3,
+      "k",
+      "c",
+      "3"
+     ]
+    },
+    {
+     "call": "delete",
+     "args": [
+      4,
+      "k",
+      "b"
+     ],
+     "expect": true
+    },
+    {
+     "call": "get",
+     "args": [
+      5,
+      "k",
+      "a"
+     ],
+     "expect": "1"
+    },
+    {
+     "call": "get",
+     "args": [
+      6,
+      "k",
+      "b"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      7,
+      "k",
+      "c"
+     ],
+     "expect": "3"
+    },
+    {
+     "call": "delete",
+     "args": [
+      8,
+      "k",
+      "b"
+     ],
+     "expect": false
+    }
+   ]
+  },
+  {
+   "id": "L1-H3",
+   "level": 1,
+   "visibility": "hidden",
+   "name": "same field name under different keys",
+   "steps": [
+    {
+     "call": "set",
+     "args": [
+      1,
+      "k1",
+      "f",
+      "one"
+     ]
+    },
+    {
+     "call": "set",
+     "args": [
+      2,
+      "k2",
+      "f",
+      "two"
+     ]
+    },
+    {
+     "call": "delete",
+     "args": [
+      3,
+      "k1",
+      "f"
+     ],
+     "expect": true
+    },
+    {
+     "call": "get",
+     "args": [
+      4,
+      "k2",
+      "f"
+     ],
+     "expect": "two"
+    },
+    {
+     "call": "get",
+     "args": [
+      5,
+      "k1",
+      "f"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      6,
+      "k2",
+      "f"
+     ],
+     "expect": true
+    },
+    {
+     "call": "delete",
+     "args": [
+      7,
+      "k2",
+      "f"
+     ],
+     "expect": false
+    }
+   ]
+  },
+  {
+   "id": "L1-H4",
+   "level": 1,
+   "visibility": "hidden",
+   "name": "a key emptied by deletes is missing, then can be recreated",
+   "steps": [
+    {
+     "call": "set",
+     "args": [
+      1,
+      "k",
+      "a",
+      "1"
+     ]
+    },
+    {
+     "call": "set",
+     "args": [
+      2,
+      "k",
+      "b",
+      "2"
+     ]
+    },
+    {
+     "call": "delete",
+     "args": [
+      3,
+      "k",
+      "a"
+     ],
+     "expect": true
+    },
+    {
+     "call": "delete",
+     "args": [
+      4,
+      "k",
+      "b"
+     ],
+     "expect": true
+    },
+    {
+     "call": "get",
+     "args": [
+      5,
+      "k",
+      "a"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      6,
+      "k",
+      "a"
+     ],
+     "expect": false
+    },
+    {
+     "call": "set",
+     "args": [
+      7,
+      "k",
+      "c",
+      "3"
+     ]
+    },
+    {
+     "call": "get",
+     "args": [
+      8,
+      "k",
+      "c"
+     ],
+     "expect": "3"
+    },
+    {
+     "call": "get",
+     "args": [
+      9,
+      "k",
+      "b"
+     ],
+     "expect": null
+    }
+   ]
+  },
+  {
+   "id": "L1-H5",
+   "level": 1,
+   "visibility": "hidden",
+   "name": "repeated overwrites keep a single field",
+   "steps": [
+    {
+     "call": "set",
+     "args": [
+      1,
+      "k",
+      "f",
+      "1"
+     ]
+    },
+    {
+     "call": "set",
+     "args": [
+      2,
+      "k",
+      "f",
+      "2"
+     ]
+    },
+    {
+     "call": "set",
+     "args": [
+      3,
+      "k",
+      "f",
+      "3"
+     ]
+    },
+    {
+     "call": "get",
+     "args": [
+      4,
+      "k",
+      "f"
+     ],
+     "expect": "3"
+    },
+    {
+     "call": "delete",
+     "args": [
+      5,
+      "k",
+      "f"
+     ],
+     "expect": true
+    },
+    {
+     "call": "get",
+     "args": [
+      6,
+      "k",
+      "f"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      7,
+      "k",
+      "f"
+     ],
+     "expect": false
+    }
+   ]
+  },
+  {
+   "id": "L1-H6",
+   "level": 1,
+   "visibility": "hidden",
+   "name": "key and field names do not collide",
+   "steps": [
+    {
+     "call": "set",
+     "args": [
+      1,
+      "x",
+      "y",
+      "1"
+     ]
+    },
+    {
+     "call": "get",
+     "args": [
+      2,
+      "y",
+      "x"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      3,
+      "y",
+      "x",
+      "2"
+     ]
+    },
+    {
+     "call": "get",
+     "args": [
+      4,
+      "x",
+      "y"
+     ],
+     "expect": "1"
+    },
+    {
+     "call": "get",
+     "args": [
+      5,
+      "y",
+      "x"
+     ],
+     "expect": "2"
+    },
+    {
+     "call": "get",
+     "args": [
+      6,
+      "x",
+      "x"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      7,
+      "x",
+      "z",
+      "hello world"
+     ]
+    },
+    {
+     "call": "get",
+     "args": [
+      8,
+      "x",
+      "z"
+     ],
+     "expect": "hello world"
+    }
+   ]
+  },
+  {
+   "id": "L1-H7",
+   "level": 1,
+   "visibility": "hidden",
+   "name": "interleaved operations across keys",
+   "steps": [
+    {
+     "call": "set",
+     "args": [
+      1,
+      "a",
+      "x",
+      "1"
+     ]
+    },
+    {
+     "call": "set",
+     "args": [
+      2,
+      "a",
+      "y",
+      "2"
+     ]
+    },
+    {
+     "call": "set",
+     "args": [
+      3,
+      "b",
+      "x",
+      "3"
+     ]
+    },
+    {
+     "call": "delete",
+     "args": [
+      4,
+      "a",
+      "x"
+     ],
+     "expect": true
+    },
+    {
+     "call": "set",
+     "args": [
+      5,
+      "b",
+      "x",
+      "4"
+     ]
+    },
+    {
+     "call": "delete",
+     "args": [
+      6,
+      "b",
+      "y"
+     ],
+     "expect": false
+    },
+    {
+     "call": "get",
+     "args": [
+      7,
+      "a",
+      "x"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      8,
+      "a",
+      "y"
+     ],
+     "expect": "2"
+    },
+    {
+     "call": "get",
+     "args": [
+      9,
+      "b",
+      "x"
+     ],
+     "expect": "4"
+    },
+    {
+     "call": "set",
+     "args": [
+      10,
+      "a",
+      "x",
+      "5"
+     ]
+    },
+    {
+     "call": "get",
+     "args": [
+      11,
+      "a",
+      "x"
+     ],
+     "expect": "5"
+    }
+   ]
+  },
+  {
+   "id": "L1-H8",
+   "level": 1,
+   "visibility": "hidden",
+   "name": "random records",
+   "steps": [
+    {
+     "call": "delete",
+     "args": [
+      4,
+      "d",
+      "g"
+     ],
+     "expect": false
+    },
+    {
+     "call": "set",
+     "args": [
+      6,
+      "d",
+      "ga",
+      "v3"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      7,
+      "b",
+      "f"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      8,
+      "d",
+      "g"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      10,
+      "a",
+      "f"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      11,
+      "b",
+      "ga",
+      "v1"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      15,
+      "b",
+      "ga",
+      "v4"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      18,
+      "a",
+      "g"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      21,
+      "a",
+      "fb",
+      "v6"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      23,
+      "a",
+      "f"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      24,
+      "c",
+      "g",
+      "v2"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      25,
+      "a",
+      "fa"
+     ],
+     "expect": false
+    },
+    {
+     "call": "delete",
+     "args": [
+      27,
+      "a",
+      "g"
+     ],
+     "expect": false
+    },
+    {
+     "call": "delete",
+     "args": [
+      31,
+      "d",
+      "g"
+     ],
+     "expect": false
+    },
+    {
+     "call": "get",
+     "args": [
+      32,
+      "b",
+      "fb"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      35,
+      "c",
+      "f",
+      "v7"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      36,
+      "a",
+      "f",
+      "v1"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      40,
+      "b",
+      "ga"
+     ],
+     "expect": true
+    },
+    {
+     "call": "get",
+     "args": [
+      42,
+      "b",
+      "fa"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      46,
+      "a",
+      "g"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      50,
+      "a",
+      "fb"
+     ],
+     "expect": true
+    },
+    {
+     "call": "delete",
+     "args": [
+      53,
+      "a",
+      "fa"
+     ],
+     "expect": false
+    },
+    {
+     "call": "set",
+     "args": [
+      55,
+      "a",
+      "f",
+      "v3"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      57,
+      "a",
+      "ga"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      60,
+      "d",
+      "f"
+     ],
+     "expect": false
+    },
+    {
+     "call": "set",
+     "args": [
+      61,
+      "b",
+      "f",
+      "v6"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      64,
+      "b",
+      "ga"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      68,
+      "b",
+      "g"
+     ],
+     "expect": false
+    },
+    {
+     "call": "get",
+     "args": [
+      70,
+      "c",
+      "fa"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      72,
+      "b",
+      "ga"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      74,
+      "d",
+      "g"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      75,
+      "a",
+      "f"
+     ],
+     "expect": "v3"
+    },
+    {
+     "call": "get",
+     "args": [
+      76,
+      "c",
+      "fa"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      80,
+      "d",
+      "fb",
+      "v9"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      82,
+      "a",
+      "fa"
+     ],
+     "expect": false
+    },
+    {
+     "call": "get",
+     "args": [
+      84,
+      "a",
+      "fb"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      86,
+      "b",
+      "f"
+     ],
+     "expect": true
+    },
+    {
+     "call": "set",
+     "args": [
+      87,
+      "d",
+      "fa",
+      "v1"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      88,
+      "c",
+      "ga",
+      "v3"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      89,
+      "d",
+      "fb",
+      "v9"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      91,
+      "a",
+      "g"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      94,
+      "a",
+      "f"
+     ],
+     "expect": "v3"
+    },
+    {
+     "call": "get",
+     "args": [
+      95,
+      "c",
+      "fb"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      97,
+      "a",
+      "g"
+     ],
+     "expect": false
+    },
+    {
+     "call": "get",
+     "args": [
+      100,
+      "b",
+      "fb"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      103,
+      "d",
+      "f",
+      "v7"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      104,
+      "a",
+      "ga"
+     ],
+     "expect": false
+    },
+    {
+     "call": "set",
+     "args": [
+      108,
+      "a",
+      "ga",
+      "v2"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      109,
+      "a",
+      "fb",
+      "v7"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      112,
+      "d",
+      "g",
+      "v8"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      113,
+      "a",
+      "fb"
+     ],
+     "expect": "v7"
+    },
+    {
+     "call": "get",
+     "args": [
+      114,
+      "b",
+      "f"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      118,
+      "d",
+      "fb"
+     ],
+     "expect": "v9"
+    },
+    {
+     "call": "set",
+     "args": [
+      119,
+      "b",
+      "ga",
+      "v4"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      121,
+      "c",
+      "g"
+     ],
+     "expect": "v2"
+    },
+    {
+     "call": "delete",
+     "args": [
+      125,
+      "c",
+      "g"
+     ],
+     "expect": true
+    },
+    {
+     "call": "set",
+     "args": [
+      128,
+      "d",
+      "fa",
+      "v4"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      132,
+      "c",
+      "fa",
+      "v3"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      134,
+      "a",
+      "f"
+     ],
+     "expect": "v3"
+    },
+    {
+     "call": "delete",
+     "args": [
+      137,
+      "a",
+      "g"
+     ],
+     "expect": false
+    },
+    {
+     "call": "set",
+     "args": [
+      141,
+      "b",
+      "g",
+      "v7"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      145,
+      "d",
+      "fb"
+     ],
+     "expect": "v9"
+    },
+    {
+     "call": "delete",
+     "args": [
+      146,
+      "c",
+      "ga"
+     ],
+     "expect": true
+    },
+    {
+     "call": "get",
+     "args": [
+      147,
+      "c",
+      "ga"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      150,
+      "a",
+      "fa",
+      "v7"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      154,
+      "c",
+      "fa",
+      "v3"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      155,
+      "a",
+      "g"
+     ],
+     "expect": false
+    },
+    {
+     "call": "get",
+     "args": [
+      156,
+      "c",
+      "f"
+     ],
+     "expect": "v7"
+    },
+    {
+     "call": "set",
+     "args": [
+      158,
+      "d",
+      "fb",
+      "v3"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      159,
+      "a",
+      "fa"
+     ],
+     "expect": "v7"
+    },
+    {
+     "call": "set",
+     "args": [
+      161,
+      "c",
+      "ga",
+      "v9"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      163,
+      "b",
+      "f",
+      "v7"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      167,
+      "d",
+      "fa",
+      "v1"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      171,
+      "c",
+      "g"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      174,
+      "b",
+      "f"
+     ],
+     "expect": "v7"
+    },
+    {
+     "call": "set",
+     "args": [
+      175,
+      "d",
+      "f",
+      "v5"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      178,
+      "a",
+      "fb",
+      "v9"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      179,
+      "c",
+      "ga",
+      "v7"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      182,
+      "a",
+      "fa"
+     ],
+     "expect": "v7"
+    },
+    {
+     "call": "get",
+     "args": [
+      183,
+      "a",
+      "fa"
+     ],
+     "expect": "v7"
+    },
+    {
+     "call": "get",
+     "args": [
+      186,
+      "b",
+      "g"
+     ],
+     "expect": "v7"
+    },
+    {
+     "call": "delete",
+     "args": [
+      188,
+      "d",
+      "g"
+     ],
+     "expect": true
+    },
+    {
+     "call": "get",
+     "args": [
+      189,
+      "d",
+      "ga"
+     ],
+     "expect": "v3"
+    },
+    {
+     "call": "delete",
+     "args": [
+      192,
+      "b",
+      "ga"
+     ],
+     "expect": true
+    },
+    {
+     "call": "set",
+     "args": [
+      195,
+      "d",
+      "ga",
+      "v4"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      198,
+      "c",
+      "ga"
+     ],
+     "expect": true
+    },
+    {
+     "call": "set",
+     "args": [
+      202,
+      "a",
+      "ga",
+      "v1"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      206,
+      "a",
+      "ga",
+      "v7"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      207,
+      "b",
+      "f"
+     ],
+     "expect": "v7"
+    },
+    {
+     "call": "set",
+     "args": [
+      211,
+      "d",
+      "fb",
+      "v4"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      215,
+      "c",
+      "g"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      219,
+      "a",
+      "fa"
+     ],
+     "expect": "v7"
+    },
+    {
+     "call": "get",
+     "args": [
+      223,
+      "c",
+      "fa"
+     ],
+     "expect": "v3"
+    },
+    {
+     "call": "set",
+     "args": [
+      224,
+      "b",
+      "fa",
+      "v1"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      227,
+      "c",
+      "fa",
+      "v8"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      228,
+      "a",
+      "ga"
+     ],
+     "expect": "v7"
+    },
+    {
+     "call": "get",
+     "args": [
+      231,
+      "d",
+      "f"
+     ],
+     "expect": "v5"
+    },
+    {
+     "call": "get",
+     "args": [
+      235,
+      "b",
+      "ga"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      237,
+      "b",
+      "ga"
+     ],
+     "expect": false
+    },
+    {
+     "call": "delete",
+     "args": [
+      239,
+      "b",
+      "fa"
+     ],
+     "expect": true
+    },
+    {
+     "call": "delete",
+     "args": [
+      242,
+      "c",
+      "ga"
+     ],
+     "expect": false
+    },
+    {
+     "call": "delete",
+     "args": [
+      245,
+      "b",
+      "fa"
+     ],
+     "expect": false
+    },
+    {
+     "call": "delete",
+     "args": [
+      247,
+      "b",
+      "fa"
+     ],
+     "expect": false
+    },
+    {
+     "call": "get",
+     "args": [
+      249,
+      "c",
+      "g"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      250,
+      "d",
+      "ga"
+     ],
+     "expect": "v4"
+    },
+    {
+     "call": "set",
+     "args": [
+      252,
+      "a",
+      "f",
+      "v4"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      255,
+      "c",
+      "f"
+     ],
+     "expect": true
+    },
+    {
+     "call": "get",
+     "args": [
+      258,
+      "b",
+      "f"
+     ],
+     "expect": "v7"
+    },
+    {
+     "call": "set",
+     "args": [
+      262,
+      "a",
+      "ga",
+      "v9"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      266,
+      "b",
+      "f",
+      "v4"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      268,
+      "c",
+      "f"
+     ],
+     "expect": false
+    },
+    {
+     "call": "set",
+     "args": [
+      269,
+      "d",
+      "f",
+      "v2"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      272,
+      "d",
+      "ga",
+      "v6"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      276,
+      "c",
+      "f",
+      "v1"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      278,
+      "d",
+      "fb",
+      "v6"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      282,
+      "b",
+      "f"
+     ],
+     "expect": true
+    },
+    {
+     "call": "set",
+     "args": [
+      283,
+      "a",
+      "g",
+      "v4"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      286,
+      "c",
+      "fb"
+     ],
+     "expect": false
+    },
+    {
+     "call": "get",
+     "args": [
+      287,
+      "b",
+      "g"
+     ],
+     "expect": "v7"
+    },
+    {
+     "call": "delete",
+     "args": [
+      289,
+      "c",
+      "g"
+     ],
+     "expect": false
+    },
+    {
+     "call": "set",
+     "args": [
+      291,
+      "b",
+      "f",
+      "v6"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      294,
+      "a",
+      "fb"
+     ],
+     "expect": "v9"
+    },
+    {
+     "call": "set",
+     "args": [
+      295,
+      "c",
+      "fb",
+      "v4"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      299,
+      "a",
+      "g"
+     ],
+     "expect": "v4"
+    },
+    {
+     "call": "get",
+     "args": [
+      303,
+      "a",
+      "g"
+     ],
+     "expect": "v4"
+    },
+    {
+     "call": "set",
+     "args": [
+      304,
+      "a",
+      "fa",
+      "v5"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      308,
+      "a",
+      "fa",
+      "v7"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      309,
+      "c",
+      "fb",
+      "v6"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      313,
+      "a",
+      "g"
+     ],
+     "expect": true
+    },
+    {
+     "call": "get",
+     "args": [
+      314,
+      "a",
+      "g"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      316,
+      "b",
+      "g",
+      "v9"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      317,
+      "d",
+      "g"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      320,
+      "c",
+      "fb"
+     ],
+     "expect": "v6"
+    },
+    {
+     "call": "get",
+     "args": [
+      323,
+      "c",
+      "ga"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      326,
+      "c",
+      "f"
+     ],
+     "expect": "v1"
+    },
+    {
+     "call": "get",
+     "args": [
+      327,
+      "a",
+      "fa"
+     ],
+     "expect": "v7"
+    },
+    {
+     "call": "get",
+     "args": [
+      331,
+      "d",
+      "f"
+     ],
+     "expect": "v2"
+    },
+    {
+     "call": "get",
+     "args": [
+      334,
+      "a",
+      "ga"
+     ],
+     "expect": "v9"
+    },
+    {
+     "call": "set",
+     "args": [
+      337,
+      "b",
+      "g",
+      "v8"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      340,
+      "b",
+      "f"
+     ],
+     "expect": true
+    },
+    {
+     "call": "delete",
+     "args": [
+      341,
+      "d",
+      "fa"
+     ],
+     "expect": true
+    },
+    {
+     "call": "get",
+     "args": [
+      343,
+      "a",
+      "f"
+     ],
+     "expect": "v4"
+    },
+    {
+     "call": "get",
+     "args": [
+      347,
+      "b",
+      "f"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      350,
+      "a",
+      "fb"
+     ],
+     "expect": "v9"
+    },
+    {
+     "call": "set",
+     "args": [
+      354,
+      "d",
+      "g",
+      "v5"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      358,
+      "b",
+      "fb",
+      "v3"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      360,
+      "c",
+      "ga"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      363,
+      "b",
+      "fb",
+      "v4"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      365,
+      "b",
+      "f"
+     ],
+     "expect": false
+    },
+    {
+     "call": "set",
+     "args": [
+      366,
+      "c",
+      "g",
+      "v1"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      367,
+      "c",
+      "f",
+      "v2"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      369,
+      "c",
+      "g"
+     ],
+     "expect": "v1"
+    },
+    {
+     "call": "set",
+     "args": [
+      373,
+      "c",
+      "fb",
+      "v8"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      375,
+      "a",
+      "f"
+     ],
+     "expect": true
+    },
+    {
+     "call": "delete",
+     "args": [
+      379,
+      "b",
+      "g"
+     ],
+     "expect": true
+    },
+    {
+     "call": "get",
+     "args": [
+      383,
+      "d",
+      "fa"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      386,
+      "c",
+      "fb",
+      "v9"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      388,
+      "c",
+      "ga"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      389,
+      "c",
+      "f"
+     ],
+     "expect": "v2"
+    },
+    {
+     "call": "get",
+     "args": [
+      390,
+      "d",
+      "g"
+     ],
+     "expect": "v5"
+    },
+    {
+     "call": "delete",
+     "args": [
+      393,
+      "a",
+      "f"
+     ],
+     "expect": false
+    },
+    {
+     "call": "set",
+     "args": [
+      396,
+      "a",
+      "fb",
+      "v8"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      399,
+      "b",
+      "fa",
+      "v6"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      402,
+      "a",
+      "fb",
+      "v8"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      405,
+      "c",
+      "g"
+     ],
+     "expect": "v1"
+    },
+    {
+     "call": "set",
+     "args": [
+      408,
+      "b",
+      "f",
+      "v6"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      411,
+      "d",
+      "ga",
+      "v7"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      413,
+      "c",
+      "g"
+     ],
+     "expect": "v1"
+    },
+    {
+     "call": "delete",
+     "args": [
+      415,
+      "b",
+      "fa"
+     ],
+     "expect": true
+    },
+    {
+     "call": "get",
+     "args": [
+      416,
+      "c",
+      "f"
+     ],
+     "expect": "v2"
+    },
+    {
+     "call": "get",
+     "args": [
+      418,
+      "b",
+      "ga"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      421,
+      "d",
+      "f"
+     ],
+     "expect": true
+    },
+    {
+     "call": "get",
+     "args": [
+      424,
+      "a",
+      "fb"
+     ],
+     "expect": "v8"
+    },
+    {
+     "call": "set",
+     "args": [
+      425,
+      "a",
+      "fb",
+      "v2"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      426,
+      "b",
+      "f"
+     ],
+     "expect": "v6"
+    },
+    {
+     "call": "set",
+     "args": [
+      430,
+      "b",
+      "g",
+      "v9"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      433,
+      "d",
+      "fb"
+     ],
+     "expect": "v6"
+    },
+    {
+     "call": "delete",
+     "args": [
+      436,
+      "c",
+      "fa"
+     ],
+     "expect": true
+    },
+    {
+     "call": "get",
+     "args": [
+      440,
+      "a",
+      "ga"
+     ],
+     "expect": "v9"
+    },
+    {
+     "call": "set",
+     "args": [
+      441,
+      "c",
+      "f",
+      "v7"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      442,
+      "a",
+      "ga"
+     ],
+     "expect": true
+    },
+    {
+     "call": "get",
+     "args": [
+      445,
+      "a",
+      "g"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      449,
+      "b",
+      "fa"
+     ],
+     "expect": false
+    },
+    {
+     "call": "get",
+     "args": [
+      453,
+      "c",
+      "fa"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      457,
+      "c",
+      "fb"
+     ],
+     "expect": "v9"
+    },
+    {
+     "call": "get",
+     "args": [
+      458,
+      "a",
+      "fb"
+     ],
+     "expect": "v2"
+    },
+    {
+     "call": "get",
+     "args": [
+      460,
+      "b",
+      "f"
+     ],
+     "expect": "v6"
+    },
+    {
+     "call": "set",
+     "args": [
+      464,
+      "d",
+      "f",
+      "v6"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      465,
+      "c",
+      "fa",
+      "v4"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      469,
+      "b",
+      "g"
+     ],
+     "expect": "v9"
+    },
+    {
+     "call": "delete",
+     "args": [
+      471,
+      "d",
+      "fa"
+     ],
+     "expect": false
+    },
+    {
+     "call": "get",
+     "args": [
+      474,
+      "d",
+      "fb"
+     ],
+     "expect": "v6"
+    },
+    {
+     "call": "delete",
+     "args": [
+      478,
+      "c",
+      "ga"
+     ],
+     "expect": false
+    },
+    {
+     "call": "get",
+     "args": [
+      479,
+      "b",
+      "g"
+     ],
+     "expect": "v9"
+    },
+    {
+     "call": "set",
+     "args": [
+      480,
+      "b",
+      "g",
+      "v9"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      483,
+      "a",
+      "fa"
+     ],
+     "expect": "v7"
+    },
+    {
+     "call": "delete",
+     "args": [
+      484,
+      "c",
+      "g"
+     ],
+     "expect": true
+    },
+    {
+     "call": "get",
+     "args": [
+      486,
+      "b",
+      "g"
+     ],
+     "expect": "v9"
+    },
+    {
+     "call": "get",
+     "args": [
+      488,
+      "b",
+      "fb"
+     ],
+     "expect": "v4"
+    },
+    {
+     "call": "get",
+     "args": [
+      490,
+      "c",
+      "ga"
+     ],
+     "expect": null
+    }
+   ]
+  },
+  {
+   "id": "L2-S1",
+   "level": 2,
+   "visibility": "shown",
+   "name": "doc self-check (Level 2)",
+   "steps": [
+    {
+     "call": "set",
+     "args": [
+      1,
+      "k",
+      "b",
+      "2"
+     ]
+    },
+    {
+     "call": "set",
+     "args": [
+      2,
+      "k",
+      "a",
+      "1"
+     ]
+    },
+    {
+     "call": "set",
+     "args": [
+      3,
+      "k",
+      "ab",
+      "3"
+     ]
+    },
+    {
+     "call": "set",
+     "args": [
+      4,
+      "z",
+      "a",
+      "9"
+     ]
+    },
+    {
+     "call": "scan",
+     "args": [
+      5,
+      "k"
+     ],
+     "expect": "a(1), ab(3), b(2)"
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      6,
+      "k",
+      "a"
+     ],
+     "expect": "a(1), ab(3)"
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      7,
+      "k",
+      "c"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "scan",
+     "args": [
+      8,
+      "missing"
+     ],
+     "expect": ""
+    }
+   ]
+  },
+  {
+   "id": "L2-S2",
+   "level": 2,
+   "visibility": "shown",
+   "name": "sorted by field name, not insertion order or value",
+   "steps": [
+    {
+     "call": "set",
+     "args": [
+      1,
+      "p",
+      "zeta",
+      "1"
+     ]
+    },
+    {
+     "call": "set",
+     "args": [
+      2,
+      "p",
+      "alpha",
+      "3"
+     ]
+    },
+    {
+     "call": "set",
+     "args": [
+      3,
+      "p",
+      "mid",
+      "2"
+     ]
+    },
+    {
+     "call": "scan",
+     "args": [
+      4,
+      "p"
+     ],
+     "expect": "alpha(3), mid(2), zeta(1)"
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      5,
+      "p",
+      "m"
+     ],
+     "expect": "mid(2)"
+    }
+   ]
+  },
+  {
+   "id": "L2-S3",
+   "level": 2,
+   "visibility": "shown",
+   "name": "scans reflect overwrites and deletes",
+   "steps": [
+    {
+     "call": "set",
+     "args": [
+      1,
+      "k",
+      "a",
+      "1"
+     ]
+    },
+    {
+     "call": "set",
+     "args": [
+      2,
+      "k",
+      "b",
+      "2"
+     ]
+    },
+    {
+     "call": "set",
+     "args": [
+      3,
+      "k",
+      "a",
+      "9"
+     ]
+    },
+    {
+     "call": "delete",
+     "args": [
+      4,
+      "k",
+      "b"
+     ],
+     "expect": true
+    },
+    {
+     "call": "scan",
+     "args": [
+      5,
+      "k"
+     ],
+     "expect": "a(9)"
+    }
+   ]
+  },
+  {
+   "id": "L2-H1",
+   "level": 2,
+   "visibility": "hidden",
+   "name": "an empty prefix matches every field",
+   "steps": [
+    {
+     "call": "set",
+     "args": [
+      1,
+      "k",
+      "b",
+      "2"
+     ]
+    },
+    {
+     "call": "set",
+     "args": [
+      2,
+      "k",
+      "a",
+      "1"
+     ]
+    },
+    {
+     "call": "set",
+     "args": [
+      3,
+      "other",
+      "c",
+      "3"
+     ]
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      4,
+      "k",
+      ""
+     ],
+     "expect": "a(1), b(2)"
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      5,
+      "missing",
+      ""
+     ],
+     "expect": ""
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      6,
+      "other",
+      ""
+     ],
+     "expect": "c(3)"
+    }
+   ]
+  },
+  {
+   "id": "L2-H2",
+   "level": 2,
+   "visibility": "hidden",
+   "name": "prefix equal to a whole field name, or longer than every name",
+   "steps": [
+    {
+     "call": "set",
+     "args": [
+      1,
+      "k",
+      "ab",
+      "1"
+     ]
+    },
+    {
+     "call": "set",
+     "args": [
+      2,
+      "k",
+      "abc",
+      "2"
+     ]
+    },
+    {
+     "call": "set",
+     "args": [
+      3,
+      "k",
+      "a",
+      "3"
+     ]
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      4,
+      "k",
+      "ab"
+     ],
+     "expect": "ab(1), abc(2)"
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      5,
+      "k",
+      "abcd"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      6,
+      "k",
+      "a"
+     ],
+     "expect": "a(3), ab(1), abc(2)"
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      7,
+      "k",
+      "abc"
+     ],
+     "expect": "abc(2)"
+    }
+   ]
+  },
+  {
+   "id": "L2-H3",
+   "level": 2,
+   "visibility": "hidden",
+   "name": "prefix match is not a substring or suffix match",
+   "steps": [
+    {
+     "call": "set",
+     "args": [
+      1,
+      "k",
+      "xa",
+      "1"
+     ]
+    },
+    {
+     "call": "set",
+     "args": [
+      2,
+      "k",
+      "ax",
+      "2"
+     ]
+    },
+    {
+     "call": "set",
+     "args": [
+      3,
+      "k",
+      "bab",
+      "3"
+     ]
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      4,
+      "k",
+      "a"
+     ],
+     "expect": "ax(2)"
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      5,
+      "k",
+      "b"
+     ],
+     "expect": "bab(3)"
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      6,
+      "k",
+      "x"
+     ],
+     "expect": "xa(1)"
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      7,
+      "k",
+      "ab"
+     ],
+     "expect": ""
+    }
+   ]
+  },
+  {
+   "id": "L2-H4",
+   "level": 2,
+   "visibility": "hidden",
+   "name": "scans of a key whose fields were all deleted",
+   "steps": [
+    {
+     "call": "set",
+     "args": [
+      1,
+      "k",
+      "a",
+      "1"
+     ]
+    },
+    {
+     "call": "set",
+     "args": [
+      2,
+      "k",
+      "b",
+      "2"
+     ]
+    },
+    {
+     "call": "delete",
+     "args": [
+      3,
+      "k",
+      "a"
+     ],
+     "expect": true
+    },
+    {
+     "call": "delete",
+     "args": [
+      4,
+      "k",
+      "b"
+     ],
+     "expect": true
+    },
+    {
+     "call": "scan",
+     "args": [
+      5,
+      "k"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      6,
+      "k",
+      ""
+     ],
+     "expect": ""
+    },
+    {
+     "call": "set",
+     "args": [
+      7,
+      "k",
+      "c",
+      "3"
+     ]
+    },
+    {
+     "call": "scan",
+     "args": [
+      8,
+      "k"
+     ],
+     "expect": "c(3)"
+    }
+   ]
+  },
+  {
+   "id": "L2-H5",
+   "level": 2,
+   "visibility": "hidden",
+   "name": "scan shows only the requested key",
+   "steps": [
+    {
+     "call": "set",
+     "args": [
+      1,
+      "k1",
+      "a",
+      "1"
+     ]
+    },
+    {
+     "call": "set",
+     "args": [
+      2,
+      "k2",
+      "b",
+      "2"
+     ]
+    },
+    {
+     "call": "set",
+     "args": [
+      3,
+      "k1",
+      "c",
+      "3"
+     ]
+    },
+    {
+     "call": "set",
+     "args": [
+      4,
+      "k10",
+      "d",
+      "4"
+     ]
+    },
+    {
+     "call": "scan",
+     "args": [
+      5,
+      "k1"
+     ],
+     "expect": "a(1), c(3)"
+    },
+    {
+     "call": "scan",
+     "args": [
+      6,
+      "k2"
+     ],
+     "expect": "b(2)"
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      7,
+      "k1",
+      ""
+     ],
+     "expect": "a(1), c(3)"
+    },
+    {
+     "call": "scan",
+     "args": [
+      8,
+      "k"
+     ],
+     "expect": ""
+    }
+   ]
+  },
+  {
+   "id": "L2-H6",
+   "level": 2,
+   "visibility": "hidden",
+   "name": "string order puts a prefix before its extensions",
+   "steps": [
+    {
+     "call": "set",
+     "args": [
+      1,
+      "k",
+      "ba",
+      "1"
+     ]
+    },
+    {
+     "call": "set",
+     "args": [
+      2,
+      "k",
+      "b",
+      "2"
+     ]
+    },
+    {
+     "call": "set",
+     "args": [
+      3,
+      "k",
+      "abc",
+      "3"
+     ]
+    },
+    {
+     "call": "set",
+     "args": [
+      4,
+      "k",
+      "ab",
+      "4"
+     ]
+    },
+    {
+     "call": "scan",
+     "args": [
+      5,
+      "k"
+     ],
+     "expect": "ab(4), abc(3), b(2), ba(1)"
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      6,
+      "k",
+      "b"
+     ],
+     "expect": "b(2), ba(1)"
+    }
+   ]
+  },
+  {
+   "id": "L2-H7",
+   "level": 2,
+   "visibility": "hidden",
+   "name": "scans after delete, re-add and overwrite",
+   "steps": [
+    {
+     "call": "set",
+     "args": [
+      1,
+      "k",
+      "a",
+      "1"
+     ]
+    },
+    {
+     "call": "set",
+     "args": [
+      2,
+      "k",
+      "b",
+      "2"
+     ]
+    },
+    {
+     "call": "scan",
+     "args": [
+      3,
+      "k"
+     ],
+     "expect": "a(1), b(2)"
+    },
+    {
+     "call": "delete",
+     "args": [
+      4,
+      "k",
+      "a"
+     ],
+     "expect": true
+    },
+    {
+     "call": "scan",
+     "args": [
+      5,
+      "k"
+     ],
+     "expect": "b(2)"
+    },
+    {
+     "call": "set",
+     "args": [
+      6,
+      "k",
+      "a",
+      "3"
+     ]
+    },
+    {
+     "call": "scan",
+     "args": [
+      7,
+      "k"
+     ],
+     "expect": "a(3), b(2)"
+    },
+    {
+     "call": "set",
+     "args": [
+      8,
+      "k",
+      "b",
+      "4"
+     ]
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      9,
+      "k",
+      "b"
+     ],
+     "expect": "b(4)"
+    },
+    {
+     "call": "get",
+     "args": [
+      10,
+      "k",
+      "a"
+     ],
+     "expect": "3"
+    }
+   ]
+  },
+  {
+   "id": "L2-H8",
+   "level": 2,
+   "visibility": "hidden",
+   "name": "a single field has no separators and values print as-is",
+   "steps": [
+    {
+     "call": "set",
+     "args": [
+      1,
+      "k",
+      "only",
+      "hello world"
+     ]
+    },
+    {
+     "call": "scan",
+     "args": [
+      2,
+      "k"
+     ],
+     "expect": "only(hello world)"
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      3,
+      "k",
+      "on"
+     ],
+     "expect": "only(hello world)"
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      4,
+      "k",
+      "only1"
+     ],
+     "expect": ""
+    }
+   ]
+  },
+  {
+   "id": "L2-H9",
+   "level": 2,
+   "visibility": "hidden",
+   "name": "random records and scans",
+   "steps": [
+    {
+     "call": "set",
+     "args": [
+      2,
+      "d",
+      "fa",
+      "v2"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan",
+     "args": [
+      5,
+      "a"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      8,
+      "c",
+      "f"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "delete",
+     "args": [
+      12,
+      "a",
+      "ga"
+     ],
+     "expect": false
+    },
+    {
+     "call": "get",
+     "args": [
+      13,
+      "c",
+      "g"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      15,
+      "a",
+      "ga",
+      "v9"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      16,
+      "c",
+      "fb"
+     ],
+     "expect": false
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      18,
+      "c",
+      "f"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "scan",
+     "args": [
+      21,
+      "b"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "get",
+     "args": [
+      22,
+      "a",
+      "g"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      25,
+      "d",
+      "g"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      27,
+      "c",
+      "g",
+      "v1"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      30,
+      "d",
+      "ga"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      34,
+      "d",
+      "fb",
+      "v2"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan",
+     "args": [
+      38,
+      "a"
+     ],
+     "expect": "ga(v9)"
+    },
+    {
+     "call": "get",
+     "args": [
+      40,
+      "a",
+      "g"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      42,
+      "d",
+      "fb",
+      "v3"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      45,
+      "b",
+      ""
+     ],
+     "expect": ""
+    },
+    {
+     "call": "get",
+     "args": [
+      46,
+      "b",
+      "f"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      47,
+      "a",
+      "fa",
+      "v8"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan",
+     "args": [
+      48,
+      "d"
+     ],
+     "expect": "fa(v2), fb(v3)"
+    },
+    {
+     "call": "get",
+     "args": [
+      50,
+      "d",
+      "g"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      51,
+      "c",
+      "f"
+     ],
+     "expect": false
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      54,
+      "a",
+      "ga"
+     ],
+     "expect": "ga(v9)"
+    },
+    {
+     "call": "delete",
+     "args": [
+      57,
+      "c",
+      "f"
+     ],
+     "expect": false
+    },
+    {
+     "call": "delete",
+     "args": [
+      59,
+      "d",
+      "fb"
+     ],
+     "expect": true
+    },
+    {
+     "call": "set",
+     "args": [
+      61,
+      "b",
+      "fb",
+      "v2"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      63,
+      "d",
+      "f"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      65,
+      "a",
+      "ga",
+      "v8"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      67,
+      "a",
+      "ga"
+     ],
+     "expect": "v8"
+    },
+    {
+     "call": "set",
+     "args": [
+      69,
+      "d",
+      "ga",
+      "v1"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      71,
+      "d",
+      "g",
+      "v1"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      75,
+      "b",
+      "fa"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      76,
+      "a",
+      "ga",
+      "v3"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      78,
+      "c",
+      ""
+     ],
+     "expect": "g(v1)"
+    },
+    {
+     "call": "set",
+     "args": [
+      82,
+      "c",
+      "f",
+      "v8"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      83,
+      "a",
+      "fa",
+      "v8"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      85,
+      "d",
+      "fa"
+     ],
+     "expect": "v2"
+    },
+    {
+     "call": "get",
+     "args": [
+      88,
+      "a",
+      "g"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      89,
+      "c",
+      "fb",
+      "v9"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      92,
+      "c",
+      "ga",
+      "v3"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan",
+     "args": [
+      95,
+      "d"
+     ],
+     "expect": "fa(v2), g(v1), ga(v1)"
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      97,
+      "b",
+      "g"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "scan",
+     "args": [
+      100,
+      "a"
+     ],
+     "expect": "fa(v8), ga(v3)"
+    },
+    {
+     "call": "delete",
+     "args": [
+      102,
+      "a",
+      "f"
+     ],
+     "expect": false
+    },
+    {
+     "call": "get",
+     "args": [
+      106,
+      "a",
+      "ga"
+     ],
+     "expect": "v3"
+    },
+    {
+     "call": "set",
+     "args": [
+      108,
+      "c",
+      "ga",
+      "v1"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan",
+     "args": [
+      111,
+      "a"
+     ],
+     "expect": "fa(v8), ga(v3)"
+    },
+    {
+     "call": "scan",
+     "args": [
+      112,
+      "a"
+     ],
+     "expect": "fa(v8), ga(v3)"
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      113,
+      "c",
+      "fa"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      116,
+      "d",
+      "ga"
+     ],
+     "expect": "ga(v1)"
+    },
+    {
+     "call": "get",
+     "args": [
+      119,
+      "a",
+      "fa"
+     ],
+     "expect": "v8"
+    },
+    {
+     "call": "delete",
+     "args": [
+      122,
+      "a",
+      "fa"
+     ],
+     "expect": true
+    },
+    {
+     "call": "set",
+     "args": [
+      124,
+      "c",
+      "fb",
+      "v1"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      127,
+      "d",
+      "fb",
+      "v3"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      129,
+      "d",
+      "g"
+     ],
+     "expect": "v1"
+    },
+    {
+     "call": "set",
+     "args": [
+      132,
+      "d",
+      "fb",
+      "v4"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      134,
+      "c",
+      "g"
+     ],
+     "expect": "g(v1), ga(v1)"
+    },
+    {
+     "call": "get",
+     "args": [
+      137,
+      "b",
+      "f"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan",
+     "args": [
+      139,
+      "c"
+     ],
+     "expect": "f(v8), fb(v1), g(v1), ga(v1)"
+    },
+    {
+     "call": "get",
+     "args": [
+      141,
+      "c",
+      "fa"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      143,
+      "d",
+      "fb",
+      "v3"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      147,
+      "c",
+      "fa",
+      "v7"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      149,
+      "d",
+      "x"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "get",
+     "args": [
+      150,
+      "d",
+      "g"
+     ],
+     "expect": "v1"
+    },
+    {
+     "call": "set",
+     "args": [
+      153,
+      "a",
+      "f",
+      "v2"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan",
+     "args": [
+      155,
+      "a"
+     ],
+     "expect": "f(v2), ga(v3)"
+    },
+    {
+     "call": "scan",
+     "args": [
+      159,
+      "c"
+     ],
+     "expect": "f(v8), fa(v7), fb(v1), g(v1), ga(v1)"
+    },
+    {
+     "call": "scan",
+     "args": [
+      160,
+      "b"
+     ],
+     "expect": "fb(v2)"
+    },
+    {
+     "call": "get",
+     "args": [
+      163,
+      "b",
+      "fb"
+     ],
+     "expect": "v2"
+    },
+    {
+     "call": "get",
+     "args": [
+      167,
+      "b",
+      "g"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      171,
+      "d",
+      "fb"
+     ],
+     "expect": "v3"
+    },
+    {
+     "call": "scan",
+     "args": [
+      173,
+      "b"
+     ],
+     "expect": "fb(v2)"
+    },
+    {
+     "call": "delete",
+     "args": [
+      176,
+      "a",
+      "ga"
+     ],
+     "expect": true
+    },
+    {
+     "call": "delete",
+     "args": [
+      178,
+      "b",
+      "fb"
+     ],
+     "expect": true
+    },
+    {
+     "call": "scan",
+     "args": [
+      182,
+      "c"
+     ],
+     "expect": "f(v8), fa(v7), fb(v1), g(v1), ga(v1)"
+    },
+    {
+     "call": "get",
+     "args": [
+      184,
+      "c",
+      "fa"
+     ],
+     "expect": "v7"
+    },
+    {
+     "call": "set",
+     "args": [
+      186,
+      "c",
+      "f",
+      "v3"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      188,
+      "a",
+      "fb"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      191,
+      "b",
+      "g",
+      "v6"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      193,
+      "b",
+      "ga"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      195,
+      "c",
+      "fb"
+     ],
+     "expect": true
+    },
+    {
+     "call": "get",
+     "args": [
+      196,
+      "b",
+      "f"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      199,
+      "d",
+      "fb"
+     ],
+     "expect": true
+    },
+    {
+     "call": "set",
+     "args": [
+      202,
+      "b",
+      "f",
+      "v2"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      205,
+      "d",
+      "fb",
+      "v7"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      206,
+      "d",
+      "fb",
+      "v1"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      209,
+      "c",
+      "fa"
+     ],
+     "expect": true
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      212,
+      "a",
+      "x"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "get",
+     "args": [
+      215,
+      "b",
+      "g"
+     ],
+     "expect": "v6"
+    },
+    {
+     "call": "get",
+     "args": [
+      216,
+      "d",
+      "g"
+     ],
+     "expect": "v1"
+    },
+    {
+     "call": "get",
+     "args": [
+      217,
+      "a",
+      "g"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      221,
+      "a",
+      "ga",
+      "v9"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      223,
+      "a",
+      "g"
+     ],
+     "expect": "ga(v9)"
+    },
+    {
+     "call": "get",
+     "args": [
+      225,
+      "b",
+      "g"
+     ],
+     "expect": "v6"
+    },
+    {
+     "call": "set",
+     "args": [
+      227,
+      "a",
+      "f",
+      "v4"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      230,
+      "d",
+      "fb"
+     ],
+     "expect": "v1"
+    },
+    {
+     "call": "delete",
+     "args": [
+      233,
+      "c",
+      "fb"
+     ],
+     "expect": false
+    },
+    {
+     "call": "set",
+     "args": [
+      236,
+      "d",
+      "fa",
+      "v3"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      238,
+      "b",
+      "f"
+     ],
+     "expect": "v2"
+    },
+    {
+     "call": "scan",
+     "args": [
+      241,
+      "c"
+     ],
+     "expect": "f(v3), g(v1), ga(v1)"
+    },
+    {
+     "call": "get",
+     "args": [
+      245,
+      "d",
+      "fa"
+     ],
+     "expect": "v3"
+    },
+    {
+     "call": "set",
+     "args": [
+      246,
+      "c",
+      "f",
+      "v1"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      250,
+      "c",
+      "fa",
+      "v2"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      252,
+      "d",
+      "f"
+     ],
+     "expect": "fa(v3), fb(v1)"
+    },
+    {
+     "call": "delete",
+     "args": [
+      255,
+      "b",
+      "ga"
+     ],
+     "expect": false
+    },
+    {
+     "call": "delete",
+     "args": [
+      259,
+      "a",
+      "fb"
+     ],
+     "expect": false
+    },
+    {
+     "call": "set",
+     "args": [
+      261,
+      "a",
+      "fb",
+      "v4"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      264,
+      "c",
+      "ga"
+     ],
+     "expect": "v1"
+    },
+    {
+     "call": "delete",
+     "args": [
+      265,
+      "d",
+      "ga"
+     ],
+     "expect": true
+    },
+    {
+     "call": "set",
+     "args": [
+      267,
+      "b",
+      "fa",
+      "v3"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      270,
+      "a",
+      "fa",
+      "v1"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan",
+     "args": [
+      274,
+      "c"
+     ],
+     "expect": "f(v1), fa(v2), g(v1), ga(v1)"
+    },
+    {
+     "call": "get",
+     "args": [
+      275,
+      "a",
+      "f"
+     ],
+     "expect": "v4"
+    },
+    {
+     "call": "scan",
+     "args": [
+      279,
+      "d"
+     ],
+     "expect": "fa(v3), fb(v1), g(v1)"
+    },
+    {
+     "call": "scan",
+     "args": [
+      281,
+      "b"
+     ],
+     "expect": "f(v2), fa(v3), g(v6)"
+    },
+    {
+     "call": "set",
+     "args": [
+      284,
+      "c",
+      "fa",
+      "v2"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan",
+     "args": [
+      285,
+      "d"
+     ],
+     "expect": "fa(v3), fb(v1), g(v1)"
+    },
+    {
+     "call": "set",
+     "args": [
+      288,
+      "b",
+      "fb",
+      "v6"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      289,
+      "a",
+      "f"
+     ],
+     "expect": "v4"
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      292,
+      "d",
+      ""
+     ],
+     "expect": "fa(v3), fb(v1), g(v1)"
+    },
+    {
+     "call": "get",
+     "args": [
+      295,
+      "a",
+      "fb"
+     ],
+     "expect": "v4"
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      296,
+      "c",
+      "f"
+     ],
+     "expect": "f(v1), fa(v2)"
+    },
+    {
+     "call": "delete",
+     "args": [
+      298,
+      "b",
+      "f"
+     ],
+     "expect": true
+    },
+    {
+     "call": "set",
+     "args": [
+      301,
+      "d",
+      "fb",
+      "v5"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      304,
+      "c",
+      "fb"
+     ],
+     "expect": false
+    },
+    {
+     "call": "set",
+     "args": [
+      307,
+      "a",
+      "fb",
+      "v6"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan",
+     "args": [
+      310,
+      "d"
+     ],
+     "expect": "fa(v3), fb(v5), g(v1)"
+    },
+    {
+     "call": "scan",
+     "args": [
+      312,
+      "a"
+     ],
+     "expect": "f(v4), fa(v1), fb(v6), ga(v9)"
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      314,
+      "b",
+      "x"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "delete",
+     "args": [
+      318,
+      "c",
+      "g"
+     ],
+     "expect": true
+    },
+    {
+     "call": "get",
+     "args": [
+      322,
+      "d",
+      "f"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      325,
+      "a",
+      "fa"
+     ],
+     "expect": "fa(v1)"
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      328,
+      "d",
+      "fa"
+     ],
+     "expect": "fa(v3)"
+    },
+    {
+     "call": "delete",
+     "args": [
+      332,
+      "d",
+      "g"
+     ],
+     "expect": true
+    },
+    {
+     "call": "set",
+     "args": [
+      336,
+      "d",
+      "fb",
+      "v8"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      337,
+      "c",
+      "ga"
+     ],
+     "expect": true
+    },
+    {
+     "call": "get",
+     "args": [
+      338,
+      "a",
+      "fb"
+     ],
+     "expect": "v6"
+    },
+    {
+     "call": "get",
+     "args": [
+      339,
+      "c",
+      "g"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan",
+     "args": [
+      340,
+      "d"
+     ],
+     "expect": "fa(v3), fb(v8)"
+    },
+    {
+     "call": "set",
+     "args": [
+      344,
+      "d",
+      "fa",
+      "v4"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      347,
+      "c",
+      "f",
+      "v6"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      348,
+      "d",
+      "ga",
+      "v9"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      350,
+      "b",
+      "ga"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      351,
+      "a",
+      "ga"
+     ],
+     "expect": "v9"
+    },
+    {
+     "call": "set",
+     "args": [
+      354,
+      "d",
+      "fb",
+      "v4"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      355,
+      "a",
+      "fa"
+     ],
+     "expect": true
+    },
+    {
+     "call": "get",
+     "args": [
+      357,
+      "b",
+      "f"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      359,
+      "b",
+      "fb",
+      "v8"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan",
+     "args": [
+      362,
+      "d"
+     ],
+     "expect": "fa(v4), fb(v4), ga(v9)"
+    },
+    {
+     "call": "set",
+     "args": [
+      366,
+      "c",
+      "ga",
+      "v7"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      369,
+      "b",
+      "f",
+      "v5"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      372,
+      "b",
+      "ga"
+     ],
+     "expect": false
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      374,
+      "c",
+      "x"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "get",
+     "args": [
+      377,
+      "a",
+      "ga"
+     ],
+     "expect": "v9"
+    },
+    {
+     "call": "set",
+     "args": [
+      381,
+      "d",
+      "fa",
+      "v5"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      382,
+      "a",
+      "f",
+      "v9"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      384,
+      "a",
+      "g",
+      "v5"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      387,
+      "b",
+      "ga"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      390,
+      "a",
+      "fb"
+     ],
+     "expect": "v6"
+    },
+    {
+     "call": "scan",
+     "args": [
+      392,
+      "c"
+     ],
+     "expect": "f(v6), fa(v2), ga(v7)"
+    },
+    {
+     "call": "set",
+     "args": [
+      396,
+      "a",
+      "f",
+      "v9"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      400,
+      "a",
+      "fb"
+     ],
+     "expect": true
+    },
+    {
+     "call": "delete",
+     "args": [
+      403,
+      "b",
+      "fa"
+     ],
+     "expect": true
+    },
+    {
+     "call": "scan",
+     "args": [
+      405,
+      "b"
+     ],
+     "expect": "f(v5), fb(v8), g(v6)"
+    },
+    {
+     "call": "get",
+     "args": [
+      406,
+      "d",
+      "f"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan",
+     "args": [
+      410,
+      "d"
+     ],
+     "expect": "fa(v5), fb(v4), ga(v9)"
+    },
+    {
+     "call": "get",
+     "args": [
+      413,
+      "b",
+      "g"
+     ],
+     "expect": "v6"
+    },
+    {
+     "call": "set",
+     "args": [
+      417,
+      "d",
+      "fa",
+      "v5"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      419,
+      "b",
+      ""
+     ],
+     "expect": "f(v5), fb(v8), g(v6)"
+    },
+    {
+     "call": "get",
+     "args": [
+      423,
+      "d",
+      "g"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      424,
+      "c",
+      "ga"
+     ],
+     "expect": "ga(v7)"
+    },
+    {
+     "call": "set",
+     "args": [
+      425,
+      "b",
+      "fb",
+      "v9"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan",
+     "args": [
+      429,
+      "b"
+     ],
+     "expect": "f(v5), fb(v9), g(v6)"
+    },
+    {
+     "call": "scan",
+     "args": [
+      433,
+      "b"
+     ],
+     "expect": "f(v5), fb(v9), g(v6)"
+    },
+    {
+     "call": "set",
+     "args": [
+      437,
+      "b",
+      "g",
+      "v4"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      440,
+      "b",
+      "f",
+      "v4"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      444,
+      "a",
+      "ga"
+     ],
+     "expect": "v9"
+    },
+    {
+     "call": "get",
+     "args": [
+      445,
+      "a",
+      "g"
+     ],
+     "expect": "v5"
+    },
+    {
+     "call": "delete",
+     "args": [
+      448,
+      "c",
+      "ga"
+     ],
+     "expect": true
+    },
+    {
+     "call": "set",
+     "args": [
+      452,
+      "d",
+      "ga",
+      "v3"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      454,
+      "c",
+      "ga"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "delete",
+     "args": [
+      457,
+      "b",
+      "g"
+     ],
+     "expect": true
+    },
+    {
+     "call": "set",
+     "args": [
+      458,
+      "d",
+      "fb",
+      "v8"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      459,
+      "d",
+      "ga",
+      "v4"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      460,
+      "b",
+      "ga"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      462,
+      "c",
+      ""
+     ],
+     "expect": "f(v6), fa(v2)"
+    },
+    {
+     "call": "set",
+     "args": [
+      465,
+      "a",
+      "f",
+      "v4"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      469,
+      "d",
+      "f",
+      "v3"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan",
+     "args": [
+      472,
+      "c"
+     ],
+     "expect": "f(v6), fa(v2)"
+    },
+    {
+     "call": "delete",
+     "args": [
+      473,
+      "a",
+      "fa"
+     ],
+     "expect": false
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      475,
+      "a",
+      "ga"
+     ],
+     "expect": "ga(v9)"
+    },
+    {
+     "call": "delete",
+     "args": [
+      477,
+      "c",
+      "g"
+     ],
+     "expect": false
+    },
+    {
+     "call": "scan",
+     "args": [
+      478,
+      "a"
+     ],
+     "expect": "f(v4), g(v5), ga(v9)"
+    },
+    {
+     "call": "set",
+     "args": [
+      479,
+      "a",
+      "g",
+      "v5"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      481,
+      "c",
+      "f",
+      "v6"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      482,
+      "c",
+      "fb"
+     ],
+     "expect": false
+    },
+    {
+     "call": "scan",
+     "args": [
+      486,
+      "d"
+     ],
+     "expect": "f(v3), fa(v5), fb(v8), ga(v4)"
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      487,
+      "a",
+      ""
+     ],
+     "expect": "f(v4), g(v5), ga(v9)"
+    },
+    {
+     "call": "delete",
+     "args": [
+      491,
+      "c",
+      "fb"
+     ],
+     "expect": false
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      493,
+      "a",
+      "f"
+     ],
+     "expect": "f(v4)"
+    },
+    {
+     "call": "set",
+     "args": [
+      496,
+      "c",
+      "fa",
+      "v8"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      500,
+      "d",
+      "ga"
+     ],
+     "expect": true
+    },
+    {
+     "call": "get",
+     "args": [
+      503,
+      "b",
+      "fa"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      505,
+      "a",
+      "f"
+     ],
+     "expect": "v4"
+    },
+    {
+     "call": "set",
+     "args": [
+      508,
+      "b",
+      "fa",
+      "v1"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      510,
+      "c",
+      "ga",
+      "v1"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      511,
+      "d",
+      "f"
+     ],
+     "expect": "v3"
+    },
+    {
+     "call": "scan",
+     "args": [
+      513,
+      "c"
+     ],
+     "expect": "f(v6), fa(v8), ga(v1)"
+    },
+    {
+     "call": "get",
+     "args": [
+      516,
+      "d",
+      "fa"
+     ],
+     "expect": "v5"
+    },
+    {
+     "call": "scan",
+     "args": [
+      517,
+      "a"
+     ],
+     "expect": "f(v4), g(v5), ga(v9)"
+    },
+    {
+     "call": "delete",
+     "args": [
+      521,
+      "c",
+      "fa"
+     ],
+     "expect": true
+    },
+    {
+     "call": "set",
+     "args": [
+      523,
+      "a",
+      "fa",
+      "v9"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      524,
+      "c",
+      "fa"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "delete",
+     "args": [
+      527,
+      "c",
+      "fa"
+     ],
+     "expect": false
+    },
+    {
+     "call": "set",
+     "args": [
+      528,
+      "a",
+      "fa",
+      "v6"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      530,
+      "a",
+      "f"
+     ],
+     "expect": true
+    },
+    {
+     "call": "set",
+     "args": [
+      531,
+      "d",
+      "ga",
+      "v8"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan",
+     "args": [
+      533,
+      "c"
+     ],
+     "expect": "f(v6), ga(v1)"
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      537,
+      "b",
+      "f"
+     ],
+     "expect": "f(v4), fa(v1), fb(v9)"
+    },
+    {
+     "call": "scan",
+     "args": [
+      541,
+      "c"
+     ],
+     "expect": "f(v6), ga(v1)"
+    },
+    {
+     "call": "set",
+     "args": [
+      543,
+      "c",
+      "f",
+      "v5"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      544,
+      "b",
+      "g",
+      "v6"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan",
+     "args": [
+      546,
+      "b"
+     ],
+     "expect": "f(v4), fa(v1), fb(v9), g(v6)"
+    },
+    {
+     "call": "get",
+     "args": [
+      547,
+      "a",
+      "g"
+     ],
+     "expect": "v5"
+    },
+    {
+     "call": "get",
+     "args": [
+      548,
+      "b",
+      "ga"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      552,
+      "c",
+      "f"
+     ],
+     "expect": true
+    },
+    {
+     "call": "get",
+     "args": [
+      553,
+      "c",
+      "g"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      555,
+      "d",
+      "g",
+      "v1"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      556,
+      "c",
+      "g",
+      "v3"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan",
+     "args": [
+      557,
+      "a"
+     ],
+     "expect": "fa(v6), g(v5), ga(v9)"
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      561,
+      "d",
+      "ga"
+     ],
+     "expect": "ga(v8)"
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      565,
+      "b",
+      "x"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "set",
+     "args": [
+      567,
+      "c",
+      "g",
+      "v1"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      568,
+      "d",
+      "f"
+     ],
+     "expect": "v3"
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      572,
+      "a",
+      "f"
+     ],
+     "expect": "fa(v6)"
+    },
+    {
+     "call": "set",
+     "args": [
+      576,
+      "b",
+      "ga",
+      "v2"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      579,
+      "c",
+      "g",
+      "v9"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      582,
+      "a",
+      "g"
+     ],
+     "expect": "g(v5), ga(v9)"
+    },
+    {
+     "call": "delete",
+     "args": [
+      586,
+      "d",
+      "fb"
+     ],
+     "expect": true
+    },
+    {
+     "call": "get",
+     "args": [
+      587,
+      "b",
+      "g"
+     ],
+     "expect": "v6"
+    },
+    {
+     "call": "get",
+     "args": [
+      589,
+      "a",
+      "ga"
+     ],
+     "expect": "v9"
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      592,
+      "d",
+      "x"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "delete",
+     "args": [
+      594,
+      "c",
+      "fb"
+     ],
+     "expect": false
+    },
+    {
+     "call": "delete",
+     "args": [
+      598,
+      "b",
+      "fb"
+     ],
+     "expect": true
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      602,
+      "b",
+      "x"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "set",
+     "args": [
+      604,
+      "a",
+      "fb",
+      "v8"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      606,
+      "b",
+      "fb"
+     ],
+     "expect": false
+    },
+    {
+     "call": "set",
+     "args": [
+      609,
+      "a",
+      "ga",
+      "v2"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      612,
+      "a",
+      "fb",
+      "v1"
+     ],
+     "expect": null
+    }
+   ]
+  },
+  {
+   "id": "L3-S1",
+   "level": 3,
+   "visibility": "shown",
+   "name": "doc self-check (Level 3)",
+   "steps": [
+    {
+     "call": "set_with_ttl",
+     "args": [
+      1,
+      "k",
+      "a",
+      "1",
+      5
+     ]
+    },
+    {
+     "call": "set",
+     "args": [
+      2,
+      "k",
+      "b",
+      "2"
+     ]
+    },
+    {
+     "call": "get",
+     "args": [
+      5,
+      "k",
+      "a"
+     ],
+     "expect": "1"
+    },
+    {
+     "call": "get",
+     "args": [
+      6,
+      "k",
+      "a"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan",
+     "args": [
+      7,
+      "k"
+     ],
+     "expect": "b(2)"
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      8,
+      "k",
+      "b",
+      "3",
+      10
+     ]
+    },
+    {
+     "call": "scan",
+     "args": [
+      17,
+      "k"
+     ],
+     "expect": "b(3)"
+    },
+    {
+     "call": "delete",
+     "args": [
+      18,
+      "k",
+      "b"
+     ],
+     "expect": false
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      19,
+      "k",
+      "c",
+      "4",
+      5
+     ]
+    },
+    {
+     "call": "set",
+     "args": [
+      20,
+      "k",
+      "c",
+      "5"
+     ]
+    },
+    {
+     "call": "get",
+     "args": [
+      30,
+      "k",
+      "c"
+     ],
+     "expect": "5"
+    }
+   ]
+  },
+  {
+   "id": "L3-S2",
+   "level": 3,
+   "visibility": "shown",
+   "name": "a TTL field disappears from get and scans",
+   "steps": [
+    {
+     "call": "set_with_ttl",
+     "args": [
+      1,
+      "s",
+      "token",
+      "abc",
+      3
+     ]
+    },
+    {
+     "call": "get",
+     "args": [
+      2,
+      "s",
+      "token"
+     ],
+     "expect": "abc"
+    },
+    {
+     "call": "scan",
+     "args": [
+      3,
+      "s"
+     ],
+     "expect": "token(abc)"
+    },
+    {
+     "call": "get",
+     "args": [
+      4,
+      "s",
+      "token"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan",
+     "args": [
+      5,
+      "s"
+     ],
+     "expect": ""
+    }
+   ]
+  },
+  {
+   "id": "L3-S3",
+   "level": 3,
+   "visibility": "shown",
+   "name": "set_with_ttl on an existing field replaces value and TTL",
+   "steps": [
+    {
+     "call": "set",
+     "args": [
+      1,
+      "k",
+      "f",
+      "plain"
+     ]
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      2,
+      "k",
+      "f",
+      "temp",
+      4
+     ]
+    },
+    {
+     "call": "get",
+     "args": [
+      5,
+      "k",
+      "f"
+     ],
+     "expect": "temp"
+    },
+    {
+     "call": "get",
+     "args": [
+      6,
+      "k",
+      "f"
+     ],
+     "expect": null
+    }
+   ]
+  },
+  {
+   "id": "L3-H1",
+   "level": 3,
+   "visibility": "hidden",
+   "name": "expiry boundary in scans and get",
+   "steps": [
+    {
+     "call": "set_with_ttl",
+     "args": [
+      10,
+      "k",
+      "a",
+      "1",
+      5
+     ]
+    },
+    {
+     "call": "set",
+     "args": [
+      11,
+      "k",
+      "b",
+      "2"
+     ]
+    },
+    {
+     "call": "scan",
+     "args": [
+      14,
+      "k"
+     ],
+     "expect": "a(1), b(2)"
+    },
+    {
+     "call": "scan",
+     "args": [
+      15,
+      "k"
+     ],
+     "expect": "b(2)"
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      16,
+      "k",
+      "a"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "get",
+     "args": [
+      17,
+      "k",
+      "a"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      18,
+      "k",
+      "b"
+     ],
+     "expect": "2"
+    }
+   ]
+  },
+  {
+   "id": "L3-H2",
+   "level": 3,
+   "visibility": "hidden",
+   "name": "delete just before expiry succeeds, at expiry fails",
+   "steps": [
+    {
+     "call": "set_with_ttl",
+     "args": [
+      1,
+      "k",
+      "a",
+      "1",
+      4
+     ]
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      2,
+      "k",
+      "b",
+      "2",
+      3
+     ]
+    },
+    {
+     "call": "delete",
+     "args": [
+      4,
+      "k",
+      "a"
+     ],
+     "expect": true
+    },
+    {
+     "call": "delete",
+     "args": [
+      5,
+      "k",
+      "b"
+     ],
+     "expect": false
+    },
+    {
+     "call": "get",
+     "args": [
+      6,
+      "k",
+      "a"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      7,
+      "k",
+      "a",
+      "3"
+     ]
+    },
+    {
+     "call": "delete",
+     "args": [
+      8,
+      "k",
+      "a"
+     ],
+     "expect": true
+    }
+   ]
+  },
+  {
+   "id": "L3-H3",
+   "level": 3,
+   "visibility": "hidden",
+   "name": "a plain set clears a TTL before it expires",
+   "steps": [
+    {
+     "call": "set_with_ttl",
+     "args": [
+      1,
+      "k",
+      "f",
+      "1",
+      3
+     ]
+    },
+    {
+     "call": "set",
+     "args": [
+      2,
+      "k",
+      "f",
+      "2"
+     ]
+    },
+    {
+     "call": "get",
+     "args": [
+      4,
+      "k",
+      "f"
+     ],
+     "expect": "2"
+    },
+    {
+     "call": "scan",
+     "args": [
+      1000,
+      "k"
+     ],
+     "expect": "f(2)"
+    },
+    {
+     "call": "get",
+     "args": [
+      1001,
+      "k",
+      "f"
+     ],
+     "expect": "2"
+    },
+    {
+     "call": "delete",
+     "args": [
+      1002,
+      "k",
+      "f"
+     ],
+     "expect": true
+    }
+   ]
+  },
+  {
+   "id": "L3-H4",
+   "level": 3,
+   "visibility": "hidden",
+   "name": "set_with_ttl replaces the TTL, shorter or longer",
+   "steps": [
+    {
+     "call": "set_with_ttl",
+     "args": [
+      1,
+      "k",
+      "g",
+      "a",
+      3
+     ]
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      2,
+      "k",
+      "f",
+      "a",
+      100
+     ]
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      3,
+      "k",
+      "g",
+      "b",
+      10
+     ]
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      4,
+      "k",
+      "f",
+      "b",
+      3
+     ]
+    },
+    {
+     "call": "scan",
+     "args": [
+      6,
+      "k"
+     ],
+     "expect": "f(b), g(b)"
+    },
+    {
+     "call": "scan",
+     "args": [
+      7,
+      "k"
+     ],
+     "expect": "g(b)"
+    },
+    {
+     "call": "get",
+     "args": [
+      12,
+      "k",
+      "g"
+     ],
+     "expect": "b"
+    },
+    {
+     "call": "get",
+     "args": [
+      13,
+      "k",
+      "g"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      14,
+      "k",
+      "f"
+     ],
+     "expect": null
+    }
+   ]
+  },
+  {
+   "id": "L3-H5",
+   "level": 3,
+   "visibility": "hidden",
+   "name": "an expired field can be set again with a fresh lifetime",
+   "steps": [
+    {
+     "call": "set_with_ttl",
+     "args": [
+      1,
+      "k",
+      "f",
+      "old",
+      2
+     ]
+    },
+    {
+     "call": "get",
+     "args": [
+      3,
+      "k",
+      "f"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      4,
+      "k",
+      "f",
+      "new"
+     ]
+    },
+    {
+     "call": "get",
+     "args": [
+      50,
+      "k",
+      "f"
+     ],
+     "expect": "new"
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      51,
+      "k",
+      "g",
+      "x",
+      2
+     ]
+    },
+    {
+     "call": "get",
+     "args": [
+      53,
+      "k",
+      "g"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      60,
+      "k",
+      "g",
+      "y",
+      2
+     ]
+    },
+    {
+     "call": "get",
+     "args": [
+      61,
+      "k",
+      "g"
+     ],
+     "expect": "y"
+    },
+    {
+     "call": "get",
+     "args": [
+      62,
+      "k",
+      "g"
+     ],
+     "expect": null
+    }
+   ]
+  },
+  {
+   "id": "L3-H6",
+   "level": 3,
+   "visibility": "hidden",
+   "name": "a key whose fields all expired is missing",
+   "steps": [
+    {
+     "call": "set_with_ttl",
+     "args": [
+      1,
+      "k",
+      "a",
+      "1",
+      2
+     ]
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      2,
+      "k",
+      "b",
+      "2",
+      2
+     ]
+    },
+    {
+     "call": "set",
+     "args": [
+      3,
+      "z",
+      "a",
+      "9"
+     ]
+    },
+    {
+     "call": "scan",
+     "args": [
+      4,
+      "k"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      5,
+      "k",
+      ""
+     ],
+     "expect": ""
+    },
+    {
+     "call": "delete",
+     "args": [
+      6,
+      "k",
+      "a"
+     ],
+     "expect": false
+    },
+    {
+     "call": "delete",
+     "args": [
+      7,
+      "k",
+      "b"
+     ],
+     "expect": false
+    },
+    {
+     "call": "scan",
+     "args": [
+      8,
+      "z"
+     ],
+     "expect": "a(9)"
+    },
+    {
+     "call": "get",
+     "args": [
+      9,
+      "k",
+      "b"
+     ],
+     "expect": null
+    }
+   ]
+  },
+  {
+   "id": "L3-H7",
+   "level": 3,
+   "visibility": "hidden",
+   "name": "a ttl of 1 has expired by the next call",
+   "steps": [
+    {
+     "call": "set_with_ttl",
+     "args": [
+      1,
+      "k",
+      "f",
+      "1",
+      1
+     ]
+    },
+    {
+     "call": "delete",
+     "args": [
+      2,
+      "k",
+      "f"
+     ],
+     "expect": false
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      3,
+      "k",
+      "f",
+      "2",
+      5
+     ]
+    },
+    {
+     "call": "delete",
+     "args": [
+      4,
+      "k",
+      "f"
+     ],
+     "expect": true
+    },
+    {
+     "call": "get",
+     "args": [
+      5,
+      "k",
+      "f"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan",
+     "args": [
+      6,
+      "k"
+     ],
+     "expect": ""
+    }
+   ]
+  },
+  {
+   "id": "L3-H8",
+   "level": 3,
+   "visibility": "hidden",
+   "name": "fields expire independently inside scans",
+   "steps": [
+    {
+     "call": "set_with_ttl",
+     "args": [
+      1,
+      "k",
+      "aa",
+      "1",
+      10
+     ]
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      2,
+      "k",
+      "ab",
+      "2",
+      5
+     ]
+    },
+    {
+     "call": "set",
+     "args": [
+      3,
+      "k",
+      "ac",
+      "3"
+     ]
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      4,
+      "k",
+      "b",
+      "4",
+      2
+     ]
+    },
+    {
+     "call": "scan",
+     "args": [
+      5,
+      "k"
+     ],
+     "expect": "aa(1), ab(2), ac(3), b(4)"
+    },
+    {
+     "call": "scan",
+     "args": [
+      6,
+      "k"
+     ],
+     "expect": "aa(1), ab(2), ac(3)"
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      7,
+      "k",
+      "a"
+     ],
+     "expect": "aa(1), ac(3)"
+    },
+    {
+     "call": "scan",
+     "args": [
+      11,
+      "k"
+     ],
+     "expect": "ac(3)"
+    },
+    {
+     "call": "get",
+     "args": [
+      12,
+      "k",
+      "aa"
+     ],
+     "expect": null
+    }
+   ]
+  },
+  {
+   "id": "L3-H9",
+   "level": 3,
+   "visibility": "hidden",
+   "name": "a plain set on a sibling field leaves the TTL alone",
+   "steps": [
+    {
+     "call": "set_with_ttl",
+     "args": [
+      1,
+      "k",
+      "a",
+      "1",
+      3
+     ]
+    },
+    {
+     "call": "set",
+     "args": [
+      2,
+      "k",
+      "b",
+      "2"
+     ]
+    },
+    {
+     "call": "set",
+     "args": [
+      3,
+      "k",
+      "b",
+      "3"
+     ]
+    },
+    {
+     "call": "get",
+     "args": [
+      4,
+      "k",
+      "a"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      5,
+      "k",
+      "b"
+     ],
+     "expect": "3"
+    },
+    {
+     "call": "scan",
+     "args": [
+      6,
+      "k"
+     ],
+     "expect": "b(3)"
+    }
+   ]
+  },
+  {
+   "id": "L3-H10",
+   "level": 3,
+   "visibility": "hidden",
+   "name": "random records with TTLs",
+   "steps": [
+    {
+     "call": "scan",
+     "args": [
+      2,
+      "c"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      4,
+      "c",
+      "ga",
+      "v2",
+      10
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      7,
+      "d",
+      "f"
+     ],
+     "expect": false
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      11,
+      "c",
+      "fb",
+      "v4",
+      22
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      12,
+      "c",
+      "fb",
+      "v2",
+      29
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      15,
+      "c",
+      "fa",
+      "v5"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      18,
+      "b",
+      "ga",
+      "v7"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      20,
+      "a",
+      "x"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "set",
+     "args": [
+      21,
+      "b",
+      "f",
+      "v1"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      22,
+      "c",
+      "fa"
+     ],
+     "expect": "v5"
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      24,
+      "d",
+      "ga"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      28,
+      "d",
+      "fb",
+      "v8",
+      1
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      32,
+      "c",
+      "f"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      34,
+      "c",
+      "fb",
+      "v3"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      38,
+      "d",
+      "x"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      39,
+      "d",
+      "g",
+      "v7",
+      17
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      42,
+      "d",
+      "g"
+     ],
+     "expect": true
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      43,
+      "d",
+      "fb",
+      "v6",
+      6
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      46,
+      "b",
+      "fb",
+      "v6",
+      14
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      49,
+      "d",
+      "f",
+      "v5",
+      3
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan",
+     "args": [
+      50,
+      "b"
+     ],
+     "expect": "f(v1), fb(v6), ga(v7)"
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      52,
+      "a",
+      "f",
+      "v1",
+      25
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      56,
+      "c",
+      "f",
+      "v7",
+      5
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      57,
+      "d",
+      "g",
+      "v4",
+      1
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      59,
+      "c",
+      ""
+     ],
+     "expect": "f(v7), fa(v5), fb(v3)"
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      63,
+      "a",
+      "f",
+      "v5",
+      16
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      66,
+      "b",
+      "fb"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      67,
+      "d",
+      "g"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      70,
+      "a",
+      "ga"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      72,
+      "d",
+      "f",
+      "v3",
+      17
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      74,
+      "d",
+      "g",
+      "v4",
+      24
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      75,
+      "b",
+      "fa",
+      "v3"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      78,
+      "b",
+      "ga"
+     ],
+     "expect": "ga(v7)"
+    },
+    {
+     "call": "delete",
+     "args": [
+      79,
+      "d",
+      "ga"
+     ],
+     "expect": false
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      82,
+      "c",
+      "fa",
+      "v3",
+      10
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      86,
+      "d",
+      "f",
+      "v7",
+      7
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      89,
+      "d",
+      "f"
+     ],
+     "expect": "v7"
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      91,
+      "b",
+      "f"
+     ],
+     "expect": "f(v1), fa(v3)"
+    },
+    {
+     "call": "scan",
+     "args": [
+      95,
+      "a"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "get",
+     "args": [
+      99,
+      "b",
+      "g"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      102,
+      "d",
+      "fb"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      106,
+      "d",
+      "g"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan",
+     "args": [
+      110,
+      "a"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "set",
+     "args": [
+      114,
+      "a",
+      "f",
+      "v3"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      116,
+      "d",
+      "fa"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      120,
+      "a",
+      "f",
+      "v9"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      124,
+      "a",
+      "g",
+      "v9",
+      29
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      128,
+      "a",
+      "g"
+     ],
+     "expect": "v9"
+    },
+    {
+     "call": "get",
+     "args": [
+      132,
+      "c",
+      "fa"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      136,
+      "d",
+      "fa"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      140,
+      "c",
+      "fa"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      144,
+      "a",
+      "fb"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      147,
+      "b",
+      "fb",
+      "v4",
+      27
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan",
+     "args": [
+      150,
+      "c"
+     ],
+     "expect": "fb(v3)"
+    },
+    {
+     "call": "get",
+     "args": [
+      151,
+      "d",
+      "fb"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan",
+     "args": [
+      153,
+      "c"
+     ],
+     "expect": "fb(v3)"
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      156,
+      "d",
+      "fb",
+      "v2",
+      25
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      158,
+      "b",
+      "f",
+      "v1",
+      10
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      162,
+      "c",
+      "f"
+     ],
+     "expect": false
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      166,
+      "d",
+      "fb",
+      "v1",
+      2
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      170,
+      "a",
+      "g"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "set",
+     "args": [
+      173,
+      "b",
+      "ga",
+      "v3"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      177,
+      "c",
+      "fa",
+      "v6",
+      15
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      180,
+      "c",
+      "fb"
+     ],
+     "expect": "v3"
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      183,
+      "a",
+      "f"
+     ],
+     "expect": "f(v9)"
+    },
+    {
+     "call": "delete",
+     "args": [
+      184,
+      "c",
+      "fa"
+     ],
+     "expect": true
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      186,
+      "d",
+      "g",
+      "v5",
+      21
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      188,
+      "b",
+      "g"
+     ],
+     "expect": false
+    },
+    {
+     "call": "set",
+     "args": [
+      189,
+      "b",
+      "fa",
+      "v9"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      192,
+      "c",
+      "g",
+      "v3",
+      12
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      195,
+      "c",
+      "f",
+      "v2"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      196,
+      "b",
+      "ga",
+      "v2",
+      18
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan",
+     "args": [
+      200,
+      "a"
+     ],
+     "expect": "f(v9)"
+    },
+    {
+     "call": "get",
+     "args": [
+      204,
+      "c",
+      "f"
+     ],
+     "expect": "v2"
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      208,
+      "b",
+      "fa",
+      "v5",
+      16
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      211,
+      "c",
+      "fa",
+      "v3",
+      21
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan",
+     "args": [
+      213,
+      "b"
+     ],
+     "expect": "fa(v5), ga(v2)"
+    },
+    {
+     "call": "scan",
+     "args": [
+      216,
+      "b"
+     ],
+     "expect": "fa(v5)"
+    },
+    {
+     "call": "set",
+     "args": [
+      217,
+      "b",
+      "ga",
+      "v8"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      221,
+      "b",
+      "fb",
+      "v6"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      222,
+      "c",
+      "fa",
+      "v5"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      224,
+      "a",
+      "f",
+      "v3",
+      14
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      225,
+      "a",
+      "f",
+      "v6",
+      13
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      228,
+      "d",
+      "fb",
+      "v9",
+      4
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      231,
+      "a",
+      "f"
+     ],
+     "expect": "v6"
+    },
+    {
+     "call": "scan",
+     "args": [
+      234,
+      "a"
+     ],
+     "expect": "f(v6)"
+    },
+    {
+     "call": "scan",
+     "args": [
+      236,
+      "d"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "get",
+     "args": [
+      240,
+      "d",
+      "f"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      242,
+      "d",
+      "g"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      244,
+      "a",
+      "ga"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "get",
+     "args": [
+      247,
+      "c",
+      "ga"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      250,
+      "b",
+      "fb",
+      "v4"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      252,
+      "d",
+      "ga",
+      "v9",
+      26
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      254,
+      "a",
+      "fa"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      256,
+      "c",
+      "fb",
+      "v4",
+      19
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      258,
+      "a",
+      "g",
+      "v6",
+      26
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan",
+     "args": [
+      262,
+      "d"
+     ],
+     "expect": "ga(v9)"
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      263,
+      "d",
+      "f"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "set",
+     "args": [
+      266,
+      "b",
+      "fa",
+      "v6"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      267,
+      "a",
+      "g",
+      "v5",
+      11
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      269,
+      "c",
+      "fa"
+     ],
+     "expect": "v5"
+    },
+    {
+     "call": "delete",
+     "args": [
+      273,
+      "b",
+      "f"
+     ],
+     "expect": false
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      277,
+      "c",
+      "fa",
+      "v2",
+      12
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      281,
+      "a",
+      "ga",
+      "v3"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      282,
+      "a",
+      "fb",
+      "v6"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      283,
+      "d",
+      "ga"
+     ],
+     "expect": false
+    },
+    {
+     "call": "set",
+     "args": [
+      284,
+      "c",
+      "ga",
+      "v7"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan",
+     "args": [
+      286,
+      "c"
+     ],
+     "expect": "f(v2), fa(v2), ga(v7)"
+    },
+    {
+     "call": "set",
+     "args": [
+      290,
+      "c",
+      "g",
+      "v7"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan",
+     "args": [
+      293,
+      "d"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "set",
+     "args": [
+      297,
+      "b",
+      "g",
+      "v5"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      301,
+      "b",
+      "fb"
+     ],
+     "expect": "v4"
+    },
+    {
+     "call": "set",
+     "args": [
+      304,
+      "c",
+      "fb",
+      "v1"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      305,
+      "b",
+      "f",
+      "v3"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      309,
+      "d",
+      "fb"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      312,
+      "a",
+      "fb"
+     ],
+     "expect": "v6"
+    },
+    {
+     "call": "get",
+     "args": [
+      313,
+      "b",
+      "g"
+     ],
+     "expect": "v5"
+    },
+    {
+     "call": "get",
+     "args": [
+      316,
+      "d",
+      "f"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      319,
+      "c",
+      "g"
+     ],
+     "expect": "v7"
+    },
+    {
+     "call": "set",
+     "args": [
+      321,
+      "c",
+      "ga",
+      "v1"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      324,
+      "b",
+      "fa",
+      "v7",
+      25
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      325,
+      "b",
+      "g",
+      "v7",
+      2
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      327,
+      "c",
+      "fb",
+      "v4",
+      14
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      330,
+      "b",
+      "g"
+     ],
+     "expect": "ga(v8)"
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      331,
+      "d",
+      "f"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      333,
+      "b",
+      "x"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "get",
+     "args": [
+      336,
+      "c",
+      "fb"
+     ],
+     "expect": "v4"
+    },
+    {
+     "call": "set",
+     "args": [
+      340,
+      "c",
+      "f",
+      "v4"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      342,
+      "d",
+      "g",
+      "v2",
+      9
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      344,
+      "d",
+      "f",
+      "v4",
+      18
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      346,
+      "c",
+      "x"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      348,
+      "c",
+      "fa"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "scan",
+     "args": [
+      349,
+      "d"
+     ],
+     "expect": "f(v4), g(v2)"
+    },
+    {
+     "call": "set",
+     "args": [
+      350,
+      "a",
+      "ga",
+      "v8"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      353,
+      "a",
+      "f",
+      "v7",
+      15
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      354,
+      "c",
+      "g",
+      "v1"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      356,
+      "d",
+      "fb"
+     ],
+     "expect": false
+    },
+    {
+     "call": "set",
+     "args": [
+      360,
+      "b",
+      "fb",
+      "v1"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      362,
+      "c",
+      "fa",
+      "v4"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      364,
+      "a",
+      "f",
+      "v3",
+      1
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      368,
+      "b",
+      "f"
+     ],
+     "expect": "v3"
+    },
+    {
+     "call": "set",
+     "args": [
+      372,
+      "b",
+      "g",
+      "v1"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      373,
+      "d",
+      "fa",
+      "v7",
+      30
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      375,
+      "c",
+      "fa"
+     ],
+     "expect": "fa(v4)"
+    },
+    {
+     "call": "get",
+     "args": [
+      376,
+      "c",
+      "fb"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      380,
+      "c",
+      "fb",
+      "v4"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      381,
+      "b",
+      "g",
+      "v1"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan",
+     "args": [
+      383,
+      "a"
+     ],
+     "expect": "fb(v6), ga(v8)"
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      385,
+      "c",
+      "ga",
+      "v4",
+      27
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      386,
+      "c",
+      "fb",
+      "v9"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      388,
+      "b",
+      "ga",
+      "v2"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      389,
+      "d",
+      "fb"
+     ],
+     "expect": false
+    },
+    {
+     "call": "delete",
+     "args": [
+      392,
+      "d",
+      "g"
+     ],
+     "expect": false
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      393,
+      "d",
+      "fb",
+      "v5",
+      16
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      397,
+      "b",
+      "ga",
+      "v5",
+      1
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      401,
+      "a",
+      "fb",
+      "v8",
+      29
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      402,
+      "b",
+      "fa"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      406,
+      "d",
+      "fa"
+     ],
+     "expect": false
+    },
+    {
+     "call": "set",
+     "args": [
+      408,
+      "b",
+      "g",
+      "v6"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      411,
+      "a",
+      "f",
+      "v3",
+      26
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      412,
+      "d",
+      "ga",
+      "v9",
+      22
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      415,
+      "c",
+      "fa",
+      "v5",
+      10
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      416,
+      "b",
+      "ga",
+      "v1"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      419,
+      "d",
+      "ga"
+     ],
+     "expect": true
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      421,
+      "b",
+      "ga"
+     ],
+     "expect": "ga(v1)"
+    },
+    {
+     "call": "scan",
+     "args": [
+      424,
+      "b"
+     ],
+     "expect": "f(v3), fb(v1), g(v6), ga(v1)"
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      427,
+      "b",
+      "fa"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      429,
+      "d",
+      "ga",
+      "v6",
+      29
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      430,
+      "d",
+      "fb"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      431,
+      "b",
+      "fa"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      432,
+      "b",
+      "g"
+     ],
+     "expect": "v6"
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      435,
+      "d",
+      "fb",
+      "v6",
+      19
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      439,
+      "b",
+      "fa"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      440,
+      "c",
+      "f",
+      "v8"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      443,
+      "c",
+      "g"
+     ],
+     "expect": true
+    },
+    {
+     "call": "delete",
+     "args": [
+      444,
+      "c",
+      "g"
+     ],
+     "expect": false
+    },
+    {
+     "call": "delete",
+     "args": [
+      445,
+      "a",
+      "fa"
+     ],
+     "expect": false
+    },
+    {
+     "call": "get",
+     "args": [
+      446,
+      "b",
+      "ga"
+     ],
+     "expect": "v1"
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      450,
+      "b",
+      "ga",
+      "v6",
+      18
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      453,
+      "c",
+      "fa"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      455,
+      "c",
+      "fa"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      456,
+      "c",
+      "fb"
+     ],
+     "expect": true
+    },
+    {
+     "call": "scan",
+     "args": [
+      460,
+      "a"
+     ],
+     "expect": "ga(v8)"
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      462,
+      "b",
+      "fa"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "scan",
+     "args": [
+      464,
+      "c"
+     ],
+     "expect": "f(v8)"
+    },
+    {
+     "call": "delete",
+     "args": [
+      467,
+      "d",
+      "g"
+     ],
+     "expect": false
+    },
+    {
+     "call": "scan",
+     "args": [
+      468,
+      "b"
+     ],
+     "expect": "f(v3), fb(v1), g(v6)"
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      470,
+      "c",
+      "fa",
+      "v1",
+      27
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan",
+     "args": [
+      472,
+      "a"
+     ],
+     "expect": "ga(v8)"
+    },
+    {
+     "call": "delete",
+     "args": [
+      473,
+      "c",
+      "f"
+     ],
+     "expect": true
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      474,
+      "b",
+      "ga"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "set",
+     "args": [
+      475,
+      "a",
+      "fb",
+      "v1"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      479,
+      "b",
+      "f",
+      "v6"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      480,
+      "a",
+      "fa",
+      "v5"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      483,
+      "b",
+      "fa"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      487,
+      "a",
+      "f"
+     ],
+     "expect": false
+    },
+    {
+     "call": "get",
+     "args": [
+      488,
+      "b",
+      "ga"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      490,
+      "d",
+      "fa",
+      "v5",
+      17
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      493,
+      "d",
+      "fb",
+      "v8",
+      29
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      494,
+      "a",
+      "f"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      496,
+      "a",
+      "fb",
+      "v4"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      497,
+      "d",
+      "f"
+     ],
+     "expect": false
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      501,
+      "a",
+      "x"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "delete",
+     "args": [
+      503,
+      "d",
+      "f"
+     ],
+     "expect": false
+    },
+    {
+     "call": "get",
+     "args": [
+      504,
+      "a",
+      "f"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan",
+     "args": [
+      508,
+      "c"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "delete",
+     "args": [
+      512,
+      "c",
+      "fb"
+     ],
+     "expect": false
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      515,
+      "a",
+      "f"
+     ],
+     "expect": "fa(v5), fb(v4)"
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      517,
+      "d",
+      "fa",
+      "v6",
+      3
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      521,
+      "b",
+      "f",
+      "v6"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      525,
+      "a",
+      "f",
+      "v4"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan",
+     "args": [
+      528,
+      "b"
+     ],
+     "expect": "f(v6), fb(v1), g(v6)"
+    },
+    {
+     "call": "scan",
+     "args": [
+      529,
+      "a"
+     ],
+     "expect": "f(v4), fa(v5), fb(v4), ga(v8)"
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      530,
+      "b",
+      "g",
+      "v3",
+      17
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      533,
+      "d",
+      "g"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      537,
+      "d",
+      "f"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      540,
+      "c",
+      "g",
+      "v4",
+      16
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      543,
+      "a",
+      "fb"
+     ],
+     "expect": true
+    },
+    {
+     "call": "delete",
+     "args": [
+      545,
+      "d",
+      "fb"
+     ],
+     "expect": false
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      549,
+      "a",
+      "fb",
+      "v6",
+      19
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan",
+     "args": [
+      551,
+      "d"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      552,
+      "b",
+      "x"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      556,
+      "d",
+      "fa",
+      "v1",
+      20
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      557,
+      "d",
+      "fb",
+      "v9",
+      17
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      561,
+      "b",
+      "g"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      565,
+      "d",
+      "fb"
+     ],
+     "expect": "v9"
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      566,
+      "d",
+      "fa",
+      "v7",
+      21
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      567,
+      "b",
+      "fa"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      568,
+      "b",
+      "ga",
+      "v5"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      572,
+      "d",
+      "fa"
+     ],
+     "expect": "v7"
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      573,
+      "d",
+      "g"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "get",
+     "args": [
+      576,
+      "d",
+      "g"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      578,
+      "c",
+      "fa"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "delete",
+     "args": [
+      580,
+      "b",
+      "g"
+     ],
+     "expect": false
+    },
+    {
+     "call": "set",
+     "args": [
+      582,
+      "b",
+      "ga",
+      "v5"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      586,
+      "c",
+      "g"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "get",
+     "args": [
+      590,
+      "c",
+      "fa"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      593,
+      "a",
+      "g"
+     ],
+     "expect": "ga(v8)"
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      596,
+      "a",
+      "x"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "set",
+     "args": [
+      598,
+      "b",
+      "fb",
+      "v4"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      599,
+      "c",
+      "g",
+      "v1"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      601,
+      "d",
+      "g"
+     ],
+     "expect": false
+    },
+    {
+     "call": "set",
+     "args": [
+      603,
+      "b",
+      "f",
+      "v8"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      606,
+      "d",
+      "fa"
+     ],
+     "expect": false
+    },
+    {
+     "call": "get",
+     "args": [
+      610,
+      "d",
+      "g"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      614,
+      "d",
+      "fa"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      617,
+      "d",
+      "g",
+      "v6",
+      12
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      618,
+      "a",
+      "ga"
+     ],
+     "expect": "v8"
+    },
+    {
+     "call": "delete",
+     "args": [
+      620,
+      "b",
+      "f"
+     ],
+     "expect": true
+    },
+    {
+     "call": "set",
+     "args": [
+      623,
+      "b",
+      "fa",
+      "v1"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      625,
+      "d",
+      "fa",
+      "v3",
+      13
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      626,
+      "a",
+      "fb",
+      "v8",
+      10
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      627,
+      "d",
+      "fa"
+     ],
+     "expect": "v3"
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      629,
+      "a",
+      "fb",
+      "v9",
+      9
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      632,
+      "a",
+      "fb"
+     ],
+     "expect": true
+    },
+    {
+     "call": "get",
+     "args": [
+      633,
+      "a",
+      "g"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      634,
+      "a",
+      "ga",
+      "v2"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      637,
+      "d",
+      "ga"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      641,
+      "d",
+      "f",
+      "v7",
+      24
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      644,
+      "a",
+      "fa"
+     ],
+     "expect": "fa(v5)"
+    },
+    {
+     "call": "set",
+     "args": [
+      646,
+      "b",
+      "g",
+      "v6"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      648,
+      "d",
+      "ga",
+      "v8",
+      9
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan",
+     "args": [
+      652,
+      "b"
+     ],
+     "expect": "fa(v1), fb(v4), g(v6), ga(v5)"
+    },
+    {
+     "call": "set",
+     "args": [
+      656,
+      "c",
+      "fb",
+      "v9"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      658,
+      "a",
+      "fa",
+      "v3",
+      4
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      660,
+      "b",
+      "g"
+     ],
+     "expect": "v6"
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      663,
+      "c",
+      "fa"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "delete",
+     "args": [
+      666,
+      "c",
+      "f"
+     ],
+     "expect": false
+    },
+    {
+     "call": "set",
+     "args": [
+      669,
+      "a",
+      "g",
+      "v2"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      672,
+      "b",
+      "f",
+      "v9"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      673,
+      "c",
+      "f",
+      "v4"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      674,
+      "c",
+      "f",
+      "v2",
+      20
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      676,
+      "b",
+      "g"
+     ],
+     "expect": true
+    },
+    {
+     "call": "delete",
+     "args": [
+      679,
+      "a",
+      "f"
+     ],
+     "expect": true
+    },
+    {
+     "call": "set",
+     "args": [
+      682,
+      "b",
+      "fa",
+      "v2"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      685,
+      "b",
+      "f",
+      "v1"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan",
+     "args": [
+      688,
+      "d"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "scan",
+     "args": [
+      689,
+      "b"
+     ],
+     "expect": "f(v1), fa(v2), fb(v4), ga(v5)"
+    },
+    {
+     "call": "get",
+     "args": [
+      691,
+      "a",
+      "g"
+     ],
+     "expect": "v2"
+    },
+    {
+     "call": "set",
+     "args": [
+      692,
+      "a",
+      "fa",
+      "v8"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      693,
+      "a",
+      "g"
+     ],
+     "expect": "v2"
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      695,
+      "d",
+      "fa",
+      "v3",
+      12
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      698,
+      "c",
+      "ga",
+      "v6",
+      16
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      701,
+      "b",
+      "g",
+      "v8"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      705,
+      "d",
+      "g",
+      "v3",
+      18
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      706,
+      "b",
+      "ga"
+     ],
+     "expect": "v5"
+    },
+    {
+     "call": "delete",
+     "args": [
+      708,
+      "b",
+      "f"
+     ],
+     "expect": true
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      712,
+      "b",
+      ""
+     ],
+     "expect": "fa(v2), fb(v4), g(v8), ga(v5)"
+    },
+    {
+     "call": "delete",
+     "args": [
+      715,
+      "b",
+      "fa"
+     ],
+     "expect": true
+    },
+    {
+     "call": "scan",
+     "args": [
+      717,
+      "b"
+     ],
+     "expect": "fb(v4), g(v8), ga(v5)"
+    },
+    {
+     "call": "scan",
+     "args": [
+      718,
+      "c"
+     ],
+     "expect": "fb(v9), g(v1)"
+    },
+    {
+     "call": "get",
+     "args": [
+      722,
+      "c",
+      "ga"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      725,
+      "a",
+      "fb",
+      "v6"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      726,
+      "c",
+      "ga"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "set",
+     "args": [
+      730,
+      "b",
+      "f",
+      "v2"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      733,
+      "a",
+      "f",
+      "v6"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      736,
+      "b",
+      "fa"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      737,
+      "b",
+      "ga"
+     ],
+     "expect": true
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      739,
+      "d",
+      "fb",
+      "v1",
+      4
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      741,
+      "d",
+      "f"
+     ],
+     "expect": null
+    }
+   ]
+  },
+  {
+   "id": "L4-S1",
+   "level": 4,
+   "visibility": "shown",
+   "name": "doc self-check (Level 4)",
+   "steps": [
+    {
+     "call": "set_with_ttl",
+     "args": [
+      1,
+      "a",
+      "f",
+      "1",
+      10
+     ]
+    },
+    {
+     "call": "set",
+     "args": [
+      2,
+      "b",
+      "f",
+      "2"
+     ]
+    },
+    {
+     "call": "backup",
+     "args": [
+      3
+     ],
+     "expect": 2
+    },
+    {
+     "call": "set",
+     "args": [
+      4,
+      "b",
+      "f",
+      "changed"
+     ]
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      5,
+      "c",
+      "f",
+      "3",
+      2
+     ]
+    },
+    {
+     "call": "backup",
+     "args": [
+      6
+     ],
+     "expect": 3
+    },
+    {
+     "call": "get",
+     "args": [
+      12,
+      "a",
+      "f"
+     ],
+     "expect": null
+    },
+    {
+     "call": "restore",
+     "args": [
+      20,
+      4
+     ]
+    },
+    {
+     "call": "get",
+     "args": [
+      21,
+      "b",
+      "f"
+     ],
+     "expect": "2"
+    },
+    {
+     "call": "get",
+     "args": [
+      27,
+      "a",
+      "f"
+     ],
+     "expect": "1"
+    },
+    {
+     "call": "get",
+     "args": [
+      28,
+      "a",
+      "f"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      29,
+      "c",
+      "f"
+     ],
+     "expect": null
+    },
+    {
+     "call": "backup",
+     "args": [
+      30
+     ],
+     "expect": 1
+    }
+   ]
+  },
+  {
+   "id": "L4-S2",
+   "level": 4,
+   "visibility": "shown",
+   "name": "backup and restore round trip",
+   "steps": [
+    {
+     "call": "set",
+     "args": [
+      1,
+      "a",
+      "x",
+      "1"
+     ]
+    },
+    {
+     "call": "set",
+     "args": [
+      2,
+      "a",
+      "y",
+      "2"
+     ]
+    },
+    {
+     "call": "set",
+     "args": [
+      3,
+      "b",
+      "x",
+      "3"
+     ]
+    },
+    {
+     "call": "backup",
+     "args": [
+      4
+     ],
+     "expect": 2
+    },
+    {
+     "call": "delete",
+     "args": [
+      5,
+      "a",
+      "x"
+     ],
+     "expect": true
+    },
+    {
+     "call": "set",
+     "args": [
+      6,
+      "c",
+      "z",
+      "9"
+     ]
+    },
+    {
+     "call": "restore",
+     "args": [
+      7,
+      4
+     ]
+    },
+    {
+     "call": "scan",
+     "args": [
+      8,
+      "a"
+     ],
+     "expect": "x(1), y(2)"
+    },
+    {
+     "call": "get",
+     "args": [
+      9,
+      "c",
+      "z"
+     ],
+     "expect": null
+    }
+   ]
+  },
+  {
+   "id": "L4-S3",
+   "level": 4,
+   "visibility": "shown",
+   "name": "a restored TTL keeps its remaining lifetime",
+   "steps": [
+    {
+     "call": "set_with_ttl",
+     "args": [
+      10,
+      "s",
+      "t",
+      "v",
+      10
+     ]
+    },
+    {
+     "call": "backup",
+     "args": [
+      15
+     ],
+     "expect": 1
+    },
+    {
+     "call": "restore",
+     "args": [
+      100,
+      15
+     ]
+    },
+    {
+     "call": "get",
+     "args": [
+      104,
+      "s",
+      "t"
+     ],
+     "expect": "v"
+    },
+    {
+     "call": "get",
+     "args": [
+      105,
+      "s",
+      "t"
+     ],
+     "expect": null
+    }
+   ]
+  },
+  {
+   "id": "L4-H1",
+   "level": 4,
+   "visibility": "hidden",
+   "name": "restore picks the latest backup at or before the target",
+   "steps": [
+    {
+     "call": "set",
+     "args": [
+      1,
+      "k",
+      "f",
+      "v1"
+     ]
+    },
+    {
+     "call": "backup",
+     "args": [
+      2
+     ],
+     "expect": 1
+    },
+    {
+     "call": "set",
+     "args": [
+      3,
+      "k",
+      "f",
+      "v2"
+     ]
+    },
+    {
+     "call": "backup",
+     "args": [
+      4
+     ],
+     "expect": 1
+    },
+    {
+     "call": "set",
+     "args": [
+      5,
+      "k",
+      "f",
+      "v3"
+     ]
+    },
+    {
+     "call": "backup",
+     "args": [
+      6
+     ],
+     "expect": 1
+    },
+    {
+     "call": "set",
+     "args": [
+      7,
+      "k",
+      "f",
+      "v4"
+     ]
+    },
+    {
+     "call": "restore",
+     "args": [
+      8,
+      4
+     ]
+    },
+    {
+     "call": "get",
+     "args": [
+      9,
+      "k",
+      "f"
+     ],
+     "expect": "v2"
+    },
+    {
+     "call": "restore",
+     "args": [
+      10,
+      3
+     ]
+    },
+    {
+     "call": "get",
+     "args": [
+      11,
+      "k",
+      "f"
+     ],
+     "expect": "v1"
+    },
+    {
+     "call": "restore",
+     "args": [
+      12,
+      5
+     ]
+    },
+    {
+     "call": "get",
+     "args": [
+      13,
+      "k",
+      "f"
+     ],
+     "expect": "v2"
+    },
+    {
+     "call": "restore",
+     "args": [
+      14,
+      2
+     ]
+    },
+    {
+     "call": "get",
+     "args": [
+      15,
+      "k",
+      "f"
+     ],
+     "expect": "v1"
+    },
+    {
+     "call": "restore",
+     "args": [
+      16,
+      15
+     ]
+    },
+    {
+     "call": "get",
+     "args": [
+      17,
+      "k",
+      "f"
+     ],
+     "expect": "v3"
+    }
+   ]
+  },
+  {
+   "id": "L4-H2",
+   "level": 4,
+   "visibility": "hidden",
+   "name": "restoring one backup twice measures lifetime from each restore",
+   "steps": [
+    {
+     "call": "set_with_ttl",
+     "args": [
+      1,
+      "a",
+      "f",
+      "1",
+      10
+     ]
+    },
+    {
+     "call": "backup",
+     "args": [
+      3
+     ],
+     "expect": 1
+    },
+    {
+     "call": "restore",
+     "args": [
+      20,
+      3
+     ]
+    },
+    {
+     "call": "get",
+     "args": [
+      27,
+      "a",
+      "f"
+     ],
+     "expect": "1"
+    },
+    {
+     "call": "get",
+     "args": [
+      28,
+      "a",
+      "f"
+     ],
+     "expect": null
+    },
+    {
+     "call": "restore",
+     "args": [
+      40,
+      3
+     ]
+    },
+    {
+     "call": "get",
+     "args": [
+      47,
+      "a",
+      "f"
+     ],
+     "expect": "1"
+    },
+    {
+     "call": "get",
+     "args": [
+      48,
+      "a",
+      "f"
+     ],
+     "expect": null
+    }
+   ]
+  },
+  {
+   "id": "L4-H3",
+   "level": 4,
+   "visibility": "hidden",
+   "name": "fields without a TTL never expire after a late restore",
+   "steps": [
+    {
+     "call": "set",
+     "args": [
+      1,
+      "k",
+      "plain",
+      "p"
+     ]
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      2,
+      "k",
+      "temp",
+      "t",
+      5
+     ]
+    },
+    {
+     "call": "backup",
+     "args": [
+      3
+     ],
+     "expect": 1
+    },
+    {
+     "call": "restore",
+     "args": [
+      1000,
+      3
+     ]
+    },
+    {
+     "call": "scan",
+     "args": [
+      1003,
+      "k"
+     ],
+     "expect": "plain(p), temp(t)"
+    },
+    {
+     "call": "scan",
+     "args": [
+      1004,
+      "k"
+     ],
+     "expect": "plain(p)"
+    },
+    {
+     "call": "get",
+     "args": [
+      1000000,
+      "k",
+      "plain"
+     ],
+     "expect": "p"
+    },
+    {
+     "call": "backup",
+     "args": [
+      1000001
+     ],
+     "expect": 1
+    }
+   ]
+  },
+  {
+   "id": "L4-H4",
+   "level": 4,
+   "visibility": "hidden",
+   "name": "backup counts only keys with a live field",
+   "steps": [
+    {
+     "call": "set_with_ttl",
+     "args": [
+      1,
+      "gone",
+      "f",
+      "1",
+      2
+     ]
+    },
+    {
+     "call": "set",
+     "args": [
+      2,
+      "del",
+      "f",
+      "2"
+     ]
+    },
+    {
+     "call": "set",
+     "args": [
+      3,
+      "live",
+      "f",
+      "3"
+     ]
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      4,
+      "mixed",
+      "a",
+      "4",
+      1
+     ]
+    },
+    {
+     "call": "set",
+     "args": [
+      5,
+      "mixed",
+      "b",
+      "5"
+     ]
+    },
+    {
+     "call": "delete",
+     "args": [
+      6,
+      "del",
+      "f"
+     ],
+     "expect": true
+    },
+    {
+     "call": "backup",
+     "args": [
+      7
+     ],
+     "expect": 2
+    },
+    {
+     "call": "restore",
+     "args": [
+      8,
+      7
+     ]
+    },
+    {
+     "call": "scan",
+     "args": [
+      9,
+      "mixed"
+     ],
+     "expect": "b(5)"
+    },
+    {
+     "call": "get",
+     "args": [
+      10,
+      "gone",
+      "f"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      11,
+      "live",
+      "f"
+     ],
+     "expect": "3"
+    },
+    {
+     "call": "backup",
+     "args": [
+      12
+     ],
+     "expect": 2
+    }
+   ]
+  },
+  {
+   "id": "L4-H5",
+   "level": 4,
+   "visibility": "hidden",
+   "name": "a field expiring exactly at backup time is not saved",
+   "steps": [
+    {
+     "call": "set_with_ttl",
+     "args": [
+      1,
+      "a",
+      "f",
+      "1",
+      5
+     ]
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      2,
+      "b",
+      "f",
+      "2",
+      6
+     ]
+    },
+    {
+     "call": "backup",
+     "args": [
+      6
+     ],
+     "expect": 1
+    },
+    {
+     "call": "restore",
+     "args": [
+      50,
+      6
+     ]
+    },
+    {
+     "call": "get",
+     "args": [
+      51,
+      "b",
+      "f"
+     ],
+     "expect": "2"
+    },
+    {
+     "call": "get",
+     "args": [
+      52,
+      "b",
+      "f"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      53,
+      "a",
+      "f"
+     ],
+     "expect": null
+    }
+   ]
+  },
+  {
+   "id": "L4-H6",
+   "level": 4,
+   "visibility": "hidden",
+   "name": "writes after a backup or a restore do not change the backup",
+   "steps": [
+    {
+     "call": "set",
+     "args": [
+      1,
+      "k",
+      "a",
+      "1"
+     ]
+    },
+    {
+     "call": "set",
+     "args": [
+      2,
+      "k",
+      "b",
+      "2"
+     ]
+    },
+    {
+     "call": "backup",
+     "args": [
+      3
+     ],
+     "expect": 1
+    },
+    {
+     "call": "set",
+     "args": [
+      4,
+      "k",
+      "a",
+      "changed"
+     ]
+    },
+    {
+     "call": "set",
+     "args": [
+      5,
+      "k",
+      "c",
+      "new"
+     ]
+    },
+    {
+     "call": "delete",
+     "args": [
+      6,
+      "k",
+      "b"
+     ],
+     "expect": true
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      7,
+      "k",
+      "d",
+      "tmp",
+      100
+     ]
+    },
+    {
+     "call": "restore",
+     "args": [
+      8,
+      3
+     ]
+    },
+    {
+     "call": "scan",
+     "args": [
+      9,
+      "k"
+     ],
+     "expect": "a(1), b(2)"
+    },
+    {
+     "call": "set",
+     "args": [
+      10,
+      "k",
+      "a",
+      "again"
+     ]
+    },
+    {
+     "call": "delete",
+     "args": [
+      11,
+      "k",
+      "b"
+     ],
+     "expect": true
+    },
+    {
+     "call": "restore",
+     "args": [
+      12,
+      3
+     ]
+    },
+    {
+     "call": "scan",
+     "args": [
+      13,
+      "k"
+     ],
+     "expect": "a(1), b(2)"
+    }
+   ]
+  },
+  {
+   "id": "L4-H7",
+   "level": 4,
+   "visibility": "hidden",
+   "name": "restore replaces the whole database and keeps every backup",
+   "steps": [
+    {
+     "call": "set",
+     "args": [
+      1,
+      "old",
+      "f",
+      "1"
+     ]
+    },
+    {
+     "call": "backup",
+     "args": [
+      2
+     ],
+     "expect": 1
+    },
+    {
+     "call": "delete",
+     "args": [
+      3,
+      "old",
+      "f"
+     ],
+     "expect": true
+    },
+    {
+     "call": "set",
+     "args": [
+      4,
+      "new",
+      "f",
+      "2"
+     ]
+    },
+    {
+     "call": "backup",
+     "args": [
+      5
+     ],
+     "expect": 1
+    },
+    {
+     "call": "restore",
+     "args": [
+      6,
+      2
+     ]
+    },
+    {
+     "call": "get",
+     "args": [
+      7,
+      "new",
+      "f"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      8,
+      "old",
+      "f"
+     ],
+     "expect": "1"
+    },
+    {
+     "call": "scan",
+     "args": [
+      9,
+      "new"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "backup",
+     "args": [
+      10
+     ],
+     "expect": 1
+    },
+    {
+     "call": "restore",
+     "args": [
+      11,
+      5
+     ]
+    },
+    {
+     "call": "get",
+     "args": [
+      12,
+      "old",
+      "f"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      13,
+      "new",
+      ""
+     ],
+     "expect": "f(2)"
+    }
+   ]
+  },
+  {
+   "id": "L4-H8",
+   "level": 4,
+   "visibility": "hidden",
+   "name": "set and set_with_ttl after a restore replace the restored TTL",
+   "steps": [
+    {
+     "call": "set_with_ttl",
+     "args": [
+      1,
+      "k",
+      "f",
+      "1",
+      5
+     ]
+    },
+    {
+     "call": "backup",
+     "args": [
+      2
+     ],
+     "expect": 1
+    },
+    {
+     "call": "restore",
+     "args": [
+      10,
+      2
+     ]
+    },
+    {
+     "call": "set",
+     "args": [
+      11,
+      "k",
+      "f",
+      "2"
+     ]
+    },
+    {
+     "call": "get",
+     "args": [
+      20,
+      "k",
+      "f"
+     ],
+     "expect": "2"
+    },
+    {
+     "call": "restore",
+     "args": [
+      21,
+      2
+     ]
+    },
+    {
+     "call": "get",
+     "args": [
+      24,
+      "k",
+      "f"
+     ],
+     "expect": "1"
+    },
+    {
+     "call": "get",
+     "args": [
+      25,
+      "k",
+      "f"
+     ],
+     "expect": null
+    },
+    {
+     "call": "restore",
+     "args": [
+      30,
+      2
+     ]
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      31,
+      "k",
+      "f",
+      "3",
+      10
+     ]
+    },
+    {
+     "call": "get",
+     "args": [
+      40,
+      "k",
+      "f"
+     ],
+     "expect": "3"
+    },
+    {
+     "call": "get",
+     "args": [
+      41,
+      "k",
+      "f"
+     ],
+     "expect": null
+    }
+   ]
+  },
+  {
+   "id": "L4-H9",
+   "level": 4,
+   "visibility": "hidden",
+   "name": "an empty backup restores an empty database",
+   "steps": [
+    {
+     "call": "backup",
+     "args": [
+      1
+     ],
+     "expect": 0
+    },
+    {
+     "call": "set",
+     "args": [
+      2,
+      "a",
+      "f",
+      "1"
+     ]
+    },
+    {
+     "call": "set",
+     "args": [
+      3,
+      "b",
+      "f",
+      "2"
+     ]
+    },
+    {
+     "call": "backup",
+     "args": [
+      4
+     ],
+     "expect": 2
+    },
+    {
+     "call": "restore",
+     "args": [
+      5,
+      1
+     ]
+    },
+    {
+     "call": "scan",
+     "args": [
+      6,
+      "a"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "get",
+     "args": [
+      7,
+      "b",
+      "f"
+     ],
+     "expect": null
+    },
+    {
+     "call": "backup",
+     "args": [
+      8
+     ],
+     "expect": 0
+    },
+    {
+     "call": "restore",
+     "args": [
+      9,
+      4
+     ]
+    },
+    {
+     "call": "scan",
+     "args": [
+      10,
+      "a"
+     ],
+     "expect": "f(1)"
+    },
+    {
+     "call": "get",
+     "args": [
+      11,
+      "b",
+      "f"
+     ],
+     "expect": "2"
+    }
+   ]
+  },
+  {
+   "id": "L4-H10",
+   "level": 4,
+   "visibility": "hidden",
+   "name": "remaining lifetime comes from the chosen backup",
+   "steps": [
+    {
+     "call": "set_with_ttl",
+     "args": [
+      1,
+      "k",
+      "f",
+      "v",
+      20
+     ]
+    },
+    {
+     "call": "backup",
+     "args": [
+      5
+     ],
+     "expect": 1
+    },
+    {
+     "call": "backup",
+     "args": [
+      15
+     ],
+     "expect": 1
+    },
+    {
+     "call": "restore",
+     "args": [
+      100,
+      10
+     ]
+    },
+    {
+     "call": "get",
+     "args": [
+      115,
+      "k",
+      "f"
+     ],
+     "expect": "v"
+    },
+    {
+     "call": "get",
+     "args": [
+      116,
+      "k",
+      "f"
+     ],
+     "expect": null
+    },
+    {
+     "call": "restore",
+     "args": [
+      200,
+      15
+     ]
+    },
+    {
+     "call": "get",
+     "args": [
+      205,
+      "k",
+      "f"
+     ],
+     "expect": "v"
+    },
+    {
+     "call": "get",
+     "args": [
+      206,
+      "k",
+      "f"
+     ],
+     "expect": null
+    }
+   ]
+  },
+  {
+   "id": "L4-H11",
+   "level": 4,
+   "visibility": "hidden",
+   "name": "random sequence with backups and restores",
+   "steps": [
+    {
+     "call": "scan",
+     "args": [
+      4,
+      "a"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "get",
+     "args": [
+      8,
+      "a",
+      "fa"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      9,
+      "a",
+      "ga"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      12,
+      "d",
+      "ga",
+      "v6",
+      23
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      15,
+      "a",
+      "ga",
+      "v2"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      16,
+      "c",
+      ""
+     ],
+     "expect": ""
+    },
+    {
+     "call": "set",
+     "args": [
+      19,
+      "b",
+      "f",
+      "v8"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      21,
+      "c",
+      "fa"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      22,
+      "c",
+      "f",
+      "v6"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      25,
+      "d",
+      "ga",
+      "v4",
+      5
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      29,
+      "c",
+      "ga"
+     ],
+     "expect": false
+    },
+    {
+     "call": "get",
+     "args": [
+      30,
+      "a",
+      "fa"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      31,
+      "c",
+      "ga"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "delete",
+     "args": [
+      33,
+      "c",
+      "fb"
+     ],
+     "expect": false
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      34,
+      "a",
+      "g",
+      "v8",
+      22
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      35,
+      "c",
+      "ga",
+      "v5"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      36,
+      "a",
+      "g"
+     ],
+     "expect": "v8"
+    },
+    {
+     "call": "get",
+     "args": [
+      39,
+      "b",
+      "f"
+     ],
+     "expect": "v8"
+    },
+    {
+     "call": "scan",
+     "args": [
+      42,
+      "c"
+     ],
+     "expect": "f(v6), ga(v5)"
+    },
+    {
+     "call": "scan",
+     "args": [
+      45,
+      "d"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "scan",
+     "args": [
+      48,
+      "d"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "scan",
+     "args": [
+      51,
+      "d"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "get",
+     "args": [
+      54,
+      "b",
+      "fa"
+     ],
+     "expect": null
+    },
+    {
+     "call": "backup",
+     "args": [
+      55
+     ],
+     "expect": 3
+    },
+    {
+     "call": "set",
+     "args": [
+      59,
+      "c",
+      "fb",
+      "v9"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      62,
+      "b",
+      "ga"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      66,
+      "c",
+      "g",
+      "v3"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      70,
+      "b",
+      "ga"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan",
+     "args": [
+      73,
+      "c"
+     ],
+     "expect": "f(v6), fb(v9), g(v3), ga(v5)"
+    },
+    {
+     "call": "set",
+     "args": [
+      77,
+      "b",
+      "f",
+      "v7"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      81,
+      "d",
+      "f"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      83,
+      "d",
+      "fb",
+      "v4",
+      18
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      85,
+      "a",
+      "f"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      86,
+      "b",
+      "fb",
+      "v3"
+     ],
+     "expect": null
+    },
+    {
+     "call": "backup",
+     "args": [
+      89
+     ],
+     "expect": 4
+    },
+    {
+     "call": "get",
+     "args": [
+      90,
+      "c",
+      "ga"
+     ],
+     "expect": "v5"
+    },
+    {
+     "call": "set",
+     "args": [
+      93,
+      "a",
+      "f",
+      "v1"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      95,
+      "b",
+      "fa",
+      "v5"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      99,
+      "d",
+      "ga",
+      "v5",
+      5
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      102,
+      "b",
+      "fa",
+      "v8",
+      10
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan",
+     "args": [
+      106,
+      "c"
+     ],
+     "expect": "f(v6), fb(v9), g(v3), ga(v5)"
+    },
+    {
+     "call": "scan",
+     "args": [
+      110,
+      "d"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "set",
+     "args": [
+      114,
+      "a",
+      "ga",
+      "v5"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan",
+     "args": [
+      116,
+      "b"
+     ],
+     "expect": "f(v7), fb(v3)"
+    },
+    {
+     "call": "delete",
+     "args": [
+      117,
+      "d",
+      "g"
+     ],
+     "expect": false
+    },
+    {
+     "call": "set",
+     "args": [
+      120,
+      "c",
+      "ga",
+      "v7"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      121,
+      "a",
+      "f",
+      "v4"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      124,
+      "c",
+      "g",
+      "v1",
+      1
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      127,
+      "b",
+      "ga"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      130,
+      "d",
+      "fb",
+      "v8",
+      26
+     ],
+     "expect": null
+    },
+    {
+     "call": "restore",
+     "args": [
+      131,
+      55
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      135,
+      "b",
+      "ga"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      136,
+      "a",
+      "f"
+     ],
+     "expect": false
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      137,
+      "c",
+      ""
+     ],
+     "expect": "f(v6), ga(v5)"
+    },
+    {
+     "call": "delete",
+     "args": [
+      140,
+      "d",
+      "f"
+     ],
+     "expect": false
+    },
+    {
+     "call": "set",
+     "args": [
+      141,
+      "c",
+      "ga",
+      "v2"
+     ],
+     "expect": null
+    },
+    {
+     "call": "backup",
+     "args": [
+      142
+     ],
+     "expect": 3
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      146,
+      "a",
+      "g"
+     ],
+     "expect": "ga(v2)"
+    },
+    {
+     "call": "restore",
+     "args": [
+      148,
+      72
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      150,
+      "a",
+      "fb",
+      "v9"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      153,
+      "a",
+      "ga",
+      "v6"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      155,
+      "d",
+      "g"
+     ],
+     "expect": false
+    },
+    {
+     "call": "set",
+     "args": [
+      157,
+      "a",
+      "fa",
+      "v6"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      161,
+      "c",
+      "f"
+     ],
+     "expect": "v6"
+    },
+    {
+     "call": "get",
+     "args": [
+      165,
+      "c",
+      "ga"
+     ],
+     "expect": "v5"
+    },
+    {
+     "call": "get",
+     "args": [
+      168,
+      "a",
+      "g"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      172,
+      "d",
+      "fb",
+      "v5",
+      24
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      174,
+      "a",
+      "fa"
+     ],
+     "expect": true
+    },
+    {
+     "call": "get",
+     "args": [
+      178,
+      "b",
+      "fb"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      180,
+      "a",
+      "ga"
+     ],
+     "expect": "v6"
+    },
+    {
+     "call": "delete",
+     "args": [
+      181,
+      "d",
+      "ga"
+     ],
+     "expect": false
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      183,
+      "b",
+      "f"
+     ],
+     "expect": "f(v8)"
+    },
+    {
+     "call": "restore",
+     "args": [
+      187,
+      89
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      190,
+      "d",
+      "ga"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "delete",
+     "args": [
+      191,
+      "a",
+      "f"
+     ],
+     "expect": false
+    },
+    {
+     "call": "restore",
+     "args": [
+      192,
+      89
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      196,
+      "b",
+      "f"
+     ],
+     "expect": "v7"
+    },
+    {
+     "call": "get",
+     "args": [
+      198,
+      "d",
+      "f"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan",
+     "args": [
+      201,
+      "a"
+     ],
+     "expect": "ga(v2)"
+    },
+    {
+     "call": "restore",
+     "args": [
+      205,
+      142
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      209,
+      "c",
+      "fa"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "set",
+     "args": [
+      210,
+      "b",
+      "fb",
+      "v7"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      213,
+      "a",
+      "fb"
+     ],
+     "expect": false
+    },
+    {
+     "call": "delete",
+     "args": [
+      214,
+      "b",
+      "f"
+     ],
+     "expect": true
+    },
+    {
+     "call": "delete",
+     "args": [
+      218,
+      "b",
+      "fa"
+     ],
+     "expect": false
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      221,
+      "c",
+      "g",
+      "v3",
+      1
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      224,
+      "d",
+      "fb",
+      "v4",
+      2
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      228,
+      "d",
+      "f"
+     ],
+     "expect": null
+    },
+    {
+     "call": "backup",
+     "args": [
+      231
+     ],
+     "expect": 3
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      235,
+      "c",
+      "f",
+      "v3",
+      2
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      236,
+      "a",
+      "f",
+      "v3"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      238,
+      "a",
+      "g"
+     ],
+     "expect": null
+    },
+    {
+     "call": "backup",
+     "args": [
+      241
+     ],
+     "expect": 3
+    },
+    {
+     "call": "restore",
+     "args": [
+      242,
+      64
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      244,
+      "c",
+      "g",
+      "v4"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      247,
+      "a",
+      "g"
+     ],
+     "expect": false
+    },
+    {
+     "call": "set",
+     "args": [
+      248,
+      "c",
+      "fb",
+      "v6"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      252,
+      "d",
+      "ga"
+     ],
+     "expect": false
+    },
+    {
+     "call": "set",
+     "args": [
+      255,
+      "b",
+      "fa",
+      "v3"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      258,
+      "a",
+      "f",
+      "v2"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      259,
+      "d",
+      "fb",
+      "v7",
+      26
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      260,
+      "a",
+      "g"
+     ],
+     "expect": false
+    },
+    {
+     "call": "backup",
+     "args": [
+      262
+     ],
+     "expect": 4
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      263,
+      "d",
+      "fb",
+      "v1",
+      25
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      266,
+      "c",
+      "f",
+      "v6"
+     ],
+     "expect": null
+    },
+    {
+     "call": "restore",
+     "args": [
+      269,
+      231
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      270,
+      "c",
+      "fb"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      271,
+      "b",
+      "f",
+      "v1",
+      14
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      275,
+      "c",
+      "fa",
+      "v1"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      277,
+      "c",
+      "g",
+      "v6"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      279,
+      "b",
+      "fb"
+     ],
+     "expect": "v7"
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      280,
+      "d",
+      "g",
+      "v1",
+      16
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      283,
+      "c",
+      "f",
+      "v1"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      286,
+      "a",
+      "x"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "delete",
+     "args": [
+      290,
+      "d",
+      "g"
+     ],
+     "expect": true
+    },
+    {
+     "call": "delete",
+     "args": [
+      294,
+      "d",
+      "f"
+     ],
+     "expect": false
+    },
+    {
+     "call": "set",
+     "args": [
+      298,
+      "c",
+      "g",
+      "v8"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      302,
+      "d",
+      "fa"
+     ],
+     "expect": false
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      306,
+      "b",
+      "g",
+      "v4",
+      27
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      308,
+      "d",
+      "f"
+     ],
+     "expect": null
+    },
+    {
+     "call": "restore",
+     "args": [
+      312,
+      253
+     ],
+     "expect": null
+    },
+    {
+     "call": "backup",
+     "args": [
+      313
+     ],
+     "expect": 3
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      314,
+      "d",
+      "ga",
+      "v3",
+      13
+     ],
+     "expect": null
+    },
+    {
+     "call": "restore",
+     "args": [
+      317,
+      262
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      318,
+      "c",
+      "g"
+     ],
+     "expect": "v4"
+    },
+    {
+     "call": "backup",
+     "args": [
+      322
+     ],
+     "expect": 4
+    },
+    {
+     "call": "set",
+     "args": [
+      324,
+      "b",
+      "g",
+      "v6"
+     ],
+     "expect": null
+    },
+    {
+     "call": "backup",
+     "args": [
+      325
+     ],
+     "expect": 4
+    },
+    {
+     "call": "delete",
+     "args": [
+      327,
+      "b",
+      "fa"
+     ],
+     "expect": true
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      330,
+      "d",
+      "f"
+     ],
+     "expect": "fb(v7)"
+    },
+    {
+     "call": "get",
+     "args": [
+      334,
+      "d",
+      "ga"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      336,
+      "c",
+      "fa"
+     ],
+     "expect": null
+    },
+    {
+     "call": "restore",
+     "args": [
+      338,
+      134
+     ],
+     "expect": null
+    },
+    {
+     "call": "restore",
+     "args": [
+      342,
+      313
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan",
+     "args": [
+      346,
+      "a"
+     ],
+     "expect": "f(v3), ga(v2)"
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      347,
+      "c",
+      "ga",
+      "v4",
+      6
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      350,
+      "a",
+      "ga"
+     ],
+     "expect": "v2"
+    },
+    {
+     "call": "restore",
+     "args": [
+      353,
+      148
+     ],
+     "expect": null
+    },
+    {
+     "call": "restore",
+     "args": [
+      356,
+      325
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      358,
+      "d",
+      "fa"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      360,
+      "b",
+      "x"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "set",
+     "args": [
+      363,
+      "c",
+      "fa",
+      "v5"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      364,
+      "c",
+      "f",
+      "v6",
+      14
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan",
+     "args": [
+      365,
+      "b"
+     ],
+     "expect": "f(v8), fa(v3), g(v6)"
+    },
+    {
+     "call": "scan",
+     "args": [
+      366,
+      "b"
+     ],
+     "expect": "f(v8), fa(v3), g(v6)"
+    },
+    {
+     "call": "get",
+     "args": [
+      369,
+      "d",
+      "ga"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan",
+     "args": [
+      370,
+      "c"
+     ],
+     "expect": "f(v6), fa(v5), fb(v6), g(v4), ga(v5)"
+    },
+    {
+     "call": "get",
+     "args": [
+      374,
+      "d",
+      "g"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      377,
+      "c",
+      "f"
+     ],
+     "expect": "v6"
+    },
+    {
+     "call": "set",
+     "args": [
+      381,
+      "c",
+      "f",
+      "v6"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      384,
+      "b",
+      "ga",
+      "v5",
+      13
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      386,
+      "d",
+      "f",
+      "v1",
+      21
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      387,
+      "d",
+      "fb",
+      "v9",
+      19
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      391,
+      "a",
+      "g"
+     ],
+     "expect": "ga(v2)"
+    },
+    {
+     "call": "set",
+     "args": [
+      392,
+      "c",
+      "fb",
+      "v2"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      393,
+      "d",
+      "ga",
+      "v1",
+      20
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan",
+     "args": [
+      395,
+      "b"
+     ],
+     "expect": "f(v8), fa(v3), g(v6), ga(v5)"
+    },
+    {
+     "call": "restore",
+     "args": [
+      397,
+      344
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      400,
+      "c",
+      "f"
+     ],
+     "expect": true
+    },
+    {
+     "call": "restore",
+     "args": [
+      401,
+      334
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      402,
+      "c",
+      "ga",
+      "v9",
+      25
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      405,
+      "c",
+      "fa",
+      "v8"
+     ],
+     "expect": null
+    },
+    {
+     "call": "backup",
+     "args": [
+      409
+     ],
+     "expect": 4
+    },
+    {
+     "call": "get",
+     "args": [
+      410,
+      "a",
+      "g"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      412,
+      "a",
+      "f"
+     ],
+     "expect": true
+    },
+    {
+     "call": "get",
+     "args": [
+      415,
+      "a",
+      "fb"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      419,
+      "a",
+      "f",
+      "v3",
+      23
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      420,
+      "a",
+      "fb"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan",
+     "args": [
+      421,
+      "c"
+     ],
+     "expect": "f(v6), fa(v8), fb(v6), g(v4), ga(v9)"
+    },
+    {
+     "call": "delete",
+     "args": [
+      423,
+      "a",
+      "f"
+     ],
+     "expect": true
+    },
+    {
+     "call": "delete",
+     "args": [
+      424,
+      "a",
+      "fb"
+     ],
+     "expect": false
+    },
+    {
+     "call": "set",
+     "args": [
+      428,
+      "a",
+      "g",
+      "v2"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      431,
+      "c",
+      "ga"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      435,
+      "a",
+      "ga"
+     ],
+     "expect": "v2"
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      439,
+      "d",
+      "f",
+      "v7",
+      14
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      441,
+      "a",
+      "ga"
+     ],
+     "expect": true
+    },
+    {
+     "call": "get",
+     "args": [
+      443,
+      "b",
+      "f"
+     ],
+     "expect": "v8"
+    },
+    {
+     "call": "backup",
+     "args": [
+      447
+     ],
+     "expect": 4
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      449,
+      "d",
+      "fa"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      452,
+      "a",
+      "x"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "restore",
+     "args": [
+      455,
+      447
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan",
+     "args": [
+      459,
+      "c"
+     ],
+     "expect": "f(v6), fa(v8), fb(v6), g(v4)"
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      461,
+      "c",
+      "fa",
+      "v2",
+      20
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      462,
+      "b",
+      "f"
+     ],
+     "expect": "f(v8), fa(v3)"
+    },
+    {
+     "call": "set",
+     "args": [
+      464,
+      "c",
+      "ga",
+      "v6"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      467,
+      "a",
+      "fb",
+      "v1"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      470,
+      "a",
+      "f",
+      "v4",
+      3
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      472,
+      "b",
+      "fa",
+      "v3"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      475,
+      "c",
+      "fb"
+     ],
+     "expect": "v6"
+    },
+    {
+     "call": "get",
+     "args": [
+      476,
+      "a",
+      "f"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      480,
+      "a",
+      "fb"
+     ],
+     "expect": "v1"
+    },
+    {
+     "call": "set",
+     "args": [
+      483,
+      "b",
+      "fa",
+      "v6"
+     ],
+     "expect": null
+    },
+    {
+     "call": "backup",
+     "args": [
+      486
+     ],
+     "expect": 3
+    },
+    {
+     "call": "get",
+     "args": [
+      490,
+      "c",
+      "g"
+     ],
+     "expect": "v4"
+    },
+    {
+     "call": "set",
+     "args": [
+      493,
+      "b",
+      "f",
+      "v6"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      495,
+      "d",
+      "fb"
+     ],
+     "expect": null
+    },
+    {
+     "call": "restore",
+     "args": [
+      499,
+      89
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      503,
+      "d",
+      ""
+     ],
+     "expect": "fb(v4)"
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      505,
+      "b",
+      "g"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "scan",
+     "args": [
+      508,
+      "d"
+     ],
+     "expect": "fb(v4)"
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      509,
+      "d",
+      "ga",
+      "v3",
+      30
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      510,
+      "c",
+      "g"
+     ],
+     "expect": "v3"
+    },
+    {
+     "call": "delete",
+     "args": [
+      514,
+      "a",
+      "fa"
+     ],
+     "expect": false
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      517,
+      "c",
+      "fa"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      519,
+      "c",
+      "g"
+     ],
+     "expect": "g(v3), ga(v5)"
+    },
+    {
+     "call": "restore",
+     "args": [
+      521,
+      470
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      523,
+      "c",
+      "ga",
+      "v7",
+      5
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      524,
+      "b",
+      "fa"
+     ],
+     "expect": "fa(v3)"
+    },
+    {
+     "call": "set",
+     "args": [
+      525,
+      "b",
+      "fb",
+      "v6"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      529,
+      "b",
+      "ga",
+      "v6"
+     ],
+     "expect": null
+    },
+    {
+     "call": "backup",
+     "args": [
+      531
+     ],
+     "expect": 3
+    },
+    {
+     "call": "set",
+     "args": [
+      534,
+      "a",
+      "fb",
+      "v1"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      537,
+      "c",
+      "ga"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      539,
+      "b",
+      "f",
+      "v7"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      541,
+      "c",
+      "ga"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      544,
+      "c",
+      "g",
+      "v4"
+     ],
+     "expect": null
+    },
+    {
+     "call": "backup",
+     "args": [
+      547
+     ],
+     "expect": 3
+    },
+    {
+     "call": "get",
+     "args": [
+      549,
+      "d",
+      "fa"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      553,
+      "d",
+      "ga"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      555,
+      "c",
+      "fa",
+      "v8",
+      22
+     ],
+     "expect": null
+    },
+    {
+     "call": "restore",
+     "args": [
+      559,
+      447
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      560,
+      "c",
+      "ga"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      564,
+      "d",
+      "f",
+      "v2",
+      6
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      567,
+      "c",
+      "ga"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan",
+     "args": [
+      569,
+      "c"
+     ],
+     "expect": "f(v6), fa(v8), fb(v6), g(v4)"
+    },
+    {
+     "call": "set",
+     "args": [
+      572,
+      "a",
+      "fa",
+      "v9"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      576,
+      "d",
+      "fb",
+      "v7",
+      12
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      579,
+      "d",
+      "ga",
+      "v1",
+      26
+     ],
+     "expect": null
+    },
+    {
+     "call": "backup",
+     "args": [
+      582
+     ],
+     "expect": 4
+    },
+    {
+     "call": "get",
+     "args": [
+      583,
+      "c",
+      "fa"
+     ],
+     "expect": "v8"
+    },
+    {
+     "call": "scan",
+     "args": [
+      584,
+      "d"
+     ],
+     "expect": "fb(v7), ga(v1)"
+    },
+    {
+     "call": "set",
+     "args": [
+      587,
+      "c",
+      "f",
+      "v8"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      588,
+      "d",
+      "g"
+     ],
+     "expect": false
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      591,
+      "d",
+      "fa",
+      "v6",
+      10
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      595,
+      "c",
+      "fb"
+     ],
+     "expect": "v6"
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      597,
+      "a",
+      "g",
+      "v4",
+      20
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      600,
+      "b",
+      "g"
+     ],
+     "expect": true
+    },
+    {
+     "call": "backup",
+     "args": [
+      603
+     ],
+     "expect": 4
+    },
+    {
+     "call": "get",
+     "args": [
+      605,
+      "a",
+      "g"
+     ],
+     "expect": "v4"
+    },
+    {
+     "call": "scan",
+     "args": [
+      609,
+      "c"
+     ],
+     "expect": "f(v8), fa(v8), fb(v6), g(v4)"
+    },
+    {
+     "call": "set",
+     "args": [
+      610,
+      "c",
+      "fa",
+      "v5"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      614,
+      "b",
+      "f",
+      "v3",
+      4
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      615,
+      "b",
+      "f"
+     ],
+     "expect": true
+    },
+    {
+     "call": "scan",
+     "args": [
+      619,
+      "a"
+     ],
+     "expect": "fa(v9)"
+    },
+    {
+     "call": "set",
+     "args": [
+      621,
+      "a",
+      "fa",
+      "v4"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      624,
+      "d",
+      "ga"
+     ],
+     "expect": false
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      628,
+      "b",
+      "f",
+      "v2",
+      11
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      629,
+      "d",
+      "x"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "get",
+     "args": [
+      631,
+      "a",
+      "ga"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      635,
+      "d",
+      "g"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      638,
+      "b",
+      "fa"
+     ],
+     "expect": true
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      639,
+      "d",
+      "fa"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "backup",
+     "args": [
+      643
+     ],
+     "expect": 2
+    },
+    {
+     "call": "delete",
+     "args": [
+      646,
+      "c",
+      "ga"
+     ],
+     "expect": false
+    },
+    {
+     "call": "backup",
+     "args": [
+      647
+     ],
+     "expect": 2
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      651,
+      "d",
+      "fa",
+      "v5",
+      14
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      655,
+      "c",
+      "ga",
+      "v1",
+      27
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      656,
+      "a",
+      "f",
+      "v1"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      660,
+      "a",
+      "fa",
+      "v9"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      662,
+      "d",
+      "ga"
+     ],
+     "expect": false
+    },
+    {
+     "call": "get",
+     "args": [
+      663,
+      "c",
+      "ga"
+     ],
+     "expect": "v1"
+    },
+    {
+     "call": "get",
+     "args": [
+      666,
+      "b",
+      "fa"
+     ],
+     "expect": null
+    },
+    {
+     "call": "restore",
+     "args": [
+      670,
+      141
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      673,
+      "a",
+      "fa",
+      "v1"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      676,
+      "d",
+      "ga"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      679,
+      "a",
+      "ga",
+      "v9",
+      2
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      682,
+      "b",
+      "g",
+      "v1",
+      16
+     ],
+     "expect": null
+    },
+    {
+     "call": "backup",
+     "args": [
+      685
+     ],
+     "expect": 3
+    },
+    {
+     "call": "backup",
+     "args": [
+      686
+     ],
+     "expect": 3
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      687,
+      "b",
+      "g",
+      "v4",
+      24
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      688,
+      "c",
+      "g",
+      "v5",
+      1
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      690,
+      "d",
+      "fa",
+      "v7",
+      29
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      694,
+      "d",
+      "g",
+      "v7",
+      21
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      696,
+      "b",
+      "f"
+     ],
+     "expect": "v7"
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      697,
+      "d",
+      "fa"
+     ],
+     "expect": "fa(v7)"
+    },
+    {
+     "call": "delete",
+     "args": [
+      701,
+      "a",
+      "f"
+     ],
+     "expect": false
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      705,
+      "a",
+      "g",
+      "v5",
+      24
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      706,
+      "c",
+      "fa"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan",
+     "args": [
+      709,
+      "a"
+     ],
+     "expect": "fa(v1), g(v5)"
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      713,
+      "d",
+      "g",
+      "v3",
+      28
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      714,
+      "b",
+      "fa"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      716,
+      "a",
+      "fa",
+      "v3",
+      6
+     ],
+     "expect": null
+    },
+    {
+     "call": "backup",
+     "args": [
+      720
+     ],
+     "expect": 4
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      724,
+      "a",
+      "f",
+      "v9",
+      22
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      725,
+      "d",
+      "fa",
+      "v4",
+      1
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      728,
+      "a",
+      "x"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "set",
+     "args": [
+      730,
+      "c",
+      "g",
+      "v3"
+     ],
+     "expect": null
+    },
+    {
+     "call": "backup",
+     "args": [
+      731
+     ],
+     "expect": 4
+    },
+    {
+     "call": "restore",
+     "args": [
+      733,
+      686
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      735,
+      "b",
+      "ga"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      739,
+      "b",
+      "f"
+     ],
+     "expect": "v7"
+    },
+    {
+     "call": "scan",
+     "args": [
+      740,
+      "c"
+     ],
+     "expect": "f(v6), fb(v9), g(v3), ga(v5)"
+    },
+    {
+     "call": "backup",
+     "args": [
+      741
+     ],
+     "expect": 3
+    },
+    {
+     "call": "restore",
+     "args": [
+      743,
+      552
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      746,
+      "d",
+      "fb",
+      "v5",
+      28
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      748,
+      "a",
+      "g",
+      "v1"
+     ],
+     "expect": null
+    },
+    {
+     "call": "backup",
+     "args": [
+      749
+     ],
+     "expect": 4
+    },
+    {
+     "call": "backup",
+     "args": [
+      752
+     ],
+     "expect": 4
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      753,
+      "b",
+      "ga",
+      "v8",
+      12
+     ],
+     "expect": null
+    },
+    {
+     "call": "restore",
+     "args": [
+      757,
+      241
+     ],
+     "expect": null
+    },
+    {
+     "call": "restore",
+     "args": [
+      761,
+      582
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      765,
+      "c",
+      "fa"
+     ],
+     "expect": "v8"
+    },
+    {
+     "call": "delete",
+     "args": [
+      769,
+      "a",
+      "fb"
+     ],
+     "expect": false
+    },
+    {
+     "call": "set",
+     "args": [
+      773,
+      "a",
+      "ga",
+      "v6"
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      777,
+      "d",
+      "fb"
+     ],
+     "expect": null
+    },
+    {
+     "call": "restore",
+     "args": [
+      781,
+      547
+     ],
+     "expect": null
+    },
+    {
+     "call": "restore",
+     "args": [
+      784,
+      260
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      785,
+      "b",
+      "g"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan",
+     "args": [
+      788,
+      "d"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "delete",
+     "args": [
+      792,
+      "d",
+      "ga"
+     ],
+     "expect": false
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      796,
+      "a",
+      "fb",
+      "v2",
+      21
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      799,
+      "a",
+      "fa"
+     ],
+     "expect": false
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      800,
+      "d",
+      "g",
+      "v9",
+      15
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      801,
+      "a",
+      "fb",
+      "v4"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      805,
+      "d",
+      "f",
+      "v1",
+      22
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      808,
+      "c",
+      "fa",
+      "v5",
+      8
+     ],
+     "expect": null
+    },
+    {
+     "call": "restore",
+     "args": [
+      811,
+      438
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan",
+     "args": [
+      812,
+      "c"
+     ],
+     "expect": "f(v6), fa(v8), fb(v6), g(v4), ga(v9)"
+    },
+    {
+     "call": "scan",
+     "args": [
+      814,
+      "c"
+     ],
+     "expect": "f(v6), fa(v8), fb(v6), g(v4), ga(v9)"
+    },
+    {
+     "call": "delete",
+     "args": [
+      816,
+      "b",
+      "g"
+     ],
+     "expect": true
+    },
+    {
+     "call": "scan",
+     "args": [
+      819,
+      "c"
+     ],
+     "expect": "f(v6), fa(v8), fb(v6), g(v4), ga(v9)"
+    },
+    {
+     "call": "set",
+     "args": [
+      820,
+      "a",
+      "g",
+      "v1"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      824,
+      "d",
+      "fb",
+      "v6",
+      26
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      828,
+      "c",
+      "g",
+      "v9"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      832,
+      "c",
+      "fb",
+      "v7",
+      19
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan",
+     "args": [
+      833,
+      "a"
+     ],
+     "expect": "f(v2), g(v1), ga(v2)"
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      835,
+      "a",
+      "x"
+     ],
+     "expect": ""
+    },
+    {
+     "call": "set",
+     "args": [
+      837,
+      "a",
+      "fb",
+      "v9"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      840,
+      "c",
+      "f"
+     ],
+     "expect": true
+    },
+    {
+     "call": "set",
+     "args": [
+      841,
+      "c",
+      "f",
+      "v5"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      845,
+      "d",
+      "fb",
+      "v9",
+      15
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      848,
+      "b",
+      "ga"
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      849,
+      "c",
+      "fa"
+     ],
+     "expect": "fa(v8)"
+    },
+    {
+     "call": "set",
+     "args": [
+      853,
+      "b",
+      "f",
+      "v9"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      856,
+      "a",
+      "ga",
+      "v6",
+      19
+     ],
+     "expect": null
+    },
+    {
+     "call": "scan_by_prefix",
+     "args": [
+      857,
+      "c",
+      "g"
+     ],
+     "expect": "g(v9)"
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      860,
+      "d",
+      "f",
+      "v9",
+      8
+     ],
+     "expect": null
+    },
+    {
+     "call": "set",
+     "args": [
+      864,
+      "b",
+      "ga",
+      "v6"
+     ],
+     "expect": null
+    },
+    {
+     "call": "delete",
+     "args": [
+      867,
+      "a",
+      "fa"
+     ],
+     "expect": false
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      868,
+      "a",
+      "ga",
+      "v2",
+      19
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      870,
+      "a",
+      "fa"
+     ],
+     "expect": null
+    },
+    {
+     "call": "restore",
+     "args": [
+      871,
+      500
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      875,
+      "d",
+      "f",
+      "v2",
+      5
+     ],
+     "expect": null
+    },
+    {
+     "call": "get",
+     "args": [
+      876,
+      "a",
+      "fa"
+     ],
+     "expect": null
+    },
+    {
+     "call": "set_with_ttl",
+     "args": [
+      879,
+      "c",
+      "ga",
+      "v9",
+      11
+     ],
+     "expect": null
+    },
+    {
+     "call": "backup",
+     "args": [
+      880
+     ],
+     "expect": 3
+    },
+    {
+     "call": "get",
+     "args": [
+      884,
+      "b",
+      "fa"
+     ],
+     "expect": "v6"
+    },
+    {
+     "call": "backup",
+     "args": [
+      886
+     ],
+     "expect": 3
+    },
+    {
+     "call": "backup",
+     "args": [
+      889
+     ],
+     "expect": 3
+    },
+    {
+     "call": "get",
+     "args": [
+      890,
+      "a",
+      "g"
+     ],
+     "expect": "v2"
+    }
+   ]
+  }
+ ]
+}

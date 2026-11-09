@@ -1,0 +1,7 @@
+{
+ "init": "    def __init__(self) -> None:\n        pass\n",
+ "1": "    def incr(self, timestamp: int, key: str) -> int:\n        \"\"\"Increment key and return its new count.\"\"\"\n        raise NotImplementedError\n",
+ "2": "    def get(self, timestamp: int, key: str) -> int | None:\n        \"\"\"Return the count, or None if never incremented.\"\"\"\n        raise NotImplementedError\n",
+ "3": "    def reset(self, timestamp: int, key: str) -> bool:\n        \"\"\"Reset key; False if it doesn't exist.\"\"\"\n        raise NotImplementedError\n",
+ "4": "    def total(self, timestamp: int) -> int:\n        \"\"\"Sum of all counts.\"\"\"\n        raise NotImplementedError\n"
+}

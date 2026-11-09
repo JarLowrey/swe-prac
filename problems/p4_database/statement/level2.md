@@ -1,0 +1,2 @@
+- `scan(timestamp, key) -> str` returns all fields of the key formatted `"field1(value1), field2(value2)"`, sorted by field name ascending. Returns `""` if the key is missing or empty.
+- `scan_by_prefix(timestamp, key, prefix) -> str` is the same, limited to fields whose names start with `prefix`.

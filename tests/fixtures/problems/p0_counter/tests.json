@@ -1,0 +1,20 @@
+{"tests": [
+ {"id": "L1-S1", "level": 1, "visibility": "shown", "name": "incr counts up",
+  "steps": [{"call": "incr", "args": [1, "a"], "expect": 1}, {"call": "incr", "args": [2, "a"], "expect": 2}]},
+ {"id": "L1-H1", "level": 1, "visibility": "hidden", "name": "SECRET-HIDDEN-NAME separate keys",
+  "steps": [{"call": "incr", "args": [1, "a"]}, {"call": "incr", "args": [2, "zz-secret-key"], "expect": 1}]},
+ {"id": "L2-S1", "level": 2, "visibility": "shown", "name": "get",
+  "steps": [{"call": "incr", "args": [1, "a"]}, {"call": "get", "args": [2, "a"], "expect": 1},
+            {"call": "get", "args": [3, "b"], "expect": null}]},
+ {"id": "L2-H1", "level": 2, "visibility": "hidden", "name": "get after many",
+  "steps": [{"call": "incr", "args": [1, "a"]}, {"call": "incr", "args": [2, "a"]}, {"call": "get", "args": [3, "a"], "expect": 2}]},
+ {"id": "L3-S1", "level": 3, "visibility": "shown", "name": "reset",
+  "steps": [{"call": "incr", "args": [1, "a"]}, {"call": "reset", "args": [2, "a"], "expect": true},
+            {"call": "reset", "args": [3, "q"], "expect": false}]},
+ {"id": "L3-H1", "level": 3, "visibility": "hidden", "name": "reset then get",
+  "steps": [{"call": "incr", "args": [1, "a"]}, {"call": "reset", "args": [2, "a"]}, {"call": "get", "args": [3, "a"], "expect": 0}]},
+ {"id": "L4-S1", "level": 4, "visibility": "shown", "name": "total",
+  "steps": [{"call": "incr", "args": [1, "a"]}, {"call": "incr", "args": [2, "b"]}, {"call": "total", "args": [3], "expect": 2}]},
+ {"id": "L4-H1", "level": 4, "visibility": "hidden", "name": "total after reset",
+  "steps": [{"call": "incr", "args": [1, "a"]}, {"call": "reset", "args": [2, "a"]}, {"call": "total", "args": [3], "expect": 0}]}
+]}

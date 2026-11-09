@@ -1,0 +1,3 @@
+- Store each field as a record with `value` and `expires_at` (`math.inf` when there is no TTL), and filter every read through one `is_alive(field, timestamp)` check (`timestamp < expires_at`).
+- In a backup, store `remaining = expires_at - backup_ts` instead of `expires_at`. Restore then sets `expires_at = restore_ts + remaining`, and infinite lifetimes stay infinite (`math.inf - ts` is still `math.inf`).
+- Keep backups as a list of `(ts, snapshot)` and find the right one with `bisect_right(...) - 1`.

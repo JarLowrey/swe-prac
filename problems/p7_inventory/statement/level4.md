@@ -1,0 +1,2 @@
+- `add_discount(timestamp, sku, percent, start_ts, end_ts) -> bool` discounts sales made at timestamps in `[start_ts, end_ts)`. Unit price becomes `price * (100 - percent) // 100` (rounded down). When several discounts apply, only the largest is used. Returns `False` for a missing product.
+- `revenue(timestamp, start_ts, end_ts) -> int` returns net revenue from sales made in `[start_ts, end_ts)` minus refunds issued in that window. A refund belongs to the return's timestamp, not the original sale's.

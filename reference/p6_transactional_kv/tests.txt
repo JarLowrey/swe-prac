@@ -1,0 +1,607 @@
+# Tests for p6_transactional_kv. The 'doc self-check' tests are the original self-check tests for
+# each level: never edit their expectations.
+
+
+=== L1 shown: doc self-check (Level 1)
+set(1, "a", "x")
+get(2, "a")                    -> "x"
+get(3, "b")                    -> None
+delete(4, "a")                 -> True
+delete(5, "a")                 -> False
+get(6, "a")                    -> None
+
+=== L2 shown: doc self-check (Level 2)
+set(1, "a", "x"); set(2, "ab", "x"); set(3, "b", "y")
+count(4, "x")                  -> 2
+list_keys(5, "a")               -> "a, ab"
+set(6, "a", "y")
+count(7, "x")                  -> 1
+count(8, "y")                  -> 2
+list_keys(9, "z")               -> ""
+
+=== L3 shown: doc self-check (Level 3)
+set(1, "a", "1")
+begin(2)
+set(3, "a", "2")
+get(4, "a")                    -> "2"
+begin(5)
+delete(6, "a")                 -> True  # hides the outer value
+get(7, "a")                    -> None
+count(8, "2")                  -> 0
+rollback(9)                    -> True
+get(10, "a")                   -> "2"
+commit(11)                     -> True
+get(12, "a")                   -> "2"
+rollback(13)                   -> False
+begin(14); set(15, "b", "9")
+commit(16)                     -> True
+get(17, "b")                   -> "9"
+begin(18)
+delete(19, "zz")               -> False
+list_keys(20, "")               -> "a, b"
+rollback(21)                   -> True
+
+=== L4 shown: doc self-check (Level 4)
+set(1, "a", "1")
+begin(2)
+set(3, "a", "2")
+begin(4); set(5, "b", "5")
+commit(6)                      -> True  # inner commit: not permanent yet
+get_at(7, "a", 5)               -> "1"
+get_at(8, "b", 6)               -> None
+commit(9)                      -> True  # now permanent, recorded at 9
+get_at(10, "a", 8)              -> "1"
+get_at(11, "a", 9)              -> "2"
+get_at(12, "b", 9)              -> "5"
+get_at(13, "a", 0)              -> None
+begin(14); delete(15, "a")     -> True
+rollback(16)                   -> True
+get_at(17, "a", 16)             -> "2"
+set(18, "a", "3")
+get_at(19, "a", 18)             -> "3"
+
+# ---------------------------------------------------------------------------------------
+# Level 1
+# ---------------------------------------------------------------------------------------
+
+=== L1 shown: overwrite, delete, then set again
+set(1, "a", "x")               -> None
+set(2, "a", "y")
+get(3, "a")                    -> "y"
+delete(4, "a")                 -> True
+get(5, "a")                    -> None
+set(6, "a", "z")
+get(7, "a")                    -> "z"
+
+=== L1 shown: keys are independent
+set(1, "a", "1"); set(2, "b", "2")
+delete(3, "a")                 -> True
+get(4, "a")                    -> None
+get(5, "b")                    -> "2"
+delete(6, "c")                 -> False
+
+=== L1 hidden: delete on an empty store, then a full lifecycle
+delete(1, "x")                 -> False
+get(2, "x")                    -> None
+set(3, "x", "1")
+delete(4, "x")                 -> True
+delete(5, "x")                 -> False
+get(6, "x")                    -> None
+
+=== L1 hidden: keys that share a prefix are distinct
+set(1, "a", "1"); set(2, "ab", "2"); set(3, "abc", "3")
+delete(4, "ab")                -> True
+get(5, "a")                    -> "1"
+get(6, "ab")                   -> None
+get(7, "abc")                  -> "3"
+delete(8, "ab")                -> False
+delete(9, "abc")               -> True
+get(10, "a")                   -> "1"
+
+=== L1 hidden: many overwrites keep only the last value
+set(1, "k", "1"); set(2, "k", "2"); set(3, "k", "3"); set(4, "k", "2")
+get(5, "k")                    -> "2"
+delete(6, "k")                 -> True
+get(7, "k")                    -> None
+delete(8, "k")                 -> False
+
+=== L1 hidden: failed deletes leave existing keys untouched
+set(1, "a", "x")
+delete(2, "b")                 -> False
+delete(3, "A")                 -> False   # keys are case-sensitive
+get(4, "a")                    -> "x"
+get(5, "b")                    -> None
+delete(6, "a")                 -> True
+
+=== L1 hidden: setting the same value twice, then one delete removes the key
+set(1, "a", "v"); set(2, "a", "v")
+delete(3, "a")                 -> True
+get(4, "a")                    -> None
+delete(5, "a")                 -> False
+
+=== L1 hidden: values are plain data, shared between keys
+set(1, "a", "b"); set(2, "b", "a")
+get(3, "a")                    -> "b"
+get(4, "b")                    -> "a"
+delete(5, "a")                 -> True
+get(6, "b")                    -> "a"
+set(7, "c", "a")
+get(8, "c")                    -> "a"
+get(9, "a")                    -> None
+
+=== L1 hidden: delete and re-create several times
+set(1, "k", "1")
+delete(2, "k")                 -> True
+set(3, "k", "2")
+get(4, "k")                    -> "2"
+delete(5, "k")                 -> True
+delete(6, "k")                 -> False
+set(7, "k", "3")
+get(8, "k")                    -> "3"
+
+=== L1 hidden: random set/get/delete @gen(seed=101, n=200)
+
+=== L1 hidden: random set/get/delete, longer @gen(seed=102, n=350)
+
+# ---------------------------------------------------------------------------------------
+# Level 2
+# ---------------------------------------------------------------------------------------
+
+=== L2 shown: empty prefix lists every key in sorted order
+set(1, "b", "1"); set(2, "c", "2"); set(3, "a", "1")
+list_keys(4, "")               -> "a, b, c"
+count(5, "1")                  -> 2
+count(6, "3")                  -> 0
+
+=== L2 shown: deleted keys drop out of count and list_keys
+set(1, "a", "x"); set(2, "b", "x")
+delete(3, "a")                 -> True
+count(4, "x")                  -> 1
+list_keys(5, "")               -> "b"
+delete(6, "b")                 -> True
+list_keys(7, "")               -> ""
+count(8, "x")                  -> 0
+
+=== L2 hidden: a prefix equal to a whole key includes that key
+set(1, "apply", "1"); set(2, "ap", "1"); set(3, "app", "2"); set(4, "apple", "3"); set(5, "b", "1")
+list_keys(6, "app")            -> "app, apple, apply"
+list_keys(7, "apple")          -> "apple"
+list_keys(8, "ap")             -> "ap, app, apple, apply"
+list_keys(9, "apples")         -> ""
+
+=== L2 hidden: list_keys sorts regardless of insertion order
+set(1, "ba", "x"); set(2, "b", "x"); set(3, "ab", "x"); set(4, "aa", "x"); set(5, "a", "x")
+list_keys(6, "")               -> "a, aa, ab, b, ba"
+list_keys(7, "a")              -> "a, aa, ab"
+list_keys(8, "b")              -> "b, ba"
+count(9, "x")                  -> 5
+
+=== L2 hidden: overwriting with the same value counts the key once
+set(1, "a", "x"); set(2, "a", "x"); set(3, "a", "x")
+count(4, "x")                  -> 1
+set(5, "a", "y")
+count(6, "x")                  -> 0
+count(7, "y")                  -> 1
+set(8, "b", "y")
+count(9, "y")                  -> 2
+
+=== L2 hidden: count matches values, not keys
+set(1, "a", "b"); set(2, "b", "c")
+count(3, "a")                  -> 0
+count(4, "b")                  -> 1
+count(5, "c")                  -> 1
+list_keys(6, "c")              -> ""
+
+=== L2 hidden: prefix matching is a case-sensitive starts-with
+set(1, "Key", "1"); set(2, "key", "1"); set(3, "keys", "1")
+list_keys(4, "k")              -> "key, keys"
+list_keys(5, "K")              -> "Key"
+list_keys(6, "keyss")          -> ""
+list_keys(7, "ey")             -> ""
+
+=== L2 hidden: queries follow deletes and re-creation
+set(1, "a", "x"); set(2, "ab", "y"); set(3, "b", "x")
+delete(4, "a")                 -> True
+list_keys(5, "a")              -> "ab"
+count(6, "x")                  -> 1
+delete(7, "a")                 -> False
+count(8, "x")                  -> 1
+set(9, "a", "y")
+list_keys(10, "a")             -> "a, ab"
+count(11, "y")                 -> 2
+count(12, "x")                 -> 1
+
+=== L2 hidden: queries on an empty store
+count(1, "x")                  -> 0
+list_keys(2, "")               -> ""
+list_keys(3, "a")              -> ""
+set(4, "a", "x")
+delete(5, "a")                 -> True
+list_keys(6, "")               -> ""
+count(7, "x")                  -> 0
+
+=== L2 hidden: counts across many keys and overwrites
+set(1, "k1", "v"); set(2, "k2", "v"); set(3, "k3", "w"); set(4, "k4", "v")
+count(5, "v")                  -> 3
+set(6, "k1", "w")
+delete(7, "k2")                -> True
+count(8, "v")                  -> 1
+count(9, "w")                  -> 2
+list_keys(10, "k")             -> "k1, k3, k4"
+
+=== L2 hidden: random with queries @gen(seed=201, n=250)
+
+=== L2 hidden: random with queries, longer @gen(seed=202, n=400)
+
+# ---------------------------------------------------------------------------------------
+# Level 3
+# ---------------------------------------------------------------------------------------
+
+=== L3 shown: commit makes changes permanent
+set(1, "a", "1")
+begin(2)                       -> None
+set(3, "a", "2")
+get(4, "a")                    -> "2"
+commit(5)                      -> True
+get(6, "a")                    -> "2"
+commit(7)                      -> False
+
+=== L3 shown: rollback discards changes
+begin(1)
+set(2, "a", "1")
+get(3, "a")                    -> "1"
+rollback(4)                    -> True
+get(5, "a")                    -> None
+rollback(6)                    -> False
+
+=== L3 shown: a delete inside a transaction is committed
+set(1, "a", "1"); set(2, "b", "1")
+begin(3)
+delete(4, "a")                 -> True
+get(5, "a")                    -> None
+list_keys(6, "")               -> "b"
+commit(7)                      -> True
+get(8, "a")                    -> None
+count(9, "1")                  -> 1
+
+=== L3 hidden: a key deleted in an outer transaction cannot be deleted again
+set(1, "a", "1")
+begin(2)
+delete(3, "a")                 -> True
+begin(4)
+delete(5, "a")                 -> False
+get(6, "a")                    -> None
+set(7, "a", "2")
+get(8, "a")                    -> "2"
+rollback(9)                    -> True
+get(10, "a")                   -> None
+delete(11, "a")                -> False
+rollback(12)                   -> True
+get(13, "a")                   -> "1"
+
+=== L3 hidden: an inner commit carries a delete down without touching permanent storage
+set(1, "a", "1"); set(2, "b", "1")
+begin(3)
+begin(4)
+delete(5, "a")                 -> True
+commit(6)                      -> True
+get(7, "a")                    -> None
+count(8, "1")                  -> 1
+list_keys(9, "")               -> "b"
+delete(10, "a")                -> False
+rollback(11)                   -> True
+get(12, "a")                   -> "1"
+count(13, "1")                 -> 2
+list_keys(14, "")              -> "a, b"
+
+=== L3 hidden: a delete committed through two layers removes the key
+set(1, "a", "1")
+begin(2)
+begin(3)
+delete(4, "a")                 -> True
+commit(5)                      -> True
+commit(6)                      -> True
+get(7, "a")                    -> None
+delete(8, "a")                 -> False
+list_keys(9, "a")              -> ""
+commit(10)                     -> False
+set(11, "a", "2")
+get(12, "a")                   -> "2"
+
+=== L3 hidden: delete then set again inside one transaction
+set(1, "a", "1")
+begin(2)
+delete(3, "a")                 -> True
+get(4, "a")                    -> None
+set(5, "a", "2")
+get(6, "a")                    -> "2"
+count(7, "2")                  -> 1
+count(8, "1")                  -> 0
+list_keys(9, "")               -> "a"
+commit(10)                     -> True
+get(11, "a")                   -> "2"
+count(12, "1")                 -> 0
+
+=== L3 hidden: set then delete inside one transaction leaves nothing behind
+set(1, "b", "v")
+begin(2)
+set(3, "n", "v")
+count(4, "v")                  -> 2
+delete(5, "n")                 -> True
+get(6, "n")                    -> None
+delete(7, "n")                 -> False
+count(8, "v")                  -> 1
+list_keys(9, "")               -> "b"
+commit(10)                     -> True
+get(11, "n")                   -> None
+list_keys(12, "")              -> "b"
+count(13, "v")                 -> 1
+
+=== L3 hidden: rolling back an inner transaction keeps the outer one's changes
+begin(1)
+set(2, "a", "1")
+begin(3)
+set(4, "a", "2")
+set(5, "b", "3")
+delete(6, "a")                 -> True
+rollback(7)                    -> True
+get(8, "a")                    -> "1"
+get(9, "b")                    -> None
+list_keys(10, "")              -> "a"
+commit(11)                     -> True
+get(12, "a")                   -> "1"
+get(13, "b")                   -> None
+commit(14)                     -> False
+rollback(15)                   -> False
+get(16, "a")                   -> "1"
+
+=== L3 hidden: four nested layers with mixed commits and rollbacks
+set(1, "k", "0")
+begin(2); set(3, "k", "1")
+begin(4); set(5, "k", "2")
+begin(6); set(7, "k", "3")
+begin(8)
+delete(9, "k")                 -> True
+get(10, "k")                   -> None
+commit(11)                     -> True    # layer 3 now holds the delete
+get(12, "k")                   -> None
+rollback(13)                   -> True    # drops layer 3: its set and the delete
+get(14, "k")                   -> "2"
+commit(15)                     -> True
+get(16, "k")                   -> "2"
+rollback(17)                   -> True
+get(18, "k")                   -> "0"
+commit(19)                     -> False
+rollback(20)                   -> False
+
+=== L3 hidden: count and list_keys agree with get across layers
+set(1, "a", "x"); set(2, "ab", "x"); set(3, "b", "y")
+begin(4)
+delete(5, "ab")                -> True
+set(6, "c", "x")
+begin(7)
+set(8, "a", "y")
+delete(9, "b")                 -> True
+set(10, "ab", "z")
+count(11, "x")                 -> 1
+count(12, "y")                 -> 1
+count(13, "z")                 -> 1
+list_keys(14, "")              -> "a, ab, c"
+list_keys(15, "a")             -> "a, ab"
+rollback(16)                   -> True
+count(17, "x")                 -> 2
+count(18, "y")                 -> 1
+list_keys(19, "")              -> "a, b, c"
+list_keys(20, "a")             -> "a"
+
+=== L3 hidden: commit and rollback with no open transaction change nothing
+set(1, "a", "1")
+commit(2)                      -> False
+rollback(3)                    -> False
+get(4, "a")                    -> "1"
+begin(5)
+set(6, "a", "2")
+commit(7)                      -> True
+rollback(8)                    -> False
+get(9, "a")                    -> "2"
+begin(10)
+set(11, "a", "3")
+rollback(12)                   -> True
+commit(13)                     -> False
+get(14, "a")                   -> "2"
+
+=== L3 hidden: deleting in an inner transaction a key the outer one created
+begin(1)
+set(2, "t", "v")
+begin(3)
+delete(4, "t")                 -> True
+get(5, "t")                    -> None
+count(6, "v")                  -> 0
+commit(7)                      -> True
+get(8, "t")                    -> None
+commit(9)                      -> True
+get(10, "t")                   -> None
+delete(11, "t")                -> False
+list_keys(12, "t")             -> ""
+
+=== L3 hidden: random with nested transactions @gen(seed=301, n=300)
+
+=== L3 hidden: random with nested transactions, longer @gen(seed=302, n=400)
+
+# ---------------------------------------------------------------------------------------
+# Level 4
+# ---------------------------------------------------------------------------------------
+
+=== L4 shown: changes outside transactions are recorded at their own timestamp
+set(1, "a", "x")
+set(3, "a", "y")
+delete(5, "a")                 -> True
+get_at(6, "a", 0)              -> None
+get_at(7, "a", 1)              -> "x"
+get_at(8, "a", 2)              -> "x"
+get_at(9, "a", 3)              -> "y"
+get_at(10, "a", 5)             -> None
+
+=== L4 shown: changes inside a transaction are recorded at commit time
+begin(1)
+set(2, "a", "x")
+get_at(3, "a", 2)              -> None
+commit(4)                      -> True
+get_at(5, "a", 3)              -> None
+get_at(6, "a", 4)              -> "x"
+
+=== L4 hidden: several writes to one key land as one value at commit time
+set(1, "a", "0")
+begin(2)
+set(3, "a", "1")
+set(4, "a", "2")
+set(5, "a", "3")
+commit(6)                      -> True
+get_at(7, "a", 3)              -> "0"
+get_at(8, "a", 4)              -> "0"
+get_at(9, "a", 5)              -> "0"
+get_at(10, "a", 6)             -> "3"
+get_at(11, "a", 1)             -> "0"
+
+=== L4 hidden: get_at before a key existed and between commits
+set(5, "a", "1")
+get_at(6, "a", 4)              -> None
+begin(7)
+set(8, "a", "2")
+commit(9)                      -> True
+begin(10)
+set(11, "a", "3")
+commit(12)                     -> True
+get_at(13, "a", 5)             -> "1"
+get_at(14, "a", 8)             -> "1"
+get_at(15, "a", 9)             -> "2"
+get_at(16, "a", 11)            -> "2"
+get_at(17, "a", 12)            -> "3"
+get_at(18, "b", 12)            -> None
+
+=== L4 hidden: a delete inside a transaction reaches history at commit time
+set(1, "a", "1")
+begin(2)
+delete(3, "a")                 -> True
+get_at(4, "a", 3)              -> "1"
+commit(5)                      -> True
+get_at(6, "a", 3)              -> "1"
+get_at(7, "a", 4)              -> "1"
+get_at(8, "a", 5)              -> None
+set(9, "a", "2")
+get_at(10, "a", 8)             -> None
+get_at(11, "a", 9)             -> "2"
+get_at(12, "a", 1)             -> "1"
+
+=== L4 hidden: set then delete inside one transaction commits as a delete
+set(1, "a", "1")
+begin(2)
+set(3, "a", "2")
+delete(4, "a")                 -> True
+set(5, "n", "v")               # "n" never existed in permanent storage
+delete(6, "n")                 -> True
+commit(7)                      -> True
+get_at(8, "a", 3)              -> "1"
+get_at(9, "a", 6)              -> "1"
+get_at(10, "a", 7)             -> None
+get_at(11, "n", 5)             -> None
+get_at(12, "n", 7)             -> None
+get(13, "a")                   -> None
+set(14, "n", "w")
+get_at(15, "n", 13)            -> None
+get_at(16, "n", 14)            -> "w"
+
+=== L4 hidden: an inner commit followed by an outer rollback never reaches history
+set(1, "a", "1")
+begin(2)
+begin(3)
+set(4, "a", "2")
+set(5, "b", "x")
+commit(6)                      -> True
+get_at(7, "a", 6)              -> "1"
+rollback(8)                    -> True
+get_at(9, "a", 8)              -> "1"
+get_at(10, "b", 8)             -> None
+get(11, "a")                   -> "1"
+get(12, "b")                   -> None
+
+=== L4 hidden: open transactions are ignored until the outermost commit
+set(1, "a", "1")
+begin(2)
+set(3, "a", "2")
+get_at(4, "a", 3)              -> "1"
+get(5, "a")                    -> "2"
+begin(6)
+delete(7, "a")                 -> True
+get_at(8, "a", 7)              -> "1"
+commit(9)                      -> True
+get_at(10, "a", 9)             -> "1"
+get(11, "a")                   -> None
+commit(12)                     -> True
+get_at(13, "a", 11)            -> "1"
+get_at(14, "a", 12)            -> None
+
+=== L4 hidden: one commit records every changed key at the commit timestamp
+set(1, "a", "1"); set(2, "b", "1")
+begin(3)
+set(4, "a", "2")
+delete(5, "b")                 -> True
+set(6, "c", "3")
+commit(7)                      -> True
+get_at(8, "a", 6)              -> "1"
+get_at(9, "b", 6)              -> "1"
+get_at(10, "c", 6)             -> None
+get_at(11, "a", 7)             -> "2"
+get_at(12, "b", 7)             -> None
+get_at(13, "c", 7)             -> "3"
+
+=== L4 hidden: get_at at and between every change outside transactions
+set(2, "k", "a")
+delete(4, "k")                 -> True
+set(6, "k", "b")
+set(8, "k", "c")
+delete(10, "k")                -> True
+get_at(11, "k", 1)             -> None
+get_at(12, "k", 2)             -> "a"
+get_at(13, "k", 3)             -> "a"
+get_at(14, "k", 4)             -> None
+get_at(15, "k", 5)             -> None
+get_at(16, "k", 6)             -> "b"
+get_at(17, "k", 7)             -> "b"
+get_at(18, "k", 8)             -> "c"
+get_at(19, "k", 9)             -> "c"
+get_at(20, "k", 10)            -> None
+
+=== L4 hidden: a rolled-back inner change is left out of the outer commit
+set(1, "a", "1")
+begin(2)
+set(3, "b", "2")
+begin(4)
+set(5, "a", "9")
+delete(6, "b")                 -> True
+rollback(7)                    -> True
+commit(8)                      -> True
+get_at(9, "a", 8)              -> "1"
+get_at(10, "b", 7)             -> None
+get_at(11, "b", 8)             -> "2"
+get(12, "b")                   -> "2"
+
+=== L4 hidden: get_at reads history without changing the current view
+set(1, "a", "x"); set(2, "b", "x")
+begin(3)
+delete(4, "a")                 -> True
+get_at(5, "a", 4)              -> "x"
+get_at(6, "zz", 5)             -> None
+count(7, "x")                  -> 1
+list_keys(8, "")               -> "b"
+get(9, "a")                    -> None
+rollback(10)                   -> True
+count(11, "x")                 -> 2
+list_keys(12, "")              -> "a, b"
+get_at(13, "a", 12)            -> "x"
+get_at(14, "zz", 13)           -> None
+list_keys(15, "z")             -> ""
+
+=== L4 hidden: random with transactions and history @gen(seed=401, n=300)
+
+=== L4 hidden: random with transactions and history, longer @gen(seed=402, n=400)

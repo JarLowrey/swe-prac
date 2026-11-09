@@ -1,0 +1,6 @@
+- Write a single class with the listed methods. Its constructor takes no arguments.
+- Every method takes a `timestamp` (an `int`) as its first argument. Timestamps strictly increase across calls on one instance.
+- Methods return a `str`, `int`, `bool` or `None`, and never raise. An invalid operation returns `None` or `False` and leaves state untouched.
+- Ties in sorted output break by the stated secondary key, usually id or name ascending.
+- Later levels never remove earlier behavior: every earlier level's tests must still pass.
+- Standard library only.

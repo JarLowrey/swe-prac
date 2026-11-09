@@ -1,0 +1,13 @@
+{
+  "id": "p4_database",
+  "number": 4,
+  "title": "In-memory database",
+  "summary": "Build a nested key → field → value store: set, read and delete fields, then query them.",
+  "class_name": "InMemoryDB",
+  "levels": [
+    {"level": 1, "title": "Records", "methods": ["set", "get", "delete"]},
+    {"level": 2, "title": "Scans", "methods": ["scan", "scan_by_prefix"]},
+    {"level": 3, "title": "Time to live", "methods": ["set_with_ttl"]},
+    {"level": 4, "title": "Backup and restore", "methods": ["backup", "restore"]}
+  ]
+}

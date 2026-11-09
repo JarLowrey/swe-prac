@@ -1,0 +1,93 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="374" viewBox="0 0 1080 374" role="img" aria-labelledby="title desc">
+  <title id="title">How a problem is built</title>
+  <desc id="desc">tools/build_problem.py reads tests.txt, gen.py, solution.py and mutants from reference/&lt;pid&gt;/ plus problem.json from problems/&lt;pid&gt;/. It checks the problem files, parses the tests, runs the reference to check and fill in expected values, writes tests.json and stubs.json, re-runs the reference through the real runner, and requires every mutant to fail a hidden test. Any failed check stops the build with an error.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#9aa3b5"/>
+    </marker>
+  </defs>
+  <style>
+    text { font-family: "Segoe UI", system-ui, -apple-system, Roboto, Helvetica, Arial, sans-serif; font-size: 13px; fill: #9aa3b5; }
+    .s { fill: #c9cfdb; }
+    .n { font-weight: 600; fill: #4f8cff; }
+    .m { font-family: "Cascadia Mono", Consolas, "SFMono-Regular", Menlo, monospace; font-size: 14px; fill: #e6e8ee; }
+    .c { font-family: "Cascadia Mono", Consolas, "SFMono-Regular", Menlo, monospace; font-size: 12.5px; fill: #e6e8ee; }
+    .l { font-size: 12px; fill: #6b7385; }
+    .warn { font-size: 12px; fill: #d29922; }
+    .bad { fill: #f85149; }
+    .proc { fill: #4f8cff; fill-opacity: 0.1; stroke: #4f8cff; stroke-width: 1.5; }
+    .group { fill: none; stroke: #d29922; stroke-opacity: 0.6; stroke-width: 1.2; stroke-dasharray: 5 4; }
+    .file { fill: #d29922; fill-opacity: 0.1; stroke: #d29922; stroke-opacity: 0.8; stroke-width: 1.2; }
+    .edge { fill: none; stroke: #9aa3b5; stroke-width: 1.5; }
+  </style>
+
+  <rect width="1080" height="374" rx="12" fill="#0f1115"/>
+
+  <!-- Inputs: reference/<pid>/ -->
+  <rect class="group" x="24" y="40" width="246" height="294" rx="10"/>
+  <text class="m" x="40" y="64">reference/&lt;pid&gt;/</text>
+  <text class="warn" x="40" y="83">spoilers</text>
+
+  <rect class="file" x="38" y="98" width="218" height="46" rx="6"/>
+  <text class="m" x="52" y="117">tests.txt</text>
+  <text x="52" y="136">shown and hidden tests</text>
+
+  <rect class="file" x="38" y="156" width="218" height="46" rx="6"/>
+  <text class="m" x="52" y="175">gen.py</text>
+  <text x="52" y="194">random test generator</text>
+
+  <rect class="file" x="38" y="214" width="218" height="46" rx="6"/>
+  <text class="m" x="52" y="233">solution.py</text>
+  <text x="52" y="252">reference solution</text>
+
+  <rect class="file" x="38" y="272" width="218" height="46" rx="6"/>
+  <text class="m" x="52" y="291">mutants/*.py</text>
+  <text x="52" y="310">deliberately buggy copies</text>
+
+  <path class="edge" d="M256,121 H330" marker-end="url(#arrow)"/>
+  <path class="edge" d="M256,179 H330" marker-end="url(#arrow)"/>
+  <path class="edge" d="M256,237 H330" marker-end="url(#arrow)"/>
+  <path class="edge" d="M256,295 H330" marker-end="url(#arrow)"/>
+
+  <!-- The build -->
+  <rect class="proc" x="330" y="40" width="420" height="294" rx="10"/>
+  <text class="m" x="350" y="70">tools/build_problem.py</text>
+  <path d="M346,86 H734" stroke="#2a2f3d" stroke-width="1"/>
+
+  <text class="n" x="350" y="114">1</text>
+  <text class="s" x="372" y="114">checks problem.json, statements and review pages</text>
+  <text class="n" x="350" y="140">2</text>
+  <text class="s" x="372" y="140">parses tests.txt: each test calls only methods up</text>
+  <text class="s" x="372" y="160">to its level, and timestamps keep increasing</text>
+  <text class="n" x="350" y="186">3</text>
+  <text class="s" x="372" y="186">runs the reference: hand-written values must</text>
+  <text class="s" x="372" y="206">match, and <tspan class="c">-&gt; ?</tspan> and <tspan class="c">@gen</tspan> values are filled in</text>
+  <text class="n" x="350" y="232">4</text>
+  <text class="s" x="372" y="232">writes tests.json and stubs.json</text>
+  <text class="n" x="350" y="258">5</text>
+  <text class="s" x="372" y="258">re-runs the reference through the real runner</text>
+  <text class="n" x="350" y="284">6</text>
+  <text class="s" x="372" y="284">runs each mutant: a hidden test must fail it</text>
+  <text class="bad" x="350" y="318">If any check fails, the build stops with an error.</text>
+
+  <!-- problems/<pid>/ -->
+  <rect class="group" x="810" y="40" width="246" height="294" rx="10"/>
+  <text class="m" x="826" y="64">problems/&lt;pid&gt;/</text>
+  <text class="l" x="826" y="83">what the app reads</text>
+
+  <rect class="file" x="824" y="98" width="218" height="46" rx="6"/>
+  <text class="m" x="838" y="117">problem.json</text>
+  <text x="838" y="136">methods for each level</text>
+  <path class="edge" d="M824,121 H750" marker-end="url(#arrow)"/>
+
+  <rect class="file" x="824" y="172" width="218" height="62" rx="6"/>
+  <text class="m" x="838" y="191">tests.json</text>
+  <text x="838" y="210">shown and hidden tests,</text>
+  <text x="838" y="226">expected values filled in</text>
+  <path class="edge" d="M750,203 H824" marker-end="url(#arrow)"/>
+
+  <rect class="file" x="824" y="260" width="218" height="46" rx="6"/>
+  <text class="m" x="838" y="279">stubs.json</text>
+  <text x="838" y="298">method stubs per level</text>
+  <path class="edge" d="M750,283 H824" marker-end="url(#arrow)"/>
+</svg>

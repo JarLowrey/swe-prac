@@ -1,0 +1,13 @@
+{
+  "id": "p1_file_store",
+  "number": 1,
+  "title": "In-memory file store",
+  "summary": "Build a simplified cloud file store that adds, looks up and deletes files by name.",
+  "class_name": "FileStore",
+  "levels": [
+    {"level": 1, "title": "Basic files", "methods": ["add_file", "get_file_size", "delete_file"]},
+    {"level": 2, "title": "Querying", "methods": ["get_n_largest"]},
+    {"level": 3, "title": "Users and capacity", "methods": ["add_user", "add_file_by", "merge_user"]},
+    {"level": 4, "title": "Backup and restore", "methods": ["backup_user", "restore_user"]}
+  ]
+}

@@ -1,0 +1,5 @@
+- `place_order(timestamp, lines) -> str | None` sells several products as one order, sharing `sell`'s id counter. `lines` is a `list[tuple[str, int]]` of `(sku, qty)` tuples, for example `[("A", 2), ("B", 1)]`.
+  - All lines succeed or none do.
+  - The same sku may appear in several lines; their quantities combine.
+  - An empty order, or any invalid line (a missing product, `qty <= 0`, or not enough stock for the combined quantity), returns `None` and changes nothing.
+- `top_sellers(timestamp, n) -> str` returns up to `n` products with more than 0 units sold, formatted `"A(4), B(2)"`, sorted by units sold descending, then sku ascending. Returns `""` if nothing has sold.

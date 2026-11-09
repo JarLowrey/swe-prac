@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SWE Practice</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%234f8cff'/%3E%3Cpath d='M9 11l-4 5 4 5M23 11l4 5-4 5M18 8l-4 16' stroke='white' stroke-width='2.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <div id="app"><div class="loading">Loading…</div></div>
+  <div id="modal-root"></div>
+  <div id="toast-root"></div>
+  <script src="/static/vendor/monaco/vs/loader.js"></script>
+  <script>
+    window.monacoReady = new Promise((resolve) => {
+      require.config({ paths: { vs: "/static/vendor/monaco/vs" } });
+      require(["vs/editor/editor.main"], () => resolve(window.monaco));
+    });
+  </script>
+  <script type="module" src="/static/app.js"></script>
+</body>
+</html>

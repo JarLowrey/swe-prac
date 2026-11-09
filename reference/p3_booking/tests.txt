@@ -1,0 +1,513 @@
+# Tests for p3_booking. The 'doc self-check' tests are the original self-check tests for
+# each level: never edit their expectations.
+
+
+=== L1 shown: doc self-check (Level 1)
+add_listing(1, "L1", 100)        -> True
+add_listing(2, "L1", 50)         -> False
+book(3, "L1", "g1", 5, 8)       -> "booking1"
+book(4, "L1", "g2", 7, 9)       -> None  # night 7 overlaps
+book(5, "L1", "g2", 8, 10)      -> "booking2"  # check-out is exclusive
+book(6, "L1", "g2", 3, 3)       -> None
+cancel(7, "booking1")           -> True
+cancel(8, "booking1")           -> False
+book(9, "L1", "g3", 6, 8)       -> "booking3"
+
+=== L2 shown: doc self-check (Level 2)
+add_listing(1, "A", 120); add_listing(2, "B", 80); add_listing(3, "C", 80)
+book(4, "B", "g1", 10, 12)      -> "booking1"
+search_available(5, 11, 13, 100) -> "C"
+search_available(6, 12, 14, 100) -> "B, C"
+search_available(7, 12, 14, 200) -> "B, C, A"
+book(8, "A", "g1", 3, 5)        -> "booking2"
+guest_bookings(9, "g1")          -> "booking2(A, 3-5), booking1(B, 10-12)"
+guest_bookings(10, "nobody")     -> ""
+
+=== L3 shown: doc self-check (Level 3)
+add_listing(1, "A", 100)
+hold(2, "A", "g1", 1, 4, 10)    -> "hold1"  # active while ts < 12
+book(3, "A", "g2", 3, 5)        -> None
+hold(4, "A", "g2", 2, 3, 5)     -> None
+search_available(5, 1, 2, 500)   -> ""
+book(12, "A", "g2", 3, 5)       -> "booking1"  # hold expired
+confirm_hold(13, "hold1")        -> None
+hold(14, "A", "g1", 5, 7, 3)    -> "hold2"
+confirm_hold(16, "hold2")        -> "booking2"
+confirm_hold(17, "hold2")        -> None
+guest_bookings(18, "g1")         -> "booking2(A, 5-7)"
+
+=== L4 shown: doc self-check (Level 4)
+add_listing(1, "A", 100); add_listing(2, "B", 90)
+set_night_price(3, "A", 5, 300)   -> True
+set_night_price(4, "Z", 5, 1)     -> False
+quote(5, "A", 4, 7)             -> 500
+quote(6, "A", 7, 7)             -> None
+book(7, "A", "g1", 4, 7)        -> "booking1"  # locks 500
+set_night_price(8, "A", 4, 50)    -> True
+host_revenue(9, "A")             -> 500
+book(10, "A", "g2", 1, 3)       -> "booking2"  # locks 200
+host_revenue(11, "A")            -> 700
+cancel(12, "booking1")          -> True
+host_revenue(13, "A")            -> 200
+search_available(14, 4, 6, 200)  -> "B"  # A's night 5 costs 300
+set_night_price(15, "B", 4, 10)   -> True  # B totals 100
+set_night_price(16, "A", 5, 40)   -> True  # A totals 90
+search_available(17, 4, 6, 200)  -> "A, B"
+host_revenue(18, "Q")            -> None
+
+# ---------------------------------------------------------------------------------------
+# Level 1
+# ---------------------------------------------------------------------------------------
+
+=== L1 shown: separate listings do not conflict
+add_listing(1, "loft", 90)          -> True
+add_listing(2, "cabin", 70)         -> True
+book(3, "loft", "g1", 1, 4)         -> "booking1"
+book(4, "cabin", "g2", 1, 4)        -> "booking2"  # same nights, other listing
+book(5, "loft", "g3", 2, 3)         -> None
+book(6, "beach", "g3", 2, 3)        -> None  # no such listing
+
+=== L1 shown: cancel frees the nights
+add_listing(1, "loft", 90)
+book(2, "loft", "g1", 10, 14)       -> "booking1"
+book(3, "loft", "g2", 12, 13)       -> None
+cancel(4, "booking1")               -> True
+book(5, "loft", "g2", 12, 13)       -> "booking2"
+
+=== L1 hidden: adjacent ranges on both sides do not overlap
+add_listing(1, "A", 100)
+book(2, "A", "g1", 5, 8)            -> "booking1"  # nights 5, 6, 7
+book(3, "A", "g2", 8, 10)           -> "booking2"  # starts on booking1's check-out
+book(4, "A", "g3", 3, 5)            -> "booking3"  # ends on booking1's check-in
+book(5, "A", "g4", 10, 11)          -> "booking4"
+book(6, "A", "g4", 2, 3)            -> "booking5"
+book(7, "A", "g5", 4, 6)            -> None  # nights 4 and 5 taken
+book(8, "A", "g5", 9, 10)           -> None  # night 9 is booking2's
+book(9, "A", "g5", 7, 8)            -> None  # night 7 is booking1's last night
+book(10, "A", "g5", 1, 20)          -> None  # encloses everything
+book(11, "A", "g5", 6, 7)           -> None  # inside booking1
+book(12, "A", "g5", 1, 2)           -> "booking6"
+book(13, "A", "g5", 11, 12)         -> "booking7"
+
+=== L1 hidden: failed bookings do not consume ids
+add_listing(1, "A", 100)
+book(2, "B", "g1", 1, 3)            -> None  # missing listing
+book(3, "A", "g1", 4, 4)            -> None  # empty range
+book(4, "A", "g1", 6, 2)            -> None  # reversed range
+book(5, "A", "g1", 1, 3)            -> "booking1"
+book(6, "A", "g2", 2, 4)            -> None  # overlap
+cancel(7, "booking2")               -> False  # not issued yet
+book(8, "A", "g2", 3, 6)            -> "booking2"
+add_listing(9, "A", 50)             -> False
+book(10, "A", "g3", 6, 7)           -> "booking3"
+
+=== L1 hidden: one global booking counter across listings, ids never reused
+add_listing(1, "A", 100); add_listing(2, "B", 100); add_listing(3, "C", 100)
+book(4, "B", "g1", 1, 2)            -> "booking1"
+book(5, "C", "g1", 1, 2)            -> "booking2"
+book(6, "A", "g1", 1, 2)            -> "booking3"
+book(7, "B", "g2", 1, 2)            -> None
+book(8, "B", "g2", 2, 3)            -> "booking4"
+cancel(9, "booking2")               -> True
+book(10, "C", "g2", 1, 2)           -> "booking5"
+
+=== L1 hidden: cancel frees only its own nights
+add_listing(1, "A", 100)
+book(2, "A", "g1", 1, 3)            -> "booking1"
+book(3, "A", "g2", 3, 5)            -> "booking2"
+cancel(4, "booking1")               -> True
+book(5, "A", "g3", 2, 4)            -> None  # night 3 is still booking2's
+book(6, "A", "g3", 1, 3)            -> "booking3"
+cancel(7, "booking2")               -> True
+cancel(8, "booking2")               -> False
+book(9, "A", "g4", 3, 5)            -> "booking4"
+book(10, "A", "g4", 2, 3)           -> None  # night 2 is booking3's
+
+=== L1 hidden: cancel then rebook, then cancel the rebooking
+add_listing(1, "A", 100)
+book(2, "A", "g1", 4, 7)            -> "booking1"
+cancel(3, "booking1")               -> True
+book(4, "A", "g2", 4, 7)            -> "booking2"
+cancel(5, "booking1")               -> False
+book(6, "A", "g3", 5, 6)            -> None
+cancel(7, "booking2")               -> True
+book(8, "A", "g3", 5, 6)            -> "booking3"
+cancel(9, "booking7")               -> False  # never issued
+
+=== L1 hidden: single nights and long stays
+add_listing(1, "A", 100)
+book(2, "A", "g1", 1, 2)            -> "booking1"
+book(3, "A", "g2", 2, 3)            -> "booking2"
+book(4, "A", "g3", 1, 2)            -> None
+book(5, "A", "g3", 2, 3)            -> None
+book(6, "A", "g1", 100, 1000)       -> "booking3"
+book(7, "A", "g2", 999, 1001)       -> None
+book(8, "A", "g2", 1000, 1001)      -> "booking4"
+book(9, "A", "g2", 50, 101)         -> None
+book(10, "A", "g2", 3, 100)         -> "booking5"
+
+=== L1 hidden: a duplicate add_listing leaves the calendar untouched
+add_listing(1, "A", 100)            -> True
+book(2, "A", "g1", 1, 5)            -> "booking1"
+add_listing(3, "A", 200)            -> False
+book(4, "A", "g2", 2, 3)            -> None
+cancel(5, "booking1")               -> True
+book(6, "A", "g2", 2, 3)            -> "booking2"
+
+=== L1 hidden: random sequence @gen(seed=101, n=250)
+
+=== L1 hidden: random sequence (long) @gen(seed=102, n=400)
+
+# ---------------------------------------------------------------------------------------
+# Level 2
+# ---------------------------------------------------------------------------------------
+
+=== L2 shown: search ties break by listing id
+add_listing(1, "loft", 80); add_listing(2, "cabin", 80); add_listing(3, "barn", 60)
+search_available(4, 1, 3, 100)      -> "barn, cabin, loft"
+search_available(5, 1, 3, 70)       -> "barn"
+search_available(6, 1, 3, 50)       -> ""
+
+=== L2 shown: guest bookings are sorted by check-in
+add_listing(1, "loft", 80); add_listing(2, "cabin", 60)
+book(3, "loft", "g1", 20, 22)       -> "booking1"
+book(4, "cabin", "g1", 5, 6)        -> "booking2"
+book(5, "loft", "g2", 1, 4)         -> "booking3"
+guest_bookings(6, "g1")             -> "booking2(cabin, 5-6), booking1(loft, 20-22)"
+guest_bookings(7, "g2")             -> "booking3(loft, 1-4)"
+
+=== L2 hidden: booking ids compare numerically (ten or more bookings)
+add_listing(1, "A", 100); add_listing(2, "B", 100); add_listing(3, "C", 100)
+book(4, "A", "x", 1, 2)             -> "booking1"
+book(5, "A", "x", 2, 3)             -> "booking2"
+book(6, "A", "x", 3, 4)             -> "booking3"
+book(7, "A", "x", 4, 5)             -> "booking4"
+book(8, "A", "x", 5, 6)             -> "booking5"
+book(9, "A", "x", 6, 7)             -> "booking6"
+book(10, "A", "x", 7, 8)            -> "booking7"
+book(11, "A", "x", 8, 9)            -> "booking8"
+book(12, "A", "g1", 20, 22)         -> "booking9"
+book(13, "B", "g1", 20, 21)         -> "booking10"
+book(14, "C", "g1", 20, 25)         -> "booking11"
+book(15, "B", "g1", 2, 3)           -> "booking12"
+guest_bookings(16, "g1")            -> "booking12(B, 2-3), booking9(A, 20-22), booking10(B, 20-21), booking11(C, 20-25)"
+guest_bookings(17, "x")             -> "booking1(A, 1-2), booking2(A, 2-3), booking3(A, 3-4), booking4(A, 4-5), booking5(A, 5-6), booking6(A, 6-7), booking7(A, 7-8), booking8(A, 8-9)"
+
+=== L2 hidden: single-digit and double-digit ids on the same check-in
+add_listing(1, "A", 100); add_listing(2, "B", 100)
+book(3, "A", "g1", 1, 2)            -> "booking1"
+book(4, "A", "g2", 10, 11)          -> "booking2"
+book(5, "A", "g1", 2, 3)            -> "booking3"
+cancel(6, "booking3")               -> True
+book(7, "A", "g1", 2, 3)            -> "booking4"
+cancel(8, "booking4")               -> True
+book(9, "A", "g1", 2, 3)            -> "booking5"
+cancel(10, "booking5")              -> True
+book(11, "A", "g1", 2, 3)           -> "booking6"
+cancel(12, "booking6")              -> True
+book(13, "A", "g1", 2, 3)           -> "booking7"
+cancel(14, "booking7")              -> True
+book(15, "A", "g1", 2, 3)           -> "booking8"
+cancel(16, "booking8")              -> True
+book(17, "A", "g1", 2, 3)           -> "booking9"
+book(18, "B", "g2", 10, 12)         -> "booking10"
+book(19, "B", "g2", 3, 4)           -> "booking11"
+guest_bookings(20, "g2")            -> "booking11(B, 3-4), booking2(A, 10-11), booking10(B, 10-12)"
+guest_bookings(21, "g1")            -> "booking1(A, 1-2), booking9(A, 2-3)"
+
+=== L2 hidden: search price boundary and id tie-break
+add_listing(1, "C", 80); add_listing(2, "A", 80); add_listing(3, "B", 50); add_listing(4, "D", 81)
+search_available(5, 3, 4, 80)       -> "B, A, C"
+search_available(6, 3, 4, 81)       -> "B, A, C, D"
+search_available(7, 3, 4, 79)       -> "B"
+search_available(8, 3, 4, 49)       -> ""
+
+=== L2 hidden: search checks every night of the range
+add_listing(1, "A", 100); add_listing(2, "B", 100)
+book(3, "A", "g1", 5, 8)            -> "booking1"
+search_available(4, 1, 5, 100)      -> "A, B"  # ends on A's check-in
+search_available(5, 8, 9, 100)      -> "A, B"  # starts on A's check-out
+search_available(6, 4, 6, 100)      -> "B"
+search_available(7, 7, 12, 100)     -> "B"
+search_available(8, 1, 20, 100)     -> "B"
+search_available(9, 6, 7, 100)      -> "B"
+book(10, "B", "g2", 1, 20)          -> "booking2"
+search_available(11, 6, 7, 100)     -> ""
+
+=== L2 hidden: cancelling frees search and removes the booking from the guest list
+add_listing(1, "A", 100); add_listing(2, "B", 90)
+book(3, "A", "g1", 1, 3)            -> "booking1"
+book(4, "B", "g1", 1, 3)            -> "booking2"
+search_available(5, 2, 3, 200)      -> ""
+guest_bookings(6, "g1")             -> "booking1(A, 1-3), booking2(B, 1-3)"
+cancel(7, "booking1")               -> True
+search_available(8, 2, 3, 200)      -> "A"
+guest_bookings(9, "g1")             -> "booking2(B, 1-3)"
+cancel(10, "booking2")              -> True
+guest_bookings(11, "g1")            -> ""
+search_available(12, 2, 3, 200)     -> "B, A"
+
+=== L2 hidden: guest bookings on the same check-in break ties by booking id
+add_listing(1, "Z", 100); add_listing(2, "A", 100); add_listing(3, "M", 100)
+book(4, "Z", "g1", 5, 8)            -> "booking1"
+book(5, "M", "g2", 5, 9)            -> "booking2"
+book(6, "A", "g1", 5, 7)            -> "booking3"
+book(7, "M", "g1", 3, 4)            -> "booking4"
+guest_bookings(8, "g1")             -> "booking4(M, 3-4), booking1(Z, 5-8), booking3(A, 5-7)"
+guest_bookings(9, "g2")             -> "booking2(M, 5-9)"
+
+=== L2 hidden: failed bookings change neither search nor the guest list
+add_listing(1, "A", 100)
+book(2, "A", "g1", 3, 5)            -> "booking1"
+book(3, "A", "g2", 4, 6)            -> None
+book(4, "A", "g2", 7, 7)            -> None
+book(5, "B", "g2", 7, 8)            -> None
+guest_bookings(6, "g2")             -> ""
+search_available(7, 5, 7, 100)      -> "A"
+book(8, "A", "g2", 5, 7)            -> "booking2"
+guest_bookings(9, "g2")             -> "booking2(A, 5-7)"
+search_available(10, 4, 6, 100)     -> ""
+
+=== L2 hidden: random sequence @gen(seed=201, n=300)
+
+=== L2 hidden: random sequence (long) @gen(seed=202, n=400)
+
+# ---------------------------------------------------------------------------------------
+# Level 3
+# ---------------------------------------------------------------------------------------
+
+=== L3 shown: confirm a hold before it expires
+add_listing(1, "loft", 100)
+hold(2, "loft", "g1", 3, 6, 10)     -> "hold1"
+book(3, "loft", "g2", 5, 7)         -> None
+confirm_hold(5, "hold1")            -> "booking1"
+guest_bookings(6, "g1")             -> "booking1(loft, 3-6)"
+
+=== L3 shown: an expired hold blocks nothing
+add_listing(1, "loft", 100)
+hold(2, "loft", "g1", 3, 6, 4)      -> "hold1"  # active while ts < 6
+search_available(5, 3, 6, 100)      -> ""
+search_available(6, 3, 6, 100)      -> "loft"
+hold(7, "loft", "g2", 4, 5, 4)      -> "hold2"
+confirm_hold(8, "hold1")            -> None
+
+=== L3 hidden: expiry boundary for book and hold
+add_listing(1, "A", 100)
+hold(10, "A", "g1", 1, 4, 5)        -> "hold1"  # active while ts < 15
+book(14, "A", "g2", 3, 4)           -> None
+book(15, "A", "g2", 3, 4)           -> "booking1"
+hold(16, "A", "g3", 1, 3, 2)        -> "hold2"  # active while ts < 18
+hold(17, "A", "g4", 2, 3, 9)        -> None
+hold(18, "A", "g4", 2, 3, 9)        -> "hold3"
+
+=== L3 hidden: confirm on the last active timestamp and exactly at expiry
+add_listing(1, "A", 100); add_listing(2, "B", 100)
+hold(3, "A", "g1", 1, 3, 4)         -> "hold1"  # active while ts < 7
+hold(4, "B", "g1", 1, 3, 5)         -> "hold2"  # active while ts < 9
+confirm_hold(7, "hold1")            -> None
+confirm_hold(8, "hold2")            -> "booking1"
+guest_bookings(9, "g1")             -> "booking1(B, 1-3)"
+book(10, "A", "g2", 1, 3)           -> "booking2"
+
+=== L3 hidden: confirming twice, and unknown holds
+add_listing(1, "A", 100)
+hold(2, "A", "g1", 5, 8, 100)       -> "hold1"
+confirm_hold(3, "hold2")            -> None  # never issued
+confirm_hold(4, "hold1")            -> "booking1"
+confirm_hold(5, "hold1")            -> None
+confirm_hold(6, "hold1")            -> None
+book(7, "A", "g2", 1, 3)            -> "booking2"  # failed confirms used no booking id
+guest_bookings(8, "g1")             -> "booking1(A, 5-8)"
+
+=== L3 hidden: holds and bookings use separate counters
+add_listing(1, "A", 100)
+hold(2, "A", "g1", 1, 2, 50)        -> "hold1"
+book(3, "A", "g2", 2, 3)            -> "booking1"
+hold(4, "A", "g3", 1, 3, 50)        -> None  # overlaps hold1 and booking1
+hold(5, "Z", "g3", 5, 6, 50)        -> None  # missing listing
+hold(6, "A", "g3", 6, 6, 50)        -> None  # empty range
+hold(7, "A", "g3", 3, 4, 50)        -> "hold2"
+confirm_hold(8, "hold2")            -> "booking2"
+book(9, "A", "g4", 4, 5)            -> "booking3"
+hold(10, "A", "g4", 5, 6, 50)       -> "hold3"
+confirm_hold(11, "hold1")           -> "booking4"
+
+=== L3 hidden: a confirmed hold is an ordinary booking that never expires
+add_listing(1, "A", 100)
+hold(2, "A", "g1", 3, 5, 5)         -> "hold1"  # would have expired at 7
+confirm_hold(4, "hold1")            -> "booking1"
+book(50, "A", "g2", 4, 6)           -> None
+hold(51, "A", "g2", 3, 4, 5)        -> None
+search_available(52, 3, 5, 100)     -> ""
+guest_bookings(53, "g1")            -> "booking1(A, 3-5)"
+cancel(54, "booking1")              -> True
+book(55, "A", "g2", 3, 5)           -> "booking2"
+guest_bookings(56, "g1")            -> ""
+confirm_hold(57, "hold1")           -> None
+
+=== L3 hidden: guest bookings list confirmed holds but never holds
+add_listing(1, "A", 100); add_listing(2, "B", 100)
+book(3, "A", "g1", 10, 12)          -> "booking1"
+hold(4, "B", "g1", 1, 3, 100)       -> "hold1"
+hold(5, "A", "g1", 1, 3, 2)         -> "hold2"  # active while ts < 7
+guest_bookings(6, "g1")             -> "booking1(A, 10-12)"
+guest_bookings(7, "g1")             -> "booking1(A, 10-12)"
+confirm_hold(8, "hold1")            -> "booking2"
+guest_bookings(9, "g1")             -> "booking2(B, 1-3), booking1(A, 10-12)"
+
+=== L3 hidden: search excludes listings under active holds
+add_listing(1, "A", 100); add_listing(2, "B", 120); add_listing(3, "C", 100)
+hold(4, "A", "g1", 5, 7, 6)         -> "hold1"  # active while ts < 10
+hold(5, "B", "g2", 1, 3, 100)       -> "hold2"
+search_available(6, 6, 8, 200)      -> "C, B"
+search_available(7, 7, 9, 200)      -> "A, C, B"  # starts on hold1's check-out
+search_available(8, 2, 3, 200)      -> "A, C"
+search_available(9, 4, 6, 200)      -> "C, B"
+search_available(10, 4, 6, 200)     -> "A, C, B"  # hold1 expired
+search_available(11, 1, 2, 200)     -> "A, C"
+
+=== L3 hidden: expired holds free nights and cannot be confirmed
+add_listing(1, "A", 100)
+hold(2, "A", "g1", 1, 5, 3)         -> "hold1"  # active while ts < 5
+hold(5, "A", "g2", 2, 4, 3)         -> "hold2"  # active while ts < 8
+confirm_hold(6, "hold1")            -> None
+book(7, "A", "g3", 1, 2)            -> "booking1"
+book(8, "A", "g3", 3, 4)            -> "booking2"
+confirm_hold(9, "hold2")            -> None
+guest_bookings(10, "g2")            -> ""
+
+=== L3 hidden: holds next to bookings and other holds
+add_listing(1, "A", 100)
+book(2, "A", "g1", 5, 8)            -> "booking1"
+hold(3, "A", "g2", 8, 10, 100)      -> "hold1"
+hold(4, "A", "g3", 3, 5, 100)       -> "hold2"
+hold(5, "A", "g4", 7, 9, 100)       -> None
+hold(6, "A", "g4", 10, 11, 100)     -> "hold3"
+book(7, "A", "g4", 9, 11)           -> None
+confirm_hold(8, "hold1")            -> "booking2"
+guest_bookings(9, "g2")             -> "booking2(A, 8-10)"
+
+=== L3 hidden: random sequence @gen(seed=301, n=300)
+
+=== L3 hidden: random sequence (long) @gen(seed=302, n=400)
+
+# ---------------------------------------------------------------------------------------
+# Level 4
+# ---------------------------------------------------------------------------------------
+
+=== L4 shown: quote uses overrides and ignores availability
+add_listing(1, "loft", 100)
+set_night_price(2, "loft", 3, 250)  -> True
+book(3, "loft", "g1", 1, 5)         -> "booking1"
+quote(4, "loft", 2, 4)              -> 350
+quote(5, "loft", 1, 5)              -> 550
+host_revenue(6, "loft")             -> 550
+
+=== L4 shown: search keeps a listing whose nights all fit
+add_listing(1, "loft", 150); add_listing(2, "cabin", 90)
+search_available(3, 1, 3, 100)      -> "cabin"
+set_night_price(4, "loft", 1, 60); set_night_price(5, "loft", 2, 60)
+search_available(6, 1, 3, 100)      -> "loft, cabin"  # loft totals 120, cabin 180
+search_available(7, 1, 4, 100)      -> "cabin"  # loft's night 3 costs 150
+
+=== L4 hidden: a confirmed hold locks its price at confirm time
+add_listing(1, "A", 100)
+hold(2, "A", "g1", 1, 3, 50)        -> "hold1"
+set_night_price(3, "A", 1, 300)     -> True
+host_revenue(4, "A")                -> 0  # a hold is not a booking
+confirm_hold(5, "hold1")            -> "booking1"  # locks 300 + 100
+set_night_price(6, "A", 2, 500)     -> True
+set_night_price(7, "A", 1, 10)      -> True
+host_revenue(8, "A")                -> 400
+quote(9, "A", 1, 3)                 -> 510
+
+=== L4 hidden: host revenue edge cases
+add_listing(1, "A", 100); add_listing(2, "B", 80)
+host_revenue(3, "A")                -> 0
+host_revenue(4, "Z")                -> None
+book(5, "A", "g1", 1, 4)            -> "booking1"  # 300
+book(6, "B", "g1", 1, 2)            -> "booking2"  # 80
+book(7, "A", "g2", 4, 6)            -> "booking3"  # 200
+host_revenue(8, "A")                -> 500
+host_revenue(9, "B")                -> 80
+cancel(10, "booking1")              -> True
+host_revenue(11, "A")               -> 200
+cancel(12, "booking2")              -> True
+host_revenue(13, "B")               -> 0
+book(14, "A", "g3", 1, 3)           -> "booking4"  # 200
+host_revenue(15, "A")               -> 400
+
+=== L4 hidden: locked totals survive later price changes
+add_listing(1, "A", 100)
+book(2, "A", "g1", 1, 3)            -> "booking1"  # locks 200
+set_night_price(3, "A", 1, 1000)    -> True
+set_night_price(4, "A", 2, 1000)    -> True
+host_revenue(5, "A")                -> 200
+book(6, "A", "g2", 2, 4)            -> None
+book(7, "A", "g2", 3, 5)            -> "booking2"  # locks 200
+set_night_price(8, "A", 3, 1)       -> True
+host_revenue(9, "A")                -> 400
+cancel(10, "booking1")              -> True
+book(11, "A", "g3", 1, 3)           -> "booking3"  # locks 2000
+host_revenue(12, "A")               -> 2200
+quote(13, "A", 1, 5)                -> 2101
+
+=== L4 hidden: overrides replace earlier overrides, per listing and per night
+add_listing(1, "A", 100); add_listing(2, "B", 100)
+set_night_price(3, "A", 5, 300)     -> True
+set_night_price(4, "A", 5, 120)     -> True
+quote(5, "A", 5, 6)                 -> 120
+quote(6, "B", 5, 6)                 -> 100
+quote(7, "A", 4, 7)                 -> 320
+quote(8, "A", 6, 9)                 -> 300  # night 5 is outside the range
+quote(9, "A", 8, 6)                 -> None
+quote(10, "Z", 1, 2)                -> None
+set_night_price(11, "Z", 5, 1)      -> False
+add_listing(12, "A", 1)             -> False
+quote(13, "A", 1, 3)                -> 200  # the failed add kept the old price
+
+=== L4 hidden: search filters on every night's price, not the base price
+add_listing(1, "A", 500); add_listing(2, "B", 50); add_listing(3, "C", 100)
+set_night_price(4, "A", 2, 90); set_night_price(5, "A", 3, 100)
+set_night_price(6, "B", 3, 101)
+search_available(7, 2, 4, 100)      -> "A, C"  # A totals 190, C 200; B's night 3 costs 101
+search_available(8, 1, 3, 100)      -> "B, C"  # A's night 1 costs 500
+search_available(9, 2, 3, 100)      -> "B, A, C"
+search_available(10, 3, 4, 100)     -> "A, C"  # tie on 100 breaks by id
+
+=== L4 hidden: search sorts by total quote, then id
+add_listing(1, "D", 100); add_listing(2, "C", 100); add_listing(3, "B", 80); add_listing(4, "A", 120)
+set_night_price(5, "D", 1, 50)      -> True  # D: 50 + 100 = 150
+set_night_price(6, "C", 2, 60)      -> True  # C: 100 + 60 = 160
+set_night_price(7, "A", 1, 30)      -> True  # A: 30 + 120 = 150, B: 160
+search_available(8, 1, 3, 120)      -> "A, D, B, C"
+search_available(9, 1, 3, 100)      -> "D, B, C"  # A's night 2 costs 120
+book(10, "D", "g1", 2, 3)           -> "booking1"
+search_available(11, 1, 3, 200)     -> "A, B, C"
+search_available(12, 3, 5, 200)     -> "B, C, D, A"
+
+=== L4 hidden: search with holds and price overrides together
+add_listing(1, "A", 100); add_listing(2, "B", 100)
+hold(3, "A", "g1", 1, 3, 5)         -> "hold1"  # active while ts < 8
+set_night_price(4, "B", 2, 300)     -> True
+search_available(5, 1, 3, 300)      -> "B"
+search_available(6, 1, 3, 200)      -> ""
+search_available(8, 1, 3, 300)      -> "A, B"  # hold expired; A totals 200, B 400
+confirm_hold(9, "hold1")            -> None
+host_revenue(10, "A")               -> 0
+
+=== L4 hidden: a confirmed hold earns revenue until it is cancelled
+add_listing(1, "A", 100)
+hold(2, "A", "g1", 1, 4, 10)        -> "hold1"
+book(3, "A", "g2", 5, 6)            -> "booking1"  # 100
+set_night_price(4, "A", 2, 40)      -> True
+confirm_hold(5, "hold1")            -> "booking2"  # 100 + 40 + 100
+host_revenue(6, "A")                -> 340
+cancel(7, "booking2")               -> True
+host_revenue(8, "A")                -> 100
+hold(9, "A", "g3", 6, 8, 10)        -> "hold2"
+host_revenue(10, "A")               -> 100  # holds earn nothing
+
+=== L4 hidden: random sequence @gen(seed=401, n=300)
+
+=== L4 hidden: random sequence (long) @gen(seed=402, n=400)

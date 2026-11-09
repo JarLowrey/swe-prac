@@ -1,0 +1,3 @@
+- Store `files: dict[str, File]` (each `File` has `size` and `owner`) and `users: dict[str, User]` (each `User` has `capacity` and `used`) from Level 1, with `"admin"` as a real user at `math.inf` capacity. Level 3 then becomes additive instead of a rewrite.
+- Route every add and delete through two private helpers (`_add` / `_remove`) that update `used`. Merge and restore are then loops over those helpers.
+- Backups must be copies (for example a fresh `list` of `(name, size)` tuples), not references to live objects.

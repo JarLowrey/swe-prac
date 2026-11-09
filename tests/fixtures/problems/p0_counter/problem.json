@@ -1,0 +1,13 @@
+{
+  "id": "p0_counter",
+  "number": 0,
+  "title": "Counter (test fixture)",
+  "summary": "A tiny four-level counter used by the app's own tests.",
+  "class_name": "Counter",
+  "levels": [
+    {"level": 1, "title": "Increment", "methods": ["incr"]},
+    {"level": 2, "title": "Read", "methods": ["get"]},
+    {"level": 3, "title": "Reset", "methods": ["reset"]},
+    {"level": 4, "title": "Total", "methods": ["total"]}
+  ]
+}

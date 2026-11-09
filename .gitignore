@@ -1,0 +1,8 @@
+# Your attempts: history database and session code
+data/
+
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/

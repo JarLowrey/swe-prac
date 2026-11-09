@@ -1,0 +1,13 @@
+{
+  "id": "p5_worker_tracker",
+  "number": 5,
+  "title": "Worker time tracker",
+  "summary": "Track employees clocking in and out of an office and report the time they spend there.",
+  "class_name": "WorkerTracker",
+  "levels": [
+    {"level": 1, "title": "Workers and sessions", "methods": ["add_worker", "register", "get"]},
+    {"level": 2, "title": "Rankings", "methods": ["top_n_workers"]},
+    {"level": 3, "title": "Promotions and pay", "methods": ["promote", "calc_salary"]},
+    {"level": 4, "title": "Double time", "methods": ["set_double_time"]}
+  ]
+}

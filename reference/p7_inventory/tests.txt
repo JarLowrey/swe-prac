@@ -1,0 +1,526 @@
+# Tests for p7_inventory. The 'doc self-check' tests are the original self-check tests for
+# each level: never edit their expectations.
+
+
+=== L1 shown: doc self-check (Level 1)
+add_product(1, "A", 100)        -> True
+add_product(2, "A", 50)         -> False
+restock(3, "A", 5)             -> 5
+restock(4, "Z", 5)             -> None
+sell(5, "A", 3)                -> "order1"
+sell(6, "A", 3)                -> None  # only 2 left
+sell(7, "A", 0)                -> None
+sell(8, "A", 2)                -> "order2"
+restock(9, "A", 1)             -> 1
+
+=== L2 shown: doc self-check (Level 2)
+add_product(1, "A", 100); add_product(2, "B", 50); add_product(3, "C", 10)
+restock(4, "A", 5); restock(5, "B", 5)
+place_order(6, [("A", 2), ("B", 6)])   -> None  # B short, A untouched
+place_order(7, [("A", 2), ("A", 2)])   -> "order1"
+place_order(8, [("A", 2)])             -> None  # 4 combined, 1 left
+sell(9, "B", 4)                -> "order2"
+place_order(10, [("B", 1), ("C", 1)])  -> None  # C has no stock
+place_order(11, [])                    -> None
+top_sellers(12, 5)              -> "A(4), B(4)"
+top_sellers(13, 1)              -> "A(4)"
+
+=== L3 shown: doc self-check (Level 3)
+add_product(1, "A", 100); restock(2, "A", 10)
+sell(3, "A", 3)                -> "order1"  # paid 100 each
+set_price(4, "A", 80)           -> True
+sell(5, "A", 2)                -> "order2"  # paid 80 each
+return_items(6, "order1", "A", 2)  -> 200
+return_items(7, "order1", "A", 2)  -> None  # only 1 left to return
+return_items(8, "order2", "A", 1)  -> 80
+return_items(9, "order2", "B", 1)  -> None
+top_sellers(10, 1)              -> "A(2)"  # 5 sold, 3 returned
+sell(11, "A", 8)               -> "order3"  # returns restocked to 8
+set_price(12, "Q", 5)           -> False
+
+=== L4 shown: doc self-check (Level 4)
+add_product(1, "A", 100); restock(2, "A", 20)
+add_discount(3, "A", 10, 5, 10) -> True
+add_discount(4, "A", 25, 8, 12) -> True
+sell(5, "A", 1)                -> "order1"  # 90
+sell(8, "A", 1)                -> "order2"  # both apply, 25% wins: 75
+sell(12, "A", 1)               -> "order3"  # 100, window ended
+return_items(13, "order2", "A", 1)  -> 75
+revenue(14, 0, 13)             -> 265
+revenue(15, 0, 14)             -> 190  # refund at 13 now inside
+revenue(16, 6, 13)             -> 175
+add_discount(17, "Z", 5, 0, 1)  -> False
+add_discount(18, "A", 33, 20, 30) -> True
+sell(20, "A", 1)               -> "order4"  # floor(100 × 67 / 100) = 67
+revenue(21, 20, 21)            -> 67
+
+# ---------------------------------------------------------------------------------------
+# Level 1: stock and sales
+# ---------------------------------------------------------------------------------------
+
+=== L1 shown: products are independent and restock accumulates
+add_product(1, "apple", 50)      -> True
+add_product(2, "pear", 80)       -> True
+restock(3, "apple", 4)           -> 4
+restock(4, "apple", 6)           -> 10
+restock(5, "pear", 2)            -> 2
+sell(6, "pear", 2)               -> "order1"
+sell(7, "apple", 10)             -> "order2"
+sell(8, "apple", 1)              -> None      # sold out
+restock(9, "pear", 3)            -> 3
+
+=== L1 shown: invalid restocks and sales
+restock(1, "A", 5)               -> None      # no such product yet
+add_product(2, "A", 100)         -> True
+sell(3, "A", 1)                  -> None      # new products have 0 stock
+restock(4, "A", 0)               -> None
+restock(5, "A", -2)              -> None
+restock(6, "A", 2)               -> 2
+sell(7, "B", 1)                  -> None
+sell(8, "A", -1)                 -> None
+sell(9, "A", 2)                  -> "order1"
+
+=== L1 hidden: no kind of failed sale consumes an order id
+add_product(1, "A", 10); restock(2, "A", 3)
+sell(3, "Z", 1)                  -> None
+sell(4, "A", 0)                  -> None
+sell(5, "A", -5)                 -> None
+sell(6, "A", 4)                  -> None
+sell(7, "A", 1)                  -> "order1"
+sell(8, "A", 3)                  -> None
+sell(9, "A", 2)                  -> "order2"
+sell(10, "A", 1)                 -> None
+restock(11, "A", 1)              -> 1
+sell(12, "A", 1)                 -> "order3"
+
+=== L1 hidden: selling exactly the whole stock
+add_product(1, "A", 10); restock(2, "A", 7)
+sell(3, "A", 7)                  -> "order1"
+sell(4, "A", 1)                  -> None
+restock(5, "A", 1)               -> 1
+
+=== L1 hidden: duplicate add_product keeps the existing stock
+add_product(1, "A", 10); restock(2, "A", 5)
+add_product(3, "A", 20)          -> False
+restock(4, "A", 1)               -> 6
+sell(5, "A", 6)                  -> "order1"
+sell(6, "A", 1)                  -> None
+
+=== L1 hidden: one global order counter across products
+add_product(1, "A", 10); add_product(2, "B", 20); add_product(3, "C", 30)
+restock(4, "A", 2); restock(5, "B", 2); restock(6, "C", 2)
+sell(7, "B", 1)                  -> "order1"
+sell(8, "A", 1)                  -> "order2"
+sell(9, "C", 3)                  -> None
+sell(10, "C", 2)                 -> "order3"
+sell(11, "B", 1)                 -> "order4"
+sell(12, "B", 1)                 -> None
+sell(13, "A", 1)                 -> "order5"
+
+=== L1 hidden: invalid restocks leave stock unchanged
+add_product(1, "A", 10)
+restock(2, "A", 3)               -> 3
+restock(3, "A", 0)               -> None
+restock(4, "A", -3)              -> None
+restock(5, "B", 3)               -> None
+restock(6, "A", 1)               -> 4
+add_product(7, "B", 5)           -> True
+restock(8, "B", 3)               -> 3         # the failed restock at 5 left nothing behind
+
+=== L1 hidden: failed sales leave stock untouched
+add_product(1, "A", 10); restock(2, "A", 4)
+sell(3, "A", 5)                  -> None
+sell(4, "A", 0)                  -> None
+restock(5, "A", 1)               -> 5
+sell(6, "A", 5)                  -> "order1"
+restock(7, "A", 2)               -> 2
+
+=== L1 hidden: order ids past 9
+add_product(1, "A", 1); restock(2, "A", 20)
+sell(3, "A", 1) -> "order1"; sell(4, "A", 1) -> "order2"; sell(5, "A", 1) -> "order3"
+sell(6, "A", 1) -> "order4"; sell(7, "A", 1) -> "order5"; sell(8, "A", 1) -> "order6"
+sell(9, "A", 1) -> "order7"; sell(10, "A", 1) -> "order8"; sell(11, "A", 1) -> "order9"
+sell(12, "A", 1) -> "order10"; sell(13, "A", 1) -> "order11"
+restock(14, "A", 1)              -> 10
+
+=== L1 hidden: random stock and sales @gen(seed=101, n=250)
+
+=== L1 hidden: random stock and sales, longer @gen(seed=102, n=300)
+
+# ---------------------------------------------------------------------------------------
+# Level 2: multi-item orders
+# ---------------------------------------------------------------------------------------
+
+=== L2 shown: multi-product order and top sellers
+add_product(1, "A", 10); add_product(2, "B", 20); add_product(3, "C", 30)
+restock(4, "A", 5); restock(5, "B", 5); restock(6, "C", 5)
+top_sellers(7, 3)                -> ""
+place_order(8, [("A", 1), ("B", 3)]) -> "order1"
+sell(9, "C", 2)                  -> "order2"
+top_sellers(10, 3)               -> "B(3), C(2), A(1)"
+top_sellers(11, 2)               -> "B(3), C(2)"
+
+=== L2 shown: one invalid line rejects the whole order
+add_product(1, "A", 10); add_product(2, "B", 20)
+restock(3, "A", 5); restock(4, "B", 5)
+place_order(5, [("A", 1), ("Z", 1)]) -> None  # Z doesn't exist
+place_order(6, [("A", 1), ("B", 0)]) -> None  # qty must be > 0
+place_order(7, [("A", 5), ("B", 5)]) -> "order1"
+top_sellers(8, 5)                -> "A(5), B(5)"
+
+=== L2 hidden: a failing later line leaves earlier lines' stock untouched
+add_product(1, "A", 10); add_product(2, "B", 20); add_product(3, "C", 30)
+restock(4, "A", 4); restock(5, "B", 4); restock(6, "C", 1)
+place_order(7, [("A", 3), ("B", 2), ("C", 2)]) -> None
+restock(8, "A", 1)               -> 5
+restock(9, "B", 1)               -> 5
+restock(10, "C", 1)              -> 2
+top_sellers(11, 3)               -> ""
+place_order(12, [("A", 5), ("B", 5), ("C", 2)]) -> "order1"
+
+=== L2 hidden: duplicate skus exceed stock only when combined
+add_product(1, "A", 10); restock(2, "A", 3)
+place_order(3, [("A", 2), ("A", 2)])           -> None
+place_order(4, [("A", 1), ("A", 1), ("A", 2)]) -> None
+restock(5, "A", 1)               -> 4
+place_order(6, [("A", 2), ("A", 2)])           -> "order1"
+sell(7, "A", 1)                  -> None
+top_sellers(8, 1)                -> "A(4)"
+
+=== L2 hidden: duplicates combine when interleaved with other skus
+add_product(1, "A", 10); add_product(2, "B", 10)
+restock(3, "A", 2); restock(4, "B", 2)
+place_order(5, [("A", 1), ("B", 1), ("A", 2)])           -> None
+place_order(6, [("B", 1), ("A", 1), ("B", 1), ("A", 1)]) -> "order1"
+top_sellers(7, 2)                -> "A(2), B(2)"
+restock(8, "A", 1)               -> 1
+restock(9, "B", 3)               -> 3
+
+=== L2 hidden: failed orders don't consume ids from the shared counter
+add_product(1, "A", 10); add_product(2, "B", 10)
+restock(3, "A", 10); restock(4, "B", 1)
+sell(5, "A", 1)                  -> "order1"
+place_order(6, [])               -> None
+place_order(7, [("A", 1), ("B", 2)]) -> None
+place_order(8, [("A", 1), ("Q", 1)]) -> None
+place_order(9, [("A", -1)])      -> None
+place_order(10, [("A", 2), ("B", 1)]) -> "order2"
+sell(11, "B", 1)                 -> None
+sell(12, "A", 1)                 -> "order3"
+place_order(13, [("A", 1)])      -> "order4"
+
+=== L2 hidden: a line with qty <= 0 is invalid even if the combined qty is positive
+add_product(1, "A", 10); restock(2, "A", 5)
+place_order(3, [("A", 3), ("A", -1)]) -> None
+place_order(4, [("A", 0), ("A", 1)])  -> None
+place_order(5, [("Z", 1), ("A", 1)])  -> None
+restock(6, "A", 1)               -> 6
+top_sellers(7, 1)                -> ""
+
+=== L2 hidden: top_sellers ties break by sku and n limits the list
+add_product(1, "D", 1); add_product(2, "B", 1); add_product(3, "C", 1); add_product(4, "A", 1); add_product(5, "E", 1)
+restock(6, "A", 9); restock(7, "B", 9); restock(8, "C", 9); restock(9, "D", 9); restock(10, "E", 9)
+sell(11, "D", 2) -> "order1"; sell(12, "B", 2) -> "order2"; sell(13, "C", 5) -> "order3"; sell(14, "A", 1) -> "order4"
+top_sellers(15, 10)              -> "C(5), B(2), D(2), A(1)"
+top_sellers(16, 3)               -> "C(5), B(2), D(2)"
+top_sellers(17, 2)               -> "C(5), B(2)"
+place_order(18, [("A", 1), ("E", 2)]) -> "order5"
+top_sellers(19, 5)               -> "C(5), A(2), B(2), D(2), E(2)"
+
+=== L2 hidden: longer skus tie-break as strings
+add_product(1, "banana", 5); add_product(2, "apple", 5); add_product(3, "apricot", 5)
+restock(4, "banana", 20); restock(5, "apple", 20); restock(6, "apricot", 20)
+place_order(7, [("banana", 12), ("apple", 3)])  -> "order1"
+place_order(8, [("apricot", 12), ("apple", 9)]) -> "order2"
+top_sellers(9, 3)                -> "apple(12), apricot(12), banana(12)"
+sell(10, "banana", 1)            -> "order3"
+top_sellers(11, 2)               -> "banana(13), apple(12)"
+
+=== L2 hidden: top_sellers counts units, not orders
+add_product(1, "A", 1); add_product(2, "B", 1); add_product(3, "C", 1)
+restock(4, "A", 10); restock(5, "B", 10)
+sell(6, "A", 1) -> "order1"; sell(7, "A", 1) -> "order2"; sell(8, "A", 1) -> "order3"
+sell(9, "B", 4)                  -> "order4"
+top_sellers(10, 3)               -> "B(4), A(3)"
+
+=== L2 hidden: combined quantity exactly equal to stock succeeds
+add_product(1, "A", 1); add_product(2, "B", 1)
+restock(3, "A", 4); restock(4, "B", 1)
+place_order(5, [("A", 1), ("B", 1), ("A", 3)]) -> "order1"
+sell(6, "A", 1)                  -> None
+sell(7, "B", 1)                  -> None
+top_sellers(8, 5)                -> "A(4), B(1)"
+
+=== L2 hidden: random orders @gen(seed=201, n=300)
+
+=== L2 hidden: random orders, second seed @gen(seed=202, n=300)
+
+# ---------------------------------------------------------------------------------------
+# Level 3: price changes and returns
+# ---------------------------------------------------------------------------------------
+
+=== L3 shown: refunds use the price paid
+add_product(1, "A", 100); restock(2, "A", 5)
+sell(3, "A", 2)                  -> "order1"
+set_price(4, "A", 150)           -> True
+return_items(5, "order1", "A", 1) -> 100
+sell(6, "A", 1)                  -> "order2"
+return_items(7, "order2", "A", 1) -> 150
+return_items(8, "order3", "A", 1) -> None     # no such order
+
+=== L3 shown: returns restock and reduce top sellers
+add_product(1, "A", 10); add_product(2, "B", 20)
+restock(3, "A", 5); restock(4, "B", 5)
+place_order(5, [("A", 3), ("B", 2)]) -> "order1"
+top_sellers(6, 2)                -> "A(3), B(2)"
+return_items(7, "order1", "A", 2) -> 20
+top_sellers(8, 2)                -> "B(2), A(1)"
+restock(9, "A", 1)               -> 5
+
+=== L3 hidden: refunds use the old price after several price changes
+add_product(1, "A", 100); restock(2, "A", 10)
+sell(3, "A", 2)                  -> "order1"
+set_price(4, "A", 120)           -> True
+sell(5, "A", 3)                  -> "order2"
+set_price(6, "A", 90)            -> True
+set_price(7, "A", 95)            -> True
+return_items(8, "order1", "A", 2) -> 200
+return_items(9, "order2", "A", 3) -> 360
+sell(10, "A", 1)                 -> "order3"
+return_items(11, "order3", "A", 1) -> 95
+
+=== L3 hidden: partial returns until the order is exhausted
+add_product(1, "A", 30); restock(2, "A", 6)
+sell(3, "A", 5)                  -> "order1"
+return_items(4, "order1", "A", 2) -> 60
+return_items(5, "order1", "A", 4) -> None     # only 3 left
+return_items(6, "order1", "A", 3) -> 90       # exactly what's left
+return_items(7, "order1", "A", 1) -> None
+return_items(8, "order1", "A", 0) -> None
+restock(9, "A", 1)               -> 7
+top_sellers(10, 1)               -> ""
+
+=== L3 hidden: a full return drops the product from top_sellers
+add_product(1, "A", 10); add_product(2, "B", 10); add_product(3, "C", 10)
+restock(4, "A", 5); restock(5, "B", 5); restock(6, "C", 5)
+sell(7, "A", 2)                  -> "order1"
+sell(8, "B", 3)                  -> "order2"
+sell(9, "C", 1)                  -> "order3"
+return_items(10, "order2", "B", 3) -> 30
+top_sellers(11, 3)               -> "A(2), C(1)"
+return_items(12, "order1", "A", 1) -> 10
+top_sellers(13, 3)               -> "A(1), C(1)"
+return_items(14, "order3", "C", 1) -> 10
+return_items(15, "order1", "A", 1) -> 10
+top_sellers(16, 3)               -> ""
+
+=== L3 hidden: invalid returns change nothing
+add_product(1, "A", 10); add_product(2, "B", 20)
+restock(3, "A", 5); restock(4, "B", 5)
+sell(5, "A", 2)                  -> "order1"
+return_items(6, "order2", "A", 1)  -> None    # no such order
+return_items(7, "order1", "B", 1)  -> None    # B isn't in the order
+return_items(8, "order1", "A", 0)  -> None
+return_items(9, "order1", "A", -1) -> None
+return_items(10, "order1", "A", 3) -> None
+return_items(11, "order0", "A", 1) -> None
+return_items(12, "order1", "Z", 1) -> None
+restock(13, "A", 1)              -> 4
+top_sellers(14, 2)               -> "A(2)"
+return_items(15, "order1", "A", 2) -> 20
+
+=== L3 hidden: returns don't consume order ids
+add_product(1, "A", 10); restock(2, "A", 5)
+sell(3, "A", 2)                  -> "order1"
+return_items(4, "order1", "A", 2) -> 20
+sell(5, "A", 6)                  -> None
+sell(6, "A", 5)                  -> "order2"
+return_items(7, "order1", "A", 1) -> None
+return_items(8, "order2", "A", 5) -> 50
+
+=== L3 hidden: multi-sku order with duplicate lines
+add_product(1, "A", 100); add_product(2, "B", 7)
+restock(3, "A", 5); restock(4, "B", 5)
+place_order(5, [("A", 1), ("B", 2), ("A", 1)]) -> "order1"
+set_price(6, "B", 1000)          -> True
+return_items(7, "order1", "A", 2) -> 200      # both A lines together
+return_items(8, "order1", "B", 3) -> None
+return_items(9, "order1", "B", 2) -> 14
+return_items(10, "order1", "A", 1) -> None
+top_sellers(11, 2)               -> ""
+
+=== L3 hidden: failed set_price and add_product don't change prices
+add_product(1, "A", 100); restock(2, "A", 3)
+set_price(3, "B", 50)            -> False
+add_product(4, "A", 1)           -> False
+sell(5, "A", 1)                  -> "order1"
+return_items(6, "order1", "A", 1) -> 100
+add_product(7, "B", 40)          -> True
+set_price(8, "B", 45)            -> True
+restock(9, "B", 1)               -> 1
+sell(10, "B", 1)                 -> "order2"
+return_items(11, "order2", "B", 1) -> 45
+
+=== L3 hidden: returned stock is resold and returned again
+add_product(1, "A", 10); restock(2, "A", 2)
+sell(3, "A", 2)                  -> "order1"
+sell(4, "A", 1)                  -> None
+return_items(5, "order1", "A", 1) -> 10
+set_price(6, "A", 12)            -> True
+sell(7, "A", 1)                  -> "order2"
+top_sellers(8, 1)                -> "A(2)"
+return_items(9, "order2", "A", 1) -> 12
+return_items(10, "order1", "A", 1) -> 10
+top_sellers(11, 1)               -> ""
+place_order(12, [("A", 2)])      -> "order3"
+top_sellers(13, 1)               -> "A(2)"
+
+=== L3 hidden: top_sellers ties after returns
+add_product(1, "B", 5); add_product(2, "A", 5); add_product(3, "C", 5)
+restock(4, "A", 10); restock(5, "B", 10); restock(6, "C", 10)
+place_order(7, [("A", 4), ("B", 3), ("C", 5)]) -> "order1"
+top_sellers(8, 3)                -> "C(5), A(4), B(3)"
+return_items(9, "order1", "A", 1)  -> 5
+return_items(10, "order1", "C", 2) -> 10
+top_sellers(11, 3)               -> "A(3), B(3), C(3)"
+top_sellers(12, 2)               -> "A(3), B(3)"
+
+=== L3 hidden: random returns and price changes @gen(seed=301, n=300)
+
+=== L3 hidden: random returns and price changes, longer @gen(seed=302, n=350)
+
+# ---------------------------------------------------------------------------------------
+# Level 4: discounts and revenue
+# ---------------------------------------------------------------------------------------
+
+=== L4 shown: a discount window and a refund at the discounted price
+add_product(1, "A", 200); restock(2, "A", 10)
+add_discount(3, "A", 50, 5, 8)   -> True
+sell(4, "A", 1)                  -> "order1"  # 200
+sell(5, "A", 2)                  -> "order2"  # 100 each
+sell(8, "A", 1)                  -> "order3"  # 200, window ended
+return_items(9, "order2", "A", 1) -> 100
+revenue(10, 0, 10)               -> 500
+
+=== L4 shown: revenue windows are half-open
+add_product(1, "A", 10); restock(2, "A", 10)
+sell(3, "A", 1)                  -> "order1"
+sell(5, "A", 2)                  -> "order2"
+sell(7, "A", 3)                  -> "order3"
+revenue(8, 3, 5)                 -> 10
+revenue(9, 3, 6)                 -> 30
+revenue(10, 5, 8)                -> 50
+revenue(11, 0, 3)                -> 0
+
+=== L4 hidden: overlapping discounts, the largest wins whatever the order added
+add_product(1, "A", 100); restock(2, "A", 10)
+add_discount(3, "A", 40, 5, 20)  -> True
+add_discount(4, "A", 10, 5, 20)  -> True
+add_discount(5, "A", 60, 14, 16) -> True
+sell(6, "A", 1)                  -> "order1"  # 40% beats 10%: 60
+sell(15, "A", 1)                 -> "order2"  # 60% wins: 40
+sell(16, "A", 1)                 -> "order3"  # 60% window ended: 60
+sell(20, "A", 1)                 -> "order4"  # no discount: 100
+return_items(21, "order2", "A", 1) -> 40
+revenue(22, 0, 21)               -> 260
+
+=== L4 hidden: discount window starts inclusive and ends exclusive
+add_product(1, "A", 80); restock(2, "A", 10)
+add_discount(3, "A", 25, 5, 7)   -> True
+sell(4, "A", 1)                  -> "order1"  # 80
+sell(5, "A", 1)                  -> "order2"  # 60
+sell(6, "A", 1)                  -> "order3"  # 60
+sell(7, "A", 1)                  -> "order4"  # 80
+revenue(8, 4, 5)                 -> 80
+revenue(9, 5, 7)                 -> 120
+revenue(10, 7, 8)                -> 80
+return_items(11, "order4", "A", 1) -> 80
+return_items(12, "order2", "A", 1) -> 60
+
+=== L4 hidden: a window can exclude a sale but include its refund
+add_product(1, "A", 100); add_product(2, "B", 30)
+restock(3, "A", 5); restock(4, "B", 5)
+place_order(5, [("A", 2), ("B", 1)]) -> "order1"  # 230
+sell(10, "B", 2)                 -> "order2"      # 60
+return_items(15, "order1", "A", 1) -> 100
+revenue(16, 6, 16)               -> -40
+revenue(17, 10, 15)              -> 60
+revenue(18, 11, 16)              -> -100
+revenue(19, 5, 6)                -> 230
+revenue(20, 0, 100)              -> 190
+
+=== L4 hidden: refunds at the discounted price after the window ends and the price changes
+add_product(1, "A", 120); restock(2, "A", 10)
+add_discount(3, "A", 25, 4, 6)   -> True
+sell(4, "A", 2)                  -> "order1"  # 90 each
+set_price(5, "A", 200)           -> True
+sell(6, "A", 1)                  -> "order2"  # 200
+return_items(7, "order1", "A", 1) -> 90
+return_items(8, "order2", "A", 1) -> 200
+return_items(9, "order1", "A", 1) -> 90
+revenue(10, 0, 10)               -> 0
+revenue(11, 4, 7)                -> 380
+revenue(12, 7, 9)                -> -290
+
+=== L4 hidden: a discount applies to the price current at the sale
+add_product(1, "A", 100); restock(2, "A", 10)
+add_discount(3, "A", 10, 3, 50)  -> True
+sell(4, "A", 1)                  -> "order1"  # 90
+set_price(5, "A", 97)            -> True
+sell(6, "A", 1)                  -> "order2"  # 97 * 90 // 100 = 87
+add_discount(7, "A", 25, 8, 50)  -> True
+sell(8, "A", 1)                  -> "order3"  # 97 * 75 // 100 = 72
+return_items(9, "order2", "A", 1) -> 87
+revenue(10, 0, 10)               -> 162
+
+=== L4 hidden: discounts are per product
+add_product(1, "A", 100); add_product(2, "B", 100)
+restock(3, "A", 5); restock(4, "B", 5)
+add_discount(5, "A", 50, 5, 100) -> True
+add_discount(6, "Z", 50, 5, 100) -> False
+place_order(7, [("A", 1), ("B", 1)]) -> "order1"  # 50 + 100
+return_items(8, "order1", "B", 1) -> 100
+return_items(9, "order1", "A", 1) -> 50
+revenue(10, 7, 8)                -> 150
+revenue(11, 8, 10)               -> -150
+
+=== L4 hidden: discount math is integer floor
+add_product(1, "A", 100); add_product(2, "B", 150); add_product(3, "C", 97); add_product(4, "D", 200)
+restock(5, "A", 5); restock(6, "B", 5); restock(7, "C", 5); restock(8, "D", 5)
+add_discount(9, "A", 34, 13, 30)  -> True
+add_discount(10, "B", 32, 13, 30) -> True
+add_discount(11, "C", 25, 13, 30) -> True
+add_discount(12, "D", 90, 13, 30) -> True
+sell(13, "A", 1)                 -> "order1"  # 100 * 66 // 100 = 66
+sell(14, "B", 1)                 -> "order2"  # 150 * 68 // 100 = 102
+sell(15, "C", 1)                 -> "order3"  # 97 * 75 // 100 = 72
+sell(16, "D", 1)                 -> "order4"  # 200 * 10 // 100 = 20
+return_items(17, "order1", "A", 1) -> 66
+return_items(18, "order2", "B", 1) -> 102
+return_items(19, "order3", "C", 1) -> 72
+return_items(20, "order4", "D", 1) -> 20
+revenue(21, 13, 17)              -> 260
+revenue(22, 13, 21)              -> 0
+
+=== L4 hidden: failed orders and returns add no revenue
+add_product(1, "A", 50); restock(2, "A", 2)
+place_order(3, [("A", 1), ("A", 2)]) -> None
+sell(4, "A", 2)                  -> "order1"
+return_items(5, "order1", "A", 3) -> None
+sell(6, "A", 1)                  -> None
+revenue(7, 0, 7)                 -> 100
+
+=== L4 hidden: multi-line order with a discount on one sku
+add_product(1, "A", 30); add_product(2, "B", 45)
+restock(3, "A", 10); restock(4, "B", 10)
+add_discount(5, "B", 20, 6, 9)   -> True
+place_order(6, [("A", 2), ("B", 1), ("B", 2)]) -> "order1"  # 60 + 3 * 36 = 168
+place_order(9, [("B", 1), ("A", 1)])           -> "order2"  # 45 + 30 = 75
+return_items(10, "order1", "B", 2) -> 72
+revenue(11, 6, 7)                -> 168
+revenue(12, 6, 10)               -> 243
+revenue(13, 6, 11)               -> 171
+
+=== L4 hidden: random discounts and revenue @gen(seed=401, n=400)
+
+=== L4 hidden: random discounts and revenue, second seed @gen(seed=402, n=300)

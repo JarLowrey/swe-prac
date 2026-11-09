@@ -1,0 +1,538 @@
+# Tests for p1_file_store. The 'doc self-check' tests are the original self-check tests for
+# each level: never edit their expectations.
+
+
+=== L1 shown: doc self-check (Level 1)
+add_file(1, "/a.txt", 10)        -> True
+add_file(2, "/a.txt", 5)         -> False
+get_file_size(3, "/a.txt")        -> 10
+get_file_size(4, "/b.txt")        -> None
+delete_file(5, "/a.txt")         -> 10
+delete_file(6, "/a.txt")         -> None
+
+=== L2 shown: doc self-check (Level 2)
+add_file(1, "/docs/a", 30); add_file(2, "/docs/b", 50)
+add_file(3, "/docs/c", 50); add_file(4, "/img/x", 100)
+get_n_largest(5, "/docs/", 2)     -> "/docs/b(50), /docs/c(50)"
+get_n_largest(6, "/docs/", 10)    -> "/docs/b(50), /docs/c(50), /docs/a(30)"
+get_n_largest(7, "/vid/", 3)      -> ""
+
+=== L3 shown: doc self-check (Level 3)
+add_user(1, "u1", 100)           -> True
+add_user(2, "u1", 50)            -> False
+add_file_by(3, "u1", "/u1/a", 60) -> 40
+add_file_by(4, "u1", "/u1/b", 50) -> None  # over capacity
+add_user(5, "u2", 80)            -> True
+add_file_by(6, "u2", "/u2/a", 30) -> 50
+merge_user(7, "u1", "u2")        -> 90  # capacity 180, used 90
+add_file_by(8, "u2", "/x", 1)     -> None  # u2 is gone
+delete_file(9, "/u2/a")          -> 30  # frees u1's capacity
+add_file_by(10, "u1", "/u1/b", 50) -> 70
+add_file(11, "/u1/a", 5)         -> False
+
+=== L4 shown: doc self-check (Level 4)
+add_user(1, "u1", 100)
+add_file_by(2, "u1", "/a", 10)    -> 90
+add_file_by(3, "u1", "/b", 20)    -> 70
+backup_user(4, "u1")             -> 2
+delete_file(5, "/a")             -> 10
+add_file_by(6, "u1", "/c", 30)    -> 50
+add_file(7, "/a", 99)            -> True  # admin now owns /a
+restore_user(8, "u1")            -> 1  # /a skipped, /b restored, /c removed
+get_file_size(9, "/b")            -> 20
+get_file_size(10, "/c")           -> None
+get_file_size(11, "/a")           -> 99
+add_user(12, "u2", 10)
+restore_user(13, "u2")           -> 0
+restore_user(14, "ghost")        -> None
+
+# ---------------------------------------------------------------------------------------------
+# Level 1
+# ---------------------------------------------------------------------------------------------
+
+=== L1 shown: a deleted name can be reused
+add_file(1, "/x", 5)             -> True
+delete_file(2, "/x")             -> 5
+get_file_size(3, "/x")           -> None
+add_file(4, "/x", 7)             -> True
+get_file_size(5, "/x")           -> 7
+
+=== L1 shown: a rejected add keeps the original file
+add_file(1, "/f", 3)             -> True
+add_file(2, "/f", 9)             -> False
+get_file_size(3, "/f")           -> 3
+delete_file(4, "/f")             -> 3
+
+=== L1 hidden: empty store
+get_file_size(1, "/a")           -> None
+delete_file(2, "/a")             -> None
+add_file(3, "/a", 4)             -> True
+get_file_size(4, "/a")           -> 4
+
+=== L1 hidden: names match exactly
+add_file(1, "/a.txt", 10)        -> True
+add_file(2, "/a", 1)             -> True
+add_file(3, "/a.txt/b", 2)       -> True
+get_file_size(4, "/a.tx")        -> None
+get_file_size(5, "/A.txt")       -> None
+get_file_size(6, "/a.txt")       -> 10
+delete_file(7, "/a")             -> 1
+get_file_size(8, "/a.txt")       -> 10
+get_file_size(9, "/a.txt/b")     -> 2
+delete_file(10, "/A.txt")        -> None
+
+=== L1 hidden: failed adds leave sizes untouched
+add_file(1, "/f", 3)             -> True
+add_file(2, "/f", 3)             -> False  # same size is still a duplicate
+add_file(3, "/f", 100)           -> False
+add_file(4, "/g", 8)             -> True
+add_file(5, "/g", 1)             -> False
+get_file_size(6, "/f")           -> 3
+get_file_size(7, "/g")           -> 8
+delete_file(8, "/f")             -> 3
+delete_file(9, "/g")             -> 8
+get_file_size(10, "/f")          -> None
+
+=== L1 hidden: delete twice, then re-add with a new size
+add_file(1, "/d", 20)            -> True
+delete_file(2, "/d")             -> 20
+delete_file(3, "/d")             -> None
+add_file(4, "/d", 30)            -> True
+add_file(5, "/d", 40)            -> False
+delete_file(6, "/d")             -> 30
+get_file_size(7, "/d")           -> None
+
+=== L1 hidden: deleting one file leaves the others
+add_file(1, "/a", 1)             -> True
+add_file(2, "/b", 2)             -> True
+add_file(3, "/c", 3)             -> True
+delete_file(4, "/b")             -> 2
+get_file_size(5, "/a")           -> 1
+get_file_size(6, "/b")           -> None
+get_file_size(7, "/c")           -> 3
+add_file(8, "/b", 22)            -> True
+get_file_size(9, "/b")           -> 22
+
+=== L1 hidden: large sizes and sparse timestamps
+add_file(5, "/big", 1000000000)        -> True
+add_file(1000, "/big2", 999999999)     -> True
+get_file_size(1000000, "/big")         -> 1000000000
+delete_file(2000000, "/big2")          -> 999999999
+get_file_size(2000001, "/big2")        -> None
+
+=== L1 hidden: random operations @gen(seed=11, n=200)
+
+=== L1 hidden: random operations, second seed @gen(seed=12, n=150)
+
+# ---------------------------------------------------------------------------------------------
+# Level 2
+# ---------------------------------------------------------------------------------------------
+
+=== L2 shown: equal sizes sort by name
+add_file(1, "/b", 5)             -> True
+add_file(2, "/a", 5)             -> True
+add_file(3, "/c", 7)             -> True
+get_n_largest(4, "/", 3)         -> "/c(7), /a(5), /b(5)"
+get_n_largest(5, "/", 2)         -> "/c(7), /a(5)"
+
+=== L2 shown: the prefix is a plain string prefix
+add_file(1, "/docs/a", 1)        -> True
+add_file(2, "/docsx", 2)         -> True
+add_file(3, "/doc", 3)           -> True
+get_n_largest(4, "/docs", 5)     -> "/docsx(2), /docs/a(1)"
+get_n_largest(5, "/docs/", 5)    -> "/docs/a(1)"
+
+=== L2 hidden: ties do not follow insertion order
+add_file(1, "/z", 10)            -> True
+add_file(2, "/y", 10)            -> True
+add_file(3, "/x", 10)            -> True
+add_file(4, "/w", 20)            -> True
+get_n_largest(5, "/", 3)         -> "/w(20), /x(10), /y(10)"
+get_n_largest(6, "/", 4)         -> "/w(20), /x(10), /y(10), /z(10)"
+get_n_largest(7, "/", 1)         -> "/w(20)"
+
+=== L2 hidden: empty prefix and n larger than the matches
+add_file(1, "b", 2)              -> True
+add_file(2, "/a", 3)             -> True
+add_file(3, "c/d", 1)            -> True
+get_n_largest(4, "", 100)        -> "/a(3), b(2), c/d(1)"
+get_n_largest(5, "", 3)          -> "/a(3), b(2), c/d(1)"
+get_n_largest(6, "", 2)          -> "/a(3), b(2)"
+
+=== L2 hidden: sizes compare as numbers
+add_file(1, "/a", 9)             -> True
+add_file(2, "/b", 100)           -> True
+add_file(3, "/c", 10)            -> True
+add_file(4, "/d", 1000)          -> True
+get_n_largest(5, "/", 4)         -> "/d(1000), /b(100), /c(10), /a(9)"
+
+=== L2 hidden: names compare as strings on ties
+add_file(1, "/f9", 1)            -> True
+add_file(2, "/f10", 1)           -> True
+add_file(3, "/f1", 1)            -> True
+get_n_largest(4, "/f", 3)        -> "/f1(1), /f10(1), /f9(1)"
+
+=== L2 hidden: a prefix can be a whole name
+add_file(1, "/a", 1)             -> True
+add_file(2, "/ab", 2)            -> True
+add_file(3, "/abc", 2)           -> True
+get_n_largest(4, "/a", 5)        -> "/ab(2), /abc(2), /a(1)"
+get_n_largest(5, "/ab", 5)       -> "/ab(2), /abc(2)"
+get_n_largest(6, "/abc", 5)      -> "/abc(2)"
+get_n_largest(7, "/abcd", 5)     -> ""
+get_n_largest(8, "a", 5)         -> ""
+
+=== L2 hidden: deletes and re-adds are reflected
+add_file(1, "/p/a", 50)          -> True
+add_file(2, "/p/b", 40)          -> True
+add_file(3, "/p/c", 30)          -> True
+delete_file(4, "/p/a")           -> 50
+get_n_largest(5, "/p/", 2)       -> "/p/b(40), /p/c(30)"
+add_file(6, "/p/a", 35)          -> True
+get_n_largest(7, "/p/", 2)       -> "/p/b(40), /p/a(35)"
+delete_file(8, "/p/b")           -> 40
+delete_file(9, "/p/c")           -> 30
+get_n_largest(10, "/p/", 3)      -> "/p/a(35)"
+delete_file(11, "/p/a")          -> 35
+get_n_largest(12, "/p/", 3)      -> ""
+
+=== L2 hidden: empty store and failed adds
+get_n_largest(1, "", 5)          -> ""
+add_file(2, "/a", 5)             -> True
+add_file(3, "/a", 50)            -> False
+get_n_largest(4, "", 5)          -> "/a(5)"
+get_n_largest(5, "/a", 1)        -> "/a(5)"
+
+=== L2 hidden: random operations @gen(seed=21, n=300)
+
+=== L2 hidden: random operations, second seed @gen(seed=22, n=200)
+
+# ---------------------------------------------------------------------------------------------
+# Level 3
+# ---------------------------------------------------------------------------------------------
+
+=== L3 shown: names are shared by admin and every user
+add_user(1, "u1", 100)           -> True
+add_file(2, "/x", 10)            -> True
+add_file_by(3, "u1", "/x", 5)    -> None  # admin owns /x
+add_file_by(4, "ghost", "/y", 5) -> None  # no such user
+add_file_by(5, "u1", "/y", 5)    -> 95
+add_file(6, "/y", 1)             -> False  # u1 owns /y
+get_file_size(7, "/y")           -> 5
+
+=== L3 shown: merge failures
+add_user(1, "a", 10)             -> True
+add_user(2, "b", 20)             -> True
+merge_user(3, "a", "a")          -> None
+merge_user(4, "a", "zz")         -> None
+merge_user(5, "zz", "b")         -> None
+merge_user(6, "a", "b")          -> 30
+merge_user(7, "a", "b")          -> None  # b is gone
+
+=== L3 hidden: a file may fill the capacity exactly
+add_user(1, "u", 100)            -> True
+add_file_by(2, "u", "/a", 60)    -> 40
+add_file_by(3, "u", "/b", 41)    -> None
+add_file_by(4, "u", "/b", 40)    -> 0
+add_file_by(5, "u", "/c", 1)     -> None
+get_file_size(6, "/b")           -> 40
+get_file_size(7, "/c")           -> None
+add_user(8, "v", 5)              -> True
+add_file_by(9, "v", "/v", 5)     -> 0
+
+=== L3 hidden: failed add_file_by leaves state untouched
+add_user(1, "u1", 100)           -> True
+add_user(2, "u2", 100)           -> True
+add_file_by(3, "u1", "/a", 30)   -> 70
+add_file_by(4, "u2", "/a", 50)   -> None  # name taken by u1
+get_file_size(5, "/a")           -> 30
+add_file_by(6, "u2", "/big", 101) -> None  # over capacity
+get_file_size(7, "/big")         -> None
+add_file_by(8, "ghost", "/g", 1) -> None
+get_file_size(9, "/g")           -> None
+add_file_by(10, "u2", "/b", 100) -> 0  # nothing was charged to u2
+delete_file(11, "/a")            -> 30  # still u1's file
+add_file_by(12, "u1", "/c", 100) -> 0
+add_file(13, "/g", 1)            -> True
+
+=== L3 hidden: a duplicate add_user keeps the first capacity
+add_user(1, "u", 10)             -> True
+add_user(2, "u", 1000)           -> False
+add_file_by(3, "u", "/a", 11)    -> None
+add_file_by(4, "u", "/a", 10)    -> 0
+
+=== L3 hidden: failed merges leave both users intact
+add_user(1, "u1", 50)            -> True
+add_user(2, "u2", 30)            -> True
+add_file_by(3, "u2", "/s", 10)   -> 20
+merge_user(4, "u2", "u2")        -> None
+add_file_by(5, "u2", "/t", 20)   -> 0  # capacity not doubled, u2 not deleted
+add_file_by(6, "u2", "/t2", 1)   -> None
+merge_user(7, "ghost", "u2")     -> None
+merge_user(8, "u2", "ghost")     -> None
+delete_file(9, "/t")             -> 20
+add_file_by(10, "u2", "/t", 5)   -> 15
+merge_user(11, "u1", "u2")       -> 65  # capacity 80, used 15
+get_file_size(12, "/s")          -> 10
+get_file_size(13, "/t")          -> 5
+
+=== L3 hidden: delete after a merge frees the target
+add_user(1, "a", 100)            -> True
+add_user(2, "b", 50)             -> True
+add_file_by(3, "b", "/b1", 40)   -> 10
+add_file_by(4, "a", "/a1", 70)   -> 30
+merge_user(5, "a", "b")          -> 40  # capacity 150, used 110
+delete_file(6, "/b1")            -> 40
+add_file_by(7, "a", "/n", 80)    -> 0
+add_file_by(8, "a", "/n2", 1)    -> None
+delete_file(9, "/a1")            -> 70
+add_file_by(10, "a", "/n2", 70)  -> 0
+
+=== L3 hidden: re-creating a merged-away user id
+add_user(1, "u1", 10)            -> True
+add_user(2, "u2", 20)            -> True
+add_file_by(3, "u2", "/x", 15)   -> 5
+merge_user(4, "u1", "u2")        -> 15
+add_file_by(5, "u2", "/y", 1)    -> None
+merge_user(6, "u1", "u2")        -> None
+add_user(7, "u2", 7)             -> True  # a brand-new user with no files
+add_file_by(8, "u2", "/y", 7)    -> 0
+delete_file(9, "/x")             -> 15  # frees u1, not the new u2
+add_file_by(10, "u2", "/w", 1)   -> None
+add_file_by(11, "u1", "/z", 30)  -> 0
+merge_user(12, "u1", "u2")       -> 0  # capacity 37, used 37
+get_n_largest(13, "/", 5)        -> "/z(30), /y(7)"
+
+=== L3 hidden: chained merges
+add_user(1, "a", 10)             -> True
+add_user(2, "b", 20)             -> True
+add_user(3, "c", 30)             -> True
+add_file_by(4, "c", "/c", 25)    -> 5
+add_file_by(5, "b", "/b", 5)     -> 15
+merge_user(6, "b", "c")          -> 20  # capacity 50, used 30
+merge_user(7, "a", "b")          -> 30  # capacity 60, used 30
+add_file_by(8, "b", "/x", 1)     -> None
+add_file_by(9, "c", "/x", 1)     -> None
+delete_file(10, "/c")            -> 25  # now a's file
+add_file_by(11, "a", "/x", 55)   -> 0
+add_user(12, "c", 1)             -> True
+add_file_by(13, "c", "/b", 1)    -> None  # a still owns /b
+delete_file(14, "/b")            -> 5
+add_file_by(15, "c", "/b", 1)    -> 0
+add_file_by(16, "a", "/y", 5)    -> 0
+
+=== L3 hidden: admin and user files share get_n_largest
+add_user(1, "u", 50)             -> True
+add_file(2, "/m/admin", 20)      -> True
+add_file_by(3, "u", "/m/user", 20) -> 30
+add_file_by(4, "u", "/m/big", 30) -> 0
+add_file(5, "/m/huge", 1000000)  -> True  # admin capacity is unlimited
+get_n_largest(6, "/m/", 10)      -> "/m/huge(1000000), /m/big(30), /m/admin(20), /m/user(20)"
+add_user(7, "v", 10)             -> True
+merge_user(8, "v", "u")          -> 10
+get_n_largest(9, "/m/", 2)       -> "/m/huge(1000000), /m/big(30)"
+delete_file(10, "/m/big")        -> 30
+add_file_by(11, "v", "/m/new", 40) -> 0
+get_n_largest(12, "/m/", 10)     -> "/m/huge(1000000), /m/new(40), /m/admin(20), /m/user(20)"
+delete_file(13, "/m/admin")      -> 20
+
+=== L3 hidden: merging users without files
+add_user(1, "a", 10)             -> True
+add_user(2, "b", 15)             -> True
+merge_user(3, "a", "b")          -> 25
+add_user(4, "c", 5)              -> True
+add_file_by(5, "c", "/c", 5)     -> 0
+merge_user(6, "c", "a")          -> 25  # capacity 30, used 5
+add_file_by(7, "c", "/d", 25)    -> 0
+add_file_by(8, "a", "/e", 1)     -> None
+
+=== L3 hidden: random operations @gen(seed=31, n=300)
+
+=== L3 hidden: random operations, second seed @gen(seed=32, n=250)
+
+# ---------------------------------------------------------------------------------------------
+# Level 4
+# ---------------------------------------------------------------------------------------------
+
+=== L4 shown: restore brings back deleted files and removes new ones
+add_user(1, "u", 100)            -> True
+add_file_by(2, "u", "/a", 10)    -> 90
+backup_user(3, "u")              -> 1
+delete_file(4, "/a")             -> 10
+add_file_by(5, "u", "/b", 30)    -> 70
+restore_user(6, "u")             -> 1
+get_file_size(7, "/a")           -> 10
+get_file_size(8, "/b")           -> None
+add_file_by(9, "u", "/c", 90)    -> 0
+
+=== L4 shown: a new backup replaces the old one
+add_user(1, "u", 50)             -> True
+backup_user(2, "u")              -> 0
+add_file_by(3, "u", "/a", 5)     -> 45
+add_file_by(4, "u", "/b", 6)     -> 39
+backup_user(5, "u")              -> 2
+delete_file(6, "/a")             -> 5
+backup_user(7, "u")              -> 1
+restore_user(8, "u")             -> 1
+get_file_size(9, "/a")           -> None
+get_file_size(10, "/b")          -> 6
+backup_user(11, "ghost")         -> None
+
+=== L4 hidden: restore skips a name now owned by another user
+add_user(1, "u1", 100)           -> True
+add_user(2, "u2", 50)            -> True
+add_file_by(3, "u1", "/a", 10)   -> 90
+add_file_by(4, "u1", "/b", 20)   -> 70
+backup_user(5, "u1")             -> 2
+delete_file(6, "/a")             -> 10
+add_file_by(7, "u2", "/a", 7)    -> 43
+restore_user(8, "u1")            -> 1
+get_file_size(9, "/a")           -> 7
+get_file_size(10, "/b")          -> 20
+add_file_by(11, "u1", "/c", 80)  -> 0  # u1 holds only /b (20)
+delete_file(12, "/a")            -> 7  # frees u2, the owner
+add_file_by(13, "u2", "/d", 50)  -> 0
+
+=== L4 hidden: restore without a backup deletes the user's files
+add_user(1, "u", 30)             -> True
+add_file_by(2, "u", "/a", 10)    -> 20
+add_file_by(3, "u", "/b", 20)    -> 0
+add_file(4, "/admin", 5)         -> True
+restore_user(5, "u")             -> 0
+get_file_size(6, "/a")           -> None
+get_file_size(7, "/b")           -> None
+get_file_size(8, "/admin")       -> 5
+add_file_by(9, "u", "/c", 30)    -> 0
+add_file(10, "/a", 1)            -> True
+restore_user(11, "u")            -> 0
+add_file_by(12, "u", "/d", 30)   -> 0
+get_n_largest(13, "/", 5)        -> "/d(30), /admin(5), /a(1)"
+
+=== L4 hidden: a backup taken before a merge is not carried over
+add_user(1, "t", 50)             -> True
+add_user(2, "s", 50)             -> True
+add_file_by(3, "s", "/s1", 10)   -> 40
+add_file_by(4, "t", "/t1", 5)    -> 45
+backup_user(5, "s")              -> 1
+merge_user(6, "t", "s")          -> 85  # capacity 100, used 15
+restore_user(7, "t")             -> 0  # t has no backup of its own
+get_file_size(8, "/s1")          -> None
+get_file_size(9, "/t1")          -> None
+add_file_by(10, "t", "/big", 100) -> 0  # capacity unchanged by restore
+restore_user(11, "s")            -> None
+backup_user(12, "s")             -> None
+
+=== L4 hidden: the target keeps its own backup after a merge
+add_user(1, "t", 40)             -> True
+add_user(2, "s", 60)             -> True
+add_file_by(3, "t", "/t1", 15)   -> 25
+add_file_by(4, "s", "/s1", 25)   -> 35
+backup_user(5, "t")              -> 1
+backup_user(6, "s")              -> 1
+merge_user(7, "t", "s")          -> 60  # capacity 100, used 40
+add_file_by(8, "t", "/t2", 10)   -> 50
+backup_user(9, "s")              -> None
+restore_user(10, "t")            -> 1
+get_file_size(11, "/t1")         -> 15
+get_file_size(12, "/s1")         -> None
+get_file_size(13, "/t2")         -> None
+add_file_by(14, "t", "/fill", 85) -> 0
+
+=== L4 hidden: files that still exist are restored and counted
+add_user(1, "u", 100)            -> True
+add_file_by(2, "u", "/a", 10)    -> 90
+add_file_by(3, "u", "/b", 20)    -> 70
+backup_user(4, "u")              -> 2
+add_file_by(5, "u", "/c", 30)    -> 40
+restore_user(6, "u")             -> 2
+get_file_size(7, "/a")           -> 10
+get_file_size(8, "/b")           -> 20
+get_file_size(9, "/c")           -> None
+add_file_by(10, "u", "/d", 70)   -> 0  # used is 30 again, not double-counted
+restore_user(11, "u")            -> 2  # the backup is still there
+get_file_size(12, "/d")          -> None
+add_file_by(13, "u", "/e", 71)   -> None
+add_file_by(14, "u", "/e", 70)   -> 0
+
+=== L4 hidden: only the latest backup is restored
+add_user(1, "u", 100)            -> True
+add_file_by(2, "u", "/a", 10)    -> 90
+add_file_by(3, "u", "/b", 20)    -> 70
+backup_user(4, "u")              -> 2
+delete_file(5, "/a")             -> 10
+add_file_by(6, "u", "/c", 30)    -> 50
+backup_user(7, "u")              -> 2
+delete_file(8, "/b")             -> 20
+delete_file(9, "/c")             -> 30
+restore_user(10, "u")            -> 2
+get_file_size(11, "/a")          -> None
+get_file_size(12, "/b")          -> 20
+get_file_size(13, "/c")          -> 30
+add_file_by(14, "u", "/d", 50)   -> 0
+
+=== L4 hidden: the backup keeps the sizes it saw
+add_user(1, "u", 100)            -> True
+add_file_by(2, "u", "/a", 10)    -> 90
+backup_user(3, "u")              -> 1
+delete_file(4, "/a")             -> 10
+add_file_by(5, "u", "/a", 40)    -> 60
+add_file_by(6, "u", "/b", 5)     -> 55
+get_file_size(7, "/a")           -> 40
+restore_user(8, "u")             -> 1
+get_file_size(9, "/a")           -> 10
+get_file_size(10, "/b")          -> None
+add_file_by(11, "u", "/c", 90)   -> 0
+
+=== L4 hidden: a merged-in file under a backed-up name is replaced
+add_user(1, "u1", 50)            -> True
+add_user(2, "u2", 50)            -> True
+add_file_by(3, "u1", "/a", 10)   -> 40
+backup_user(4, "u1")             -> 1
+delete_file(5, "/a")             -> 10
+add_file_by(6, "u2", "/a", 30)   -> 20
+add_file_by(7, "u2", "/b", 5)    -> 15
+merge_user(8, "u1", "u2")        -> 65  # capacity 100, used 35
+restore_user(9, "u1")            -> 1  # u1 owns /a now, so it is deleted and re-created
+get_file_size(10, "/a")          -> 10
+get_file_size(11, "/b")          -> None
+add_file_by(12, "u1", "/c", 90)  -> 0
+
+=== L4 hidden: missing users, and a re-created id with its own backup
+add_user(1, "a", 20)             -> True
+add_user(2, "b", 20)             -> True
+restore_user(3, "ghost")         -> None
+backup_user(4, "ghost")          -> None
+add_user(5, "ghost", 5)          -> True  # the failed calls didn't create it
+restore_user(6, "ghost")         -> 0
+add_file_by(7, "b", "/b", 10)    -> 10
+merge_user(8, "a", "b")          -> 30
+backup_user(9, "b")              -> None
+restore_user(10, "b")            -> None
+add_user(11, "b", 15)            -> True
+add_file_by(12, "b", "/n", 15)   -> 0
+backup_user(13, "b")             -> 1
+delete_file(14, "/n")            -> 15
+add_file_by(15, "b", "/m", 4)    -> 11
+restore_user(16, "b")            -> 1
+get_file_size(17, "/n")          -> 15
+get_file_size(18, "/m")          -> None
+get_file_size(19, "/b")          -> 10  # still a's file
+
+=== L4 hidden: restore leaves other users and admin alone
+add_user(1, "u1", 100)           -> True
+add_user(2, "u2", 100)           -> True
+add_file(3, "/z", 99)            -> True
+add_file_by(4, "u1", "/a", 30)   -> 70
+add_file_by(5, "u2", "/b", 40)   -> 60
+backup_user(6, "u1")             -> 1
+backup_user(7, "u2")             -> 1
+add_file_by(8, "u1", "/c", 50)   -> 20
+add_file_by(9, "u2", "/d", 50)   -> 10
+restore_user(10, "u1")           -> 1
+get_n_largest(11, "/", 10)       -> "/z(99), /d(50), /b(40), /a(30)"
+add_file_by(12, "u2", "/e", 11)  -> None
+add_file_by(13, "u2", "/e", 10)  -> 0
+
+=== L4 hidden: random operations @gen(seed=41, n=400)
+
+=== L4 hidden: random operations, second seed @gen(seed=42, n=300)

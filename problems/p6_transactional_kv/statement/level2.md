@@ -1,0 +1,2 @@
+- `count(timestamp, value) -> int` returns how many keys currently hold `value`.
+- `list_keys(timestamp, prefix) -> str` returns the keys starting with `prefix`, formatted `"k1, k2"`, sorted ascending. Returns `""` if none.
