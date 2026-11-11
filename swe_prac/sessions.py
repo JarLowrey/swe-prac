@@ -86,15 +86,22 @@ def submissions(conn: sqlite3.Connection, session_id: int) -> list[dict]:
 
 
 # -- mutations ---------------------------------------------------------------------------
-def create(conn: sqlite3.Connection, problem_id: str, mode: str, starter: str) -> int:
+DEFAULT_SCRATCH = (
+    "# Scratch: run quick experiments against your class.\nfrom solution import *  # noqa: F403\n\n"
+)
+
+
+def create(
+    conn: sqlite3.Connection,
+    problem_id: str,
+    mode: str,
+    starter: str,
+    scratch: str = DEFAULT_SCRATCH,
+) -> int:
     if mode not in ("strict", "pausable"):
         raise SessionError("Mode must be 'strict' or 'pausable'.", 400)
     if active(conn) is not None:
         raise SessionError("Finish or end your active session before starting another.")
-    scratch = (
-        "# Scratch: run quick experiments against your class.\n"
-        "from solution import *  # noqa: F403\n\n"
-    )
     cur = conn.execute(
         "INSERT INTO sessions (problem_id, mode, status, started_at, time_limit, code, scratch)"
         " VALUES (?, ?, 'active', ?, ?, ?, ?)",

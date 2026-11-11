@@ -81,8 +81,13 @@ then the analysis, hints, reference solution, your code and a timeline.
 - **Lint and format** use [ruff](https://docs.astral.sh/ruff/). Lint runs as you type and on every run,
   with markers in the editor and a Lint tab. It never blocks a level. **Format** (`Shift+Alt+F`)
   reformats your code. The rules are in `swe_prac/user_ruff.toml`.
-- **scratch.py** is a second editor tab for quick experiments (`from solution import *`).
-  Run it with **Run scratch**.
+- **tests.py** is a read-only editor tab with the shown tests of every level you've unlocked, written
+  as plain Python (`assert obj.method(...) == expected`). **Run** executes exactly these, and it
+  grows when a level unlocks. Hidden tests aren't listed there; **Submit** runs them and reports
+  counts only.
+- **scratch.py** is another editor tab for quick experiments (`from solution import *`). It starts
+  with an example test case, the first shown test of Level 1, plus a small `check(got, expected)`
+  helper. Copy it to try your own calls, then press **Run scratch**.
 - **At 0:00** your timed score is locked in. You can keep going untimed; anything finished after
   that is marked as overtime.
 - **End session** opens the review: timed and overtime results, time to each level against the
@@ -105,6 +110,9 @@ fresh Python subprocess.
 
 - **Hidden tests stay on the server.** `app.py` keeps full detail only for shown tests. For hidden
   tests it sends back pass counts per level.
+- **tests.py and the scratch example are generated, not stored.** `testsource.py` renders them from
+  the shown entries in `tests.json`, so every problem gets them and they can never drift from what
+  Run executes. Only unlocked levels are rendered, so nothing leaks from later levels.
 - **The timer is server-side.** Elapsed time is wall clock minus recorded pauses, so refreshing or
   closing the tab changes nothing.
 - **A runaway solution can't hang the app.** `runner.py` writes each result as it finishes, so
@@ -123,7 +131,7 @@ swe_prac/            the app: FastAPI backend, test runner, static frontend (Mon
 problems/<pid>/      what the app reads: statements, review pages, built tests.json and stubs.json
 reference/<pid>/     SPOILERS: reference solution, test source, random generator, mutants
 tools/               build_problem.py (compile and verify problems) and dsl.py (test format parser)
-tests/               the app's own test suite
+tests/               the app's own test suite (unittest)
 docs/                README screenshots and architecture diagrams (SVG, edit them directly)
 ```
 
@@ -133,7 +141,7 @@ The hidden tests are in `problems/<pid>/tests.json` and the reference solutions 
 ## Developing
 
 ```
-.venv\Scripts\python -m pytest                       # app + every problem end to end
+.venv\Scripts\python -m unittest discover -s tests  # app + every problem end to end
 .venv\Scripts\python tools\build_problem.py --all    # rebuild and verify all problems
 .venv\Scripts\python -m ruff check . && .venv\Scripts\python -m ruff format --check swe_prac tools tests
 ```

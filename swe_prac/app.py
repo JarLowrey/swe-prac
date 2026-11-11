@@ -80,6 +80,7 @@ def _session_payload(conn, row) -> dict:
         ],
         "code": row["code"],
         "scratch": row["scratch"],
+        "tests_source": problems.shown_tests_source(problem, unlocked),
         "timer": sessions.timer_state(row),
         "pacing": config.PACING_SECONDS,
         "conventions_html": problems.conventions_html(),
@@ -223,7 +224,13 @@ def start_session(body: StartBody) -> dict:
             problem = random.choice(pool)
         else:
             problem = _problem(body.problem_id)
-        session_id = sessions.create(conn, problem.id, body.mode, problems.starter_code(problem))
+        session_id = sessions.create(
+            conn,
+            problem.id,
+            body.mode,
+            problems.starter_code(problem),
+            problems.scratch_starter(problem),
+        )
         return _session_payload(conn, sessions.get(conn, session_id))
 
 
@@ -366,7 +373,16 @@ def history() -> dict:
 
 
 # -- frontend ----------------------------------------------------------------------------
-app.mount("/static", StaticFiles(directory=config.STATIC_DIR), name="static")
+class _RevalidatedStatic(StaticFiles):
+    """Always revalidate, so a browser never runs a stale app.js against a newer backend."""
+
+    def file_response(self, *args, **kwargs):
+        response = super().file_response(*args, **kwargs)
+        response.headers["Cache-Control"] = "no-cache"
+        return response
+
+
+app.mount("/static", _RevalidatedStatic(directory=config.STATIC_DIR), name="static")
 
 
 @app.get("/")

@@ -276,6 +276,7 @@ async function renderSession(sessionId) {
           <div class="file-tabs">
             <button class="file-tab active" data-file="solution">solution.py</button>
             <button class="file-tab" data-file="scratch">scratch.py</button>
+            <button class="file-tab" data-file="tests" title="The shown tests for your unlocked levels, as code. Run executes exactly these; Submit also runs the hidden tests.">tests.py <span class="ro">read-only</span></button>
           </div>
           <span class="save-state" data-save-state></span>
           <button data-format title="Format with ruff (Shift+Alt+F)">Format</button>
@@ -299,6 +300,7 @@ async function renderSession(sessionId) {
   // ----- editors
   const solutionModel = monaco.editor.createModel(session.code, "python");
   const scratchModel = monaco.editor.createModel(session.scratch, "python");
+  const testsModel = monaco.editor.createModel(session.tests_source, "python");
   const editor = monaco.editor.create(q("[data-editor-host]"), {
     model: solutionModel,
     theme: "vs-dark",
@@ -435,7 +437,7 @@ async function renderSession(sessionId) {
   function applyPaused() {
     const paused = st.timer.paused;
     $app.querySelectorAll("[data-blur]").forEach((el) => el.classList.toggle("blurred", paused));
-    editor.updateOptions({ readOnly: paused });
+    syncReadOnly();
     let overlay = q("[data-overlay]");
     if (paused && !overlay) {
       overlay = document.createElement("div");
@@ -524,9 +526,16 @@ async function renderSession(sessionId) {
   }
 
   // ----- files
+  const models = { solution: solutionModel, scratch: scratchModel, tests: testsModel };
+  // tests.py is never editable; the other files lock while the session is paused.
+  function syncReadOnly() {
+    editor.updateOptions({ readOnly: st.timer.paused || st.file === "tests" });
+    q("[data-format]").disabled = st.file === "tests";
+  }
   function switchFile(name) {
     st.file = name;
-    editor.setModel(name === "solution" ? solutionModel : scratchModel);
+    editor.setModel(models[name]);
+    syncReadOnly();
     $app.querySelectorAll("[data-file]").forEach((b) => b.classList.toggle("active", b.dataset.file === name));
   }
   $app.querySelectorAll("[data-file]").forEach((b) => { b.onclick = () => switchFile(b.dataset.file); });
@@ -570,7 +579,7 @@ async function renderSession(sessionId) {
     if (st.busy) { el.innerHTML = '<div class="empty">Running…</div>'; return; }
     const r = st.lastResult;
     if (!r) {
-      el.innerHTML = `<div class="empty"><kbd>Ctrl+↵</kbd> Run checks the shown tests with full details.
+      el.innerHTML = `<div class="empty">The shown tests are in <code>tests.py</code>. <kbd>Ctrl+↵</kbd> Run checks them with full details.
         <kbd>Ctrl+⇧+↵</kbd> Submit also runs the hidden tests (counts only) and unlocks the next level when everything passes.</div>`;
       return;
     }
@@ -688,6 +697,7 @@ async function renderSession(sessionId) {
       setLint(r.lint);
       if (r.unlocked && r.session) {
         st.session = r.session;
+        testsModel.setValue(r.session.tests_source);  // the new level's shown tests
         syncTimer(r.session.timer);
         st.selectedLevel = Math.min(r.session.current_level, 4);
         renderLevelPills();
@@ -804,6 +814,7 @@ async function renderSession(sessionId) {
     editor.dispose();
     solutionModel.dispose();
     scratchModel.dispose();
+    testsModel.dispose();
   };
 }
 

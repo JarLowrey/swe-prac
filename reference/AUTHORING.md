@@ -84,6 +84,11 @@ get_file_size(5, "/b") -> ?
 - Every level's gate is: all shown and hidden tests of levels 1..N pass. So level-N tests run against
   the user's final code too.
 
+Shown tests are public: the app renders them as the read-only `tests.py` tab (grouped by level, only
+for unlocked levels), and the first Level 1 shown test also seeds `scratch.py` as an example case.
+Nothing to author for that, but a shown test's name and calls are what the user reads, so keep
+names descriptive and keep shown tests free of anything the statements don't say.
+
 Quotas per level: the doc's self-check test (keep as-is) plus **2-3 extra shown tests**, which are
 small and illustrative with hand-written expectations. Then **8-12 hidden tests**:
 - edge cases with hand-computed expectations (prefer explicit values over `?` for these)

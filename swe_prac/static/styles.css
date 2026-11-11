@@ -200,6 +200,7 @@ button.small { padding: 3px 8px; font-size: 12px; }
 .editor-toolbar .file-tabs { display: flex; gap: 2px; margin-right: auto; }
 .file-tab { background: transparent; border: 1px solid transparent; color: var(--text-dim); font: 13px var(--mono); padding: 4px 10px; }
 .file-tab.active { color: var(--text); background: var(--bg); border-color: var(--border); }
+.file-tab .ro { font: 11px var(--sans); color: var(--text-faint); margin-left: 4px; }
 .save-state { font-size: 12px; color: var(--text-faint); min-width: 60px; text-align: right; }
 .editor-host { min-height: 0; position: relative; }
 .editor-host > div { position: absolute; inset: 0; }

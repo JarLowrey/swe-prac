@@ -9,7 +9,7 @@ from pathlib import Path
 
 import markdown as md
 
-from . import config
+from . import config, testsource
 
 
 class ProblemNotFound(KeyError):
@@ -116,6 +116,18 @@ def tests(problem: Problem, max_level: int, include_hidden: bool) -> list[dict]:
         for t in data
         if t["level"] <= max_level and (include_hidden or t["visibility"] == "shown")
     ]
+
+
+def shown_tests_source(problem: Problem, level: int) -> str:
+    """tests.py for the editor: the shown tests of levels 1..level, exactly what Run executes."""
+    shown = tests(problem, level, include_hidden=False)
+    return testsource.tests_file(problem.class_name, shown, level)
+
+
+def scratch_starter(problem: Problem) -> str:
+    """scratch.py for a new session, with the first shown Level 1 test as an example case."""
+    first = next(iter(tests(problem, 1, include_hidden=False)), None)
+    return testsource.scratch_starter(problem.class_name, first)
 
 
 def reference_code(problem: Problem) -> str | None:
