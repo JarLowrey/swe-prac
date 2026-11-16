@@ -122,9 +122,11 @@ async function route() {
   $modalRoot.innerHTML = "";
   const hash = location.hash || "#/";
   const m = hash.match(/^#\/(session|review)\/(\d+)$/);
+  const pm = hash.match(/^#\/problem\/([\w-]+)\/(question|hints|reference)$/);
   try {
     if (m && m[1] === "session") await renderSession(Number(m[2]));
     else if (m && m[1] === "review") await renderReview(Number(m[2]));
+    else if (pm) await renderStudy(pm[1], pm[2]);
     else if (hash === "#/history") await renderHistory();
     else await renderHome();
   } catch (err) {
@@ -149,15 +151,24 @@ async function renderHome() {
         <button class="danger" data-end-active>End session</button></div>
     </div>` : "";
 
-  const cards = problems.map((p) => `<article class="problem-card">
+  const studyViews = [["question", "Question"], ["hints", "Hints"], ["reference", "Reference solution"]];
+  const cards = problems.map((p) => {
+    // While a session on this problem is running, its spoilers stay shut.
+    const inSession = active && active.problem.id === p.id;
+    const studyButtons = studyViews.map(([view, label]) =>
+      `<button class="small" data-study="${view}" data-pid="${esc(p.id)}" ${inSession ? 'disabled title="Locked while this problem is in a running session"' : ""}>${label}</button>`,
+    ).join("");
+    return `<article class="problem-card">
       <span class="num">PROBLEM ${p.number}</span>
       <h3>${esc(p.title)}</h3>
       <p>${esc(p.summary)}</p>
+      <div class="study-links">${studyButtons}</div>
       <div class="meta">
         <span class="dim" style="font-size:12px">${p.attempts ? `${p.attempts} attempt${p.attempts > 1 ? "s" : ""} · best ${levelDots(p.best_timed_levels || 0)}` : "Not attempted"}</span>
         <button class="primary small" data-start="${esc(p.id)}" ${active ? "disabled" : ""}>Start</button>
       </div>
-    </article>`).join("");
+    </article>`;
+  }).join("");
 
   $app.innerHTML = `${topnav("home")}<main class="page">
     <h1>90-minute coding assessment practice</h1>
@@ -198,6 +209,11 @@ async function renderHome() {
     } catch (err) { toast(err.message, "bad"); }
   };
   $app.querySelectorAll("[data-start]").forEach((b) => b.addEventListener("click", () => start(b.dataset.start)));
+  $app.querySelectorAll("[data-study]").forEach((b) => b.addEventListener("click", async () => {
+    const problem = problems.find((p) => p.id === b.dataset.pid);
+    if (!problem.attempts && !(await confirmSpoil(problem))) return;
+    location.hash = `#/problem/${b.dataset.pid}/${b.dataset.study}`;
+  }));
   $app.querySelector("[data-random]").addEventListener("click", () => start(null));
   $app.querySelector("[data-resume]")?.addEventListener("click", () => { location.hash = `#/session/${active.id}`; });
   $app.querySelector("[data-end-active]")?.addEventListener("click", async () => {
@@ -205,6 +221,20 @@ async function renderHome() {
       await api("POST", `/api/sessions/${active.id}/end`);
       location.hash = `#/review/${active.id}`;
     }
+  });
+}
+
+// A speed bump, not a gate: opening the question, hints or solution of a problem you haven't
+// attempted costs you a fresh timed run at it. Cancel is the default so Enter doesn't spoil.
+function confirmSpoil(problem) {
+  return modal({
+    title: "This will spoil it",
+    body: `<p>You haven't attempted <strong>${esc(problem.title)}</strong> yet. Reading its question,
+      hints or reference solution now means you won't get a fresh, honest timed run at it.</p>`,
+    actions: [
+      { label: "Show it anyway", value: true },
+      { label: "Cancel", value: false, kind: "primary" },
+    ],
   });
 }
 
@@ -891,14 +921,53 @@ async function renderReview(sessionId) {
     if (key === "analysis") panel.innerHTML = data.analysis_html;
     else if (key === "hints") panel.innerHTML = data.hints_html;
     else if (key === "statement") {
-      panel.innerHTML = `<details class="conventions" style="margin:0 0 18px"><summary>Conventions</summary><div class="md">${data.conventions_html}</div></details>`
-        + data.levels.map((l) => `<div class="level-block"><h3>Level ${l.level}: ${esc(l.title)}</h3>${l.statement_html}</div>`).join("");
+      panel.innerHTML = fullStatementHtml(data);
     } else if (key === "timeline") {
       panel.innerHTML = renderTimeline(data);
     }
   }
   show(current);
   cleanup = async () => { if (viewer) viewer.dispose(); };
+}
+
+// All four levels of a problem plus the shared conventions (review page and problem study page).
+function fullStatementHtml({ conventions_html, levels }) {
+  return `<details class="conventions" style="margin:0 0 18px"><summary>Conventions</summary><div class="md">${conventions_html}</div></details>`
+    + levels.map((l) => `<div class="level-block"><h3>Level ${l.level}: ${esc(l.title)}</h3>${l.statement_html}</div>`).join("");
+}
+
+// ---------------------------------------------------------------- problem study
+// Question / hints / reference solution for one problem, opened from the home cards.
+async function renderStudy(problemId, kind) {
+  const data = await api("GET", `/api/problems/${encodeURIComponent(problemId)}/${kind}`);
+  const tabs = [["question", "Question"], ["hints", "Hints"], ["reference", "Reference solution"]];
+  $app.innerHTML = `${topnav("home")}<main class="page">
+    <p class="faint" style="margin:0 0 4px"><a href="#/">← Problems</a></p>
+    <h1>${esc(data.problem.title)}</h1>
+    <p class="lead">${esc(data.problem.summary)}</p>
+    <div class="review-tabs" style="margin-top:0">
+      <div class="tabs">${tabs.map(([k, label]) =>
+        `<a class="tab ${k === kind ? "active" : ""}" href="#/problem/${esc(problemId)}/${k}">${label}</a>`).join("")}</div>
+      <div data-study-panel></div>
+    </div>
+  </main>`;
+  const panel = $app.querySelector("[data-study-panel]");
+
+  if (kind === "reference") {
+    panel.className = "review-panel code";
+    let viewer = null;
+    cleanup = async () => viewer?.dispose();
+    const monaco = await window.monacoReady;
+    if (!panel.isConnected) return;  // navigated away while Monaco was loading
+    viewer = monaco.editor.create(panel, {
+      value: data.reference_code ?? "# No reference solution available.",
+      language: "python", theme: "vs-dark", readOnly: true, automaticLayout: true,
+      minimap: { enabled: false }, fontSize: 13, scrollBeyondLastLine: false,
+    });
+    return;
+  }
+  panel.className = "review-panel md";
+  panel.innerHTML = kind === "question" ? fullStatementHtml(data) : data.hints_html;
 }
 
 function renderTimeline(data) {

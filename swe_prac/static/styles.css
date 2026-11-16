@@ -110,6 +110,8 @@ button.small { padding: 3px 8px; font-size: 12px; }
 .problem-card h3 { font-size: 16px; }
 .problem-card p { margin: 0; color: var(--text-dim); flex: 1; }
 .problem-card .meta { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.problem-card .study-links { display: flex; flex-wrap: wrap; gap: 6px; }
+a.tab { text-decoration: none; }
 .level-dots { display: inline-flex; gap: 3px; vertical-align: middle; }
 .level-dots i { width: 10px; height: 10px; border-radius: 2px; background: var(--border-strong); display: inline-block; }
 .level-dots i.on { background: var(--pass); }

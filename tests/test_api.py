@@ -4,6 +4,8 @@ import unittest
 
 from support import COUNTER_FULL, ClientCase
 
+from swe_prac import config
+
 L1_ONLY = """
 class Counter:
     def __init__(self):
@@ -153,6 +155,36 @@ class ApiTests(ClientCase):
         listed = self.client.get("/api/problems").json()["problems"]
         self.assertEqual(listed[0]["attempts"], 1)
         self.assertEqual(listed[0]["best_timed_levels"], 1)
+
+    def test_study_views_open_from_the_problem_list(self):
+        ref_dir = config.REFERENCE_DIR / "p0_counter"
+        ref_dir.mkdir(parents=True)
+        (ref_dir / "solution.py").write_text(COUNTER_FULL, encoding="utf-8")
+
+        question = self.client.get("/api/problems/p0_counter/question").json()
+        self.assertEqual([lv["level"] for lv in question["levels"]], [1, 2, 3, 4])
+        self.assertIn("conventions_html", question)
+        self.assertNotIn("hints_html", question)
+        self.assertNotIn("reference_code", question)  # each view reveals only what it names
+
+        hints = self.client.get("/api/problems/p0_counter/hints").json()
+        self.assertTrue(hints["hints_html"])
+        self.assertNotIn("reference_code", hints)
+
+        reference = self.client.get("/api/problems/p0_counter/reference").json()
+        self.assertEqual(reference["reference_code"], COUNTER_FULL)
+        self.assertEqual(reference["problem"]["id"], "p0_counter")
+
+        self.assertEqual(self.client.get("/api/problems/p0_counter/analysis").status_code, 404)
+        self.assertEqual(self.client.get("/api/problems/nope/hints").status_code, 404)
+
+    def test_study_views_are_shut_while_that_problem_is_running(self):
+        sid = self._start()["id"]
+        for kind in ("question", "hints", "reference"):
+            res = self.client.get(f"/api/problems/p0_counter/{kind}")
+            self.assertEqual(res.status_code, 409, kind)
+        self._post(sid, "end", code=L1_ONLY)
+        self.assertEqual(self.client.get("/api/problems/p0_counter/hints").status_code, 200)
 
     def test_overtime_completion_not_counted_in_timed_result(self):
         sid = self._start("strict")["id"]

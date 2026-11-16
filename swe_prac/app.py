@@ -190,6 +190,40 @@ def list_problems() -> dict:
     }
 
 
+STUDY_VIEWS = ("question", "hints", "reference")
+
+
+@app.get("/api/problems/{problem_id}/{kind}")
+def study_material(problem_id: str, kind: str) -> dict:
+    """The full question, design hints or reference solution, outside any session.
+
+    Refused while a session on this problem is running, so a live timed attempt can't peek.
+    """
+    if kind not in STUDY_VIEWS:
+        raise HTTPException(404, f"Unknown view {kind!r}")
+    problem = _problem(problem_id)
+    with db.connect() as conn:
+        live = sessions.active(conn)
+    if live is not None and live["problem_id"] == problem.id:
+        raise SessionError("This problem is in a running session. End the session to open it.")
+    out: dict = {"problem": problem.public(), "kind": kind}
+    if kind == "question":
+        out["conventions_html"] = problems.conventions_html()
+        out["levels"] = [
+            {
+                "level": lv,
+                "title": problem.level_title(lv),
+                "statement_html": problems.statement_html(problem, lv),
+            }
+            for lv in config.LEVELS
+        ]
+    elif kind == "hints":
+        out["hints_html"] = problems.review_html(problem, "hints")
+    else:
+        out["reference_code"] = problems.reference_code(problem)
+    return out
+
+
 # -- sessions ----------------------------------------------------------------------------
 @app.get("/api/active")
 def get_active() -> dict:

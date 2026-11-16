@@ -94,6 +94,11 @@ then the analysis, hints, reference solution, your code and a timeline.
   pacing targets (L1 15 min, L2 35, L3 60, L4 85), pauses, a run/submit timeline, design
   hints, solution analysis, the reference solution, your final code and the full problem.
 
+Each problem card on the home page also has **Question**, **Hints** and **Reference solution**
+buttons. They open the full problem, the design hints or the reference solution without starting a
+session. On a problem you haven't attempted they ask you to confirm first, and they stay locked
+while a session on that problem is running.
+
 History lives in `data/prac.db` (SQLite) with per-session files in `data/sessions/`. Both are
 gitignored. Delete `data/` to reset.
 
