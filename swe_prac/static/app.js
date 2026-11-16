@@ -139,7 +139,6 @@ async function renderHome() {
   const [{ problems }, { session: active }] = await Promise.all([
     api("GET", "/api/problems"), api("GET", "/api/active"),
   ]);
-  let mode = storage("swe-prac-mode") || "strict";
   const preferUnseen = storage("swe-prac-prefer-unseen") !== "0";
 
   const banner = active ? `<div class="banner">
@@ -164,13 +163,6 @@ async function renderHome() {
     <h1>90-minute coding assessment practice</h1>
     <p class="lead">One problem, four levels, revealed one at a time. Each level unlocks when every shown and hidden test up to it passes.</p>
     ${banner}
-    <h2 class="section-title">Timer mode</h2>
-    <div class="mode-picker">
-      <label class="mode-option" data-mode="strict"><input type="radio" name="mode" value="strict">
-        <div><strong>Strict</strong><span class="dim">90 minutes, no pausing. Like the real thing: the clock keeps running even if you close the tab.</span></div></label>
-      <label class="mode-option" data-mode="pausable"><input type="radio" name="mode" value="pausable">
-        <div><strong>Pausable</strong><span class="dim">Pause any time. While paused, the problem and your code are hidden. Every pause is recorded.</span></div></label>
-    </div>
     <h2 class="section-title">Problems</h2>
     <div class="random-row">
       <button data-random ${active ? "disabled" : ""}>🎲 Start a random problem</button>
@@ -179,29 +171,25 @@ async function renderHome() {
     <div class="problem-grid">${cards || '<p class="dim">No problems are built yet. Run <code>tools/build_problem.py --all</code>.</p>'}</div>
   </main>`;
 
-  const syncMode = () => {
-    $app.querySelectorAll(".mode-option").forEach((el) => {
-      const on = el.dataset.mode === mode;
-      el.classList.toggle("selected", on);
-      el.querySelector("input").checked = on;
-    });
-  };
-  $app.querySelectorAll(".mode-option").forEach((el) => {
-    el.addEventListener("click", () => { mode = el.dataset.mode; storage("swe-prac-mode", mode); syncMode(); });
-  });
-  syncMode();
-
   const unseenBox = $app.querySelector("[data-unseen]");
   unseenBox.addEventListener("change", () => storage("swe-prac-prefer-unseen", unseenBox.checked ? "1" : "0"));
 
   const start = async (problemId) => {
-    const label = mode === "strict" ? "Strict (no pausing)" : "Pausable";
-    const choice = await modal({
+    // No default: the user picks a mode explicitly by choosing which Start button to press.
+    const mode = await modal({
       title: "Start a 90-minute session?",
-      body: `<p>Mode: <strong>${label}</strong>. The timer starts immediately and you'll see Level 1 only.</p>`,
-      actions: [{ label: "Cancel", value: false, kind: "ghost" }, { label: "Start", value: true, kind: "primary" }],
+      body: `<p>The timer starts immediately and you'll see Level 1 only. Choose a timer mode:</p>
+        <ul class="mode-help">
+          <li><strong>Strict</strong> &mdash; no pausing. Like the real thing: the clock keeps running even if you close the tab.</li>
+          <li><strong>Pausable</strong> &mdash; pause any time. While paused, the problem and your code are hidden. Every pause is recorded.</li>
+        </ul>`,
+      actions: [
+        { label: "Cancel", value: null, kind: "ghost" },
+        { label: "Start strict", value: "strict", kind: "primary" },
+        { label: "Start pausable", value: "pausable", kind: "primary" },
+      ],
     });
-    if (!choice) return;
+    if (!mode) return;
     try {
       const s = await api("POST", "/api/sessions", {
         problem_id: problemId, mode, prefer_unseen: unseenBox.checked,
