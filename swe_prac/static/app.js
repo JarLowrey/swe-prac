@@ -5,7 +5,13 @@ const $modalRoot = document.getElementById("modal-root");
 const $toastRoot = document.getElementById("toast-root");
 
 // ---------------------------------------------------------------- utilities
+// On the static site (GitHub Pages) static-api.js defines window.SWE_STATIC and answers every API
+// call in the browser. Nothing can execute Python there, so the controls that need it are disabled.
+const STATIC = Boolean(window.SWE_STATIC);
+const NEEDS_SERVER_NOTE = "Disabled on the static site: running code needs the local server";
+
 async function api(method, path, body, opts = {}) {
+  if (STATIC) return window.SWE_STATIC.handle(method, path, body);
   const res = await fetch(path, {
     method,
     headers: body !== undefined ? { "Content-Type": "application/json" } : {},
@@ -173,6 +179,10 @@ async function renderHome() {
   $app.innerHTML = `${topnav("home")}<main class="page">
     <h1>90-minute coding assessment practice</h1>
     <p class="lead">One problem, four levels, revealed one at a time. Each level unlocks when every shown and hidden test up to it passes.</p>
+    ${STATIC ? `<div class="callout info"><strong>Static copy.</strong> Reading the problems, the timer, pausing, review and
+      history all work here, and your sessions are saved in this browser. Python can't run on this site, so
+      Run, Submit, Run scratch and Format are disabled and no level can be passed. To run the tests,
+      <a href="https://github.com/JarLowrey/swe-prac">clone the repo</a> and start it locally.</div>` : ""}
     ${banner}
     <h2 class="section-title">Problems</h2>
     <div class="random-row">
@@ -469,7 +479,7 @@ async function renderSession(sessionId) {
     } else if (!paused && overlay) {
       overlay.remove();
     }
-    q("[data-run]").disabled = q("[data-submit]").disabled = q("[data-scratch]").disabled = paused || st.busy;
+    q("[data-run]").disabled = q("[data-submit]").disabled = q("[data-scratch]").disabled = paused || st.busy || STATIC;
   }
 
   async function togglePause() {
@@ -548,7 +558,7 @@ async function renderSession(sessionId) {
   // tests.py is never editable; the other files lock while the session is paused.
   function syncReadOnly() {
     editor.updateOptions({ readOnly: st.timer.paused || st.file === "tests" });
-    q("[data-format]").disabled = st.file === "tests";
+    q("[data-format]").disabled = st.file === "tests" || STATIC;
   }
   function switchFile(name) {
     st.file = name;
@@ -596,6 +606,11 @@ async function renderSession(sessionId) {
     if (st.resultsTab === "scratch") { el.innerHTML = renderScratch(); return; }
     if (st.busy) { el.innerHTML = '<div class="empty">Running…</div>'; return; }
     const r = st.lastResult;
+    if (!r && STATIC) {
+      el.innerHTML = `<div class="empty">Code can't run on the static site, so there are no results here. You can still read the
+        problem, write code (it autosaves in this browser) and read <code>tests.py</code>.</div>`;
+      return;
+    }
     if (!r) {
       el.innerHTML = `<div class="empty">The shown tests are in <code>tests.py</code>. <kbd>Ctrl+↵</kbd> Run checks them with full details.
         <kbd>Ctrl+⇧+↵</kbd> Submit also runs the hidden tests (counts only) and unlocks the next level when everything passes.</div>`;
@@ -696,10 +711,11 @@ async function renderSession(sessionId) {
   // ----- actions
   function setBusy(busy) {
     st.busy = busy;
-    q("[data-run]").disabled = q("[data-submit]").disabled = q("[data-scratch]").disabled = busy || st.timer.paused;
+    q("[data-run]").disabled = q("[data-submit]").disabled = q("[data-scratch]").disabled = busy || st.timer.paused || STATIC;
   }
 
   async function doRun(kind) {
+    if (STATIC) { toast(NEEDS_SERVER_NOTE, "bad"); return; }  // reached via the keyboard shortcuts
     if (st.busy || st.timer.paused) return;
     setBusy(true);
     st.resultsTab = "tests";
@@ -737,6 +753,7 @@ async function renderSession(sessionId) {
   }
 
   async function doScratch() {
+    if (STATIC) { toast(NEEDS_SERVER_NOTE, "bad"); return; }
     if (st.busy || st.timer.paused) return;
     setBusy(true);
     try {
@@ -813,6 +830,11 @@ async function renderSession(sessionId) {
   });
 
   // ----- initial paint
+  if (STATIC) {
+    for (const sel of ["[data-run]", "[data-submit]", "[data-scratch]", "[data-format]"]) {
+      q(sel).title = NEEDS_SERVER_NOTE;
+    }
+  }
   renderLevelPills();
   renderStatement();
   renderResultTabs();

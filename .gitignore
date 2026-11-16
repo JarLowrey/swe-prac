@@ -6,3 +6,6 @@ __pycache__/
 *.pyc
 .pytest_cache/
 .ruff_cache/
+
+# Output of tools/build_static.py (deployed to GitHub Pages)
+site/

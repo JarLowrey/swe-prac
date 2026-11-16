@@ -39,6 +39,22 @@ Double-click `start.bat` in Windows, or run:
 On first run, `start.bat` creates `.venv` and installs `requirements.txt`. It needs Python 3.12 or newer.
 Everything runs on your machine, and the server only listens on 127.0.0.1.
 
+## Static site (GitHub Pages)
+
+A copy of the app is published at https://jarlowrey.github.io/swe-prac/ on every push to `master`.
+Python can't run in a browser tab, so there Run, Submit, Run scratch and Format are disabled and no
+level can be passed. Everything else works: the question, hints and reference solution pages, the
+timer, pausing, the editor, review and history. Sessions are stored in the browser's localStorage
+instead of SQLite.
+
+```
+.venv\Scripts\python tools/build_static.py    # writes site/ (gitignored)
+```
+
+`tools/static_site/static-api.js` answers the frontend's `/api/...` calls in the browser. The hidden
+tests are not exported. The reference solutions are, so the live site gives them away to anyone
+who opens `data.json`. One-time setup: Settings > Pages > Source: GitHub Actions.
+
 ## Screenshots
 
 These screenshots use a small demo problem ("Parking garage") that isn't in the practice set, so
@@ -135,7 +151,8 @@ what the app serves from `problems/`, and checks the hidden tests along the way.
 swe_prac/            the app: FastAPI backend, test runner, static frontend (Monaco is bundled)
 problems/<pid>/      what the app reads: statements, review pages, built tests.json and stubs.json
 reference/<pid>/     SPOILERS: reference solution, test source, random generator, mutants
-tools/               build_problem.py (compile and verify problems) and dsl.py (test format parser)
+tools/               build_problem.py (compile and verify problems), dsl.py (test format parser),
+                     build_static.py + static_site/ (the GitHub Pages build)
 tests/               the app's own test suite (unittest)
 docs/                README screenshots and architecture diagrams (SVG, edit them directly)
 ```
