@@ -138,18 +138,7 @@ kept: [2,3] [4,5] [6,7]
 caption: [4,5] and [6,7] now fit. One removal
 ```
 
-```python
-class Solution:
-    def eraseOverlapIntervals(self, intervals: list[list[int]]) -> int:
-        removed = 0
-        prev_end = float("-inf")  # end of the last kept interval; nothing kept yet
-        for start, end in sorted(intervals, key=lambda iv: iv[0]):
-            if start < prev_end:  # overlap (touching, start == prev_end, is fine)
-                removed += 1
-                prev_end = min(prev_end, end)  # keep whichever of the two ends first
-            else:
-                prev_end = end  # no overlap: keep it
-        return removed
+```solution
 ```
 
 Starting `prev_end` at minus infinity means the first interval is always kept, and an empty

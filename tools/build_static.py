@@ -64,7 +64,6 @@ def algo_bundle() -> dict:
                 "scratch_starter": algorithms.scratch_starter(p),
                 "hints_html": algorithms.hints_html(p),
                 "explanation_html": algorithms.explanation_html(p),
-                "solution_code": algorithms.solution_code(p),
                 "foundations": algorithms.foundation_links(p),
             }
             for p in found

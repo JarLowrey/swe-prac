@@ -171,19 +171,7 @@ same answer.
 
 ## The solution
 
-```python
-class Solution:
-    def combinationSum4(self, nums: list[int], target: int) -> int:
-        nums = sorted(nums)  # so the inner loop can stop at the first number that's too big
-        ways = [1] + [0] * target  # ways[0] = 1: the empty sequence
-        for t in range(1, target + 1):
-            total = 0
-            for x in nums:
-                if x > t:
-                    break  # this number and every larger one overshoots t
-                total += ways[t - x]  # sequences that start with x
-            ways[t] = total
-        return ways[target]
+```solution
 ```
 
 ## Complexity

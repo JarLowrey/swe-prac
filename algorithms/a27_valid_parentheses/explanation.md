@@ -106,18 +106,7 @@ flowchart TD
 
 ## The solution
 
-```python
-class Solution:
-    def isValid(self, s: str) -> bool:
-        opener = {")": "(", "]": "[", "}": "{"}
-        stack = []
-        for c in s:
-            if c in opener:  # a closing bracket
-                if not stack or stack.pop() != opener[c]:
-                    return False
-            else:
-                stack.append(c)
-        return not stack  # anything left was never closed
+```solution
 ```
 
 The dict maps each closing bracket to its opener, so one lookup answers both "is this a closing

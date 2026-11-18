@@ -129,20 +129,7 @@ flowchart LR
 
 ## The solution
 
-```python
-class Solution:
-    def isAnagram(self, s: str, t: str) -> bool:
-        if len(s) != len(t):
-            return False
-        counts = {}
-        for ch in s:
-            counts[ch] = counts.get(ch, 0) + 1
-        for ch in t:
-            left = counts.get(ch, 0)
-            if left == 0:
-                return False  # t has more of ch than s does
-            counts[ch] = left - 1
-        return True
+```solution
 ```
 
 The length check also returns early for most non-anagrams, before any counting.

@@ -125,27 +125,7 @@ Filling that grid from the top-left corner instead of recursing from the bottom-
 
 ## The solution
 
-```python
-class Solution:
-    def shoppingOffers(self, price: list[int], special: list[list[int]], needs: list[int]) -> int:
-        offers = []
-        for offer in special:
-            items, cost = tuple(offer[:-1]), offer[-1]
-            if any(items) and cost < sum(q * p for q, p in zip(items, price, strict=True)):
-                offers.append((items, cost))
-        return self.cheapest(tuple(needs), price, offers, {})
-
-    def cheapest(self, needs: tuple[int, ...], price: list[int], offers: list, memo: dict) -> int:
-        if needs in memo:
-            return memo[needs]
-        best = sum(q * p for q, p in zip(needs, price, strict=True))
-        for items, cost in offers:
-            left = tuple(need - q for need, q in zip(needs, items, strict=True))
-            if min(left) < 0:
-                continue
-            best = min(best, cost + self.cheapest(left, price, offers, memo))
-        memo[needs] = best
-        return best
+```solution
 ```
 
 Before recursing it drops two kinds of offer:

@@ -7,6 +7,8 @@ It renders every markdown file the app shows and reports:
 - data-structure diagram blocks that fail to render (```array, ```tree, ...),
 - internal links (#/design/learn/<page>/<section>, #/algo/learn/..., #/algo/problem/...) whose
   target doesn't exist,
+- algorithm explanations without exactly one empty ```solution block (it marks where solution.py
+  is shown),
 - design questions whose `foundations` references don't resolve, or whose reference design has
   no Mermaid diagram,
 - foundations pages without a summary paragraph or with duplicate section titles,
@@ -30,7 +32,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from swe_prac import config, pages, problems  # noqa: E402
+from swe_prac import algorithms, config, pages, problems  # noqa: E402
 
 LINK = re.compile(r'href="(#/[^"]*)"')
 
@@ -194,10 +196,14 @@ def main(argv: list[str]) -> int:
                 path = algo_root / pid / name
                 if path.exists():
                     text = path.read_text(encoding="utf-8")
-                    check_source(text, f"algorithms/{pid}/{name}", errors)
-                    check_html(
-                        problems.render_markdown(text), f"algorithms/{pid}/{name}", targets, errors
-                    )
+                    where = f"algorithms/{pid}/{name}"
+                    check_source(text, where, errors)
+                    if name == "explanation.md":
+                        if len(algorithms.SOLUTION_MARKER.findall(text)) != 1:
+                            errors.append(f"{where}: needs one empty ```solution block")
+                        solution = (algo_root / pid / "solution.py").read_text(encoding="utf-8")
+                        text = algorithms.expand_solution(text, solution)
+                    check_html(problems.render_markdown(text), where, targets, errors)
         summary.append(f"{len(targets['algo_problems'])} algorithm problems")
     for e in errors:
         print("ERROR", e)

@@ -126,15 +126,7 @@ caption: best never goes below 0: not trading is always an option
 
 ## The solution
 
-```python
-class Solution:
-    def maxProfit(self, prices: list[int]) -> int:
-        lowest = float("inf")  # cheapest price so far; infinity before the first day
-        best = 0  # "don't trade" is always allowed
-        for price in prices:
-            lowest = min(lowest, price)
-            best = max(best, price - lowest)
-        return best
+```solution
 ```
 
 Why it's correct: the best trade sells on some day `j` and, for that day, must buy at the lowest

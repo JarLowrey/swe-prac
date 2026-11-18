@@ -107,25 +107,7 @@ flowchart TD
 
 ## The solution
 
-```python
-class Solution:
-    def insert(self, intervals: list[list[int]], newInterval: list[int]) -> list[list[int]]:
-        out: list[list[int]] = []
-        i, n = 0, len(intervals)
-        start, end = newInterval
-
-        while i < n and intervals[i][1] < start:  # before: ends before the new one starts
-            out.append(intervals[i])
-            i += 1
-
-        while i < n and intervals[i][0] <= end:  # overlapping: starts before the merged one ends
-            start = min(start, intervals[i][0])
-            end = max(end, intervals[i][1])
-            i += 1
-        out.append([start, end])
-
-        out.extend(intervals[i:])  # after: starts after the merged interval ends
-        return out
+```solution
 ```
 
 The three cases from the diagrams need no special code. If nothing overlaps, the middle loop

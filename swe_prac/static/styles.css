@@ -444,10 +444,6 @@ details.walkthrough .md { padding: 0 16px 16px; }
   background: var(--pass-soft); border-radius: 999px; padding: 2px 9px; white-space: nowrap;
 }
 .overview-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 12px; }
-.code-view {
-  background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius);
-  padding: 12px 14px; font-size: 13px; line-height: 1.5; white-space: pre; overflow-x: auto; word-break: normal;
-}
 .algo-study { line-height: 1.6; }
 .algo-study h2 {
   font-size: 19px; margin: 30px 0 8px; padding-top: 14px; border-top: 1px solid var(--border);

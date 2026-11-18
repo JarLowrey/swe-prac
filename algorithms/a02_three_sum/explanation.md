@@ -145,32 +145,7 @@ caption: lo skips both 0s and hi both 2s: no second [-2, 0, 2]
 
 ## The solution
 
-```python
-class Solution:
-    def threeSum(self, nums: list[int]) -> list[list[int]]:
-        nums = sorted(nums)  # a sorted copy; the caller's list is untouched
-        n = len(nums)
-        triplets = []
-        for i in range(n - 2):
-            if nums[i] > 0:
-                break  # the smallest of the three is positive: no total can be 0
-            if i > 0 and nums[i] == nums[i - 1]:
-                continue  # same first value as before: same triplets
-            lo, hi = i + 1, n - 1
-            while lo < hi:
-                total = nums[i] + nums[lo] + nums[hi]
-                if total < 0:
-                    lo += 1
-                elif total > 0:
-                    hi -= 1
-                else:
-                    triplets.append([nums[i], nums[lo], nums[hi]])
-                    low_value, high_value = nums[lo], nums[hi]
-                    while lo < hi and nums[lo] == low_value:
-                        lo += 1
-                    while lo < hi and nums[hi] == high_value:
-                        hi -= 1
-        return triplets
+```solution
 ```
 
 `range(n - 2)` leaves room for `lo` and `hi`, and is empty when there are fewer than three

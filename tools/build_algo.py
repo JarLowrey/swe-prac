@@ -367,7 +367,13 @@ def verify_with_runner(problem: algorithms.Problem, warnings: list[str]) -> None
 
 def check_markdown(path: Path) -> None:
     for name in ("statement.md", "hints.md", "explanation.md"):
-        html = render_markdown((path / name).read_text(encoding="utf-8"))
+        text = (path / name).read_text(encoding="utf-8")
+        if name == "explanation.md":
+            if len(algorithms.SOLUTION_MARKER.findall(text)) != 1:
+                raise BuildError("explanation.md needs one empty ```solution block")
+            solution = (path / "solution.py").read_text(encoding="utf-8")
+            text = algorithms.expand_solution(text, solution)
+        html = render_markdown(text)
         m = re.search(r'<div class="diagram-error"><strong>([^<]*)</strong>\s*([^<]*)', html)
         if m:
             raise BuildError(f"{name}: {m.group(1)} {m.group(2).strip()}")

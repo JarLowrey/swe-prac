@@ -110,31 +110,7 @@ caption: inside 4: its arrow points back to 2, which is still on the path
 
 ## The solution
 
-```python
-UNVISITED, VISITING, DONE = 0, 1, 2
-
-
-class Solution:
-    def canFinish(self, numCourses: int, prerequisites: list[list[int]]) -> bool:
-        unlocks = [[] for _ in range(numCourses)]
-        for course, prereq in prerequisites:
-            unlocks[prereq].append(course)
-        state = [UNVISITED] * numCourses
-
-        def has_cycle(course: int) -> bool:
-            state[course] = VISITING
-            for nxt in unlocks[course]:
-                if state[nxt] == VISITING:
-                    return True
-                if state[nxt] == UNVISITED and has_cycle(nxt):
-                    return True
-            state[course] = DONE
-            return False
-
-        for course in range(numCourses):
-            if state[course] == UNVISITED and has_cycle(course):
-                return False
-        return True
+```solution
 ```
 
 Step by step:

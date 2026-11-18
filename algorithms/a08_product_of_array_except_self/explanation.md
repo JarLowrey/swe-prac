@@ -159,23 +159,7 @@ The order inside each step is the whole trick: **use** the running product, **th
 
 ## The solution
 
-```python
-class Solution:
-    def productExceptSelf(self, nums: list[int]) -> list[int]:
-        n = len(nums)
-        answer = [1] * n
-
-        left = 1  # product of nums[0..i-1]
-        for i in range(n):
-            answer[i] = left
-            left *= nums[i]
-
-        right = 1  # product of nums[i+1..n-1]
-        for i in range(n - 1, -1, -1):
-            answer[i] *= right
-            right *= nums[i]
-
-        return answer
+```solution
 ```
 
 Why it's correct: at the start of step `i` of the first loop, `left` is the product of

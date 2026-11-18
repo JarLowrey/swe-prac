@@ -141,22 +141,7 @@ flowchart TD
 
 ## The solution
 
-```python
-class Solution:
-    def longestPalindrome(self, s: str) -> str:
-        start, end = 0, 0  # the best palindrome so far is s[start:end]
-        for i in range(len(s)):
-            # Odd lengths are centered on s[i], even lengths on the gap after it.
-            for lo, hi in (self.expand(s, i, i), self.expand(s, i, i + 1)):
-                if hi - lo > end - start:
-                    start, end = lo, hi
-        return s[start:end]
-
-    def expand(self, s: str, lo: int, hi: int) -> tuple[int, int]:
-        while lo >= 0 and hi < len(s) and s[lo] == s[hi]:
-            lo -= 1
-            hi += 1
-        return lo + 1, hi  # one step past the palindrome on each side
+```solution
 ```
 
 `expand` returns a half-open range `[lo, hi)`, so its length is simply `hi - lo`. An even center

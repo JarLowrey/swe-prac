@@ -88,17 +88,7 @@ flowchart TD
 
 ## The solution
 
-```python
-class Solution:
-    def shortestDistance(self, wordsDict: list[str], word1: str, word2: str) -> int:
-        last = -1  # index of the most recent word1 or word2; -1 = none yet
-        best = len(wordsDict)  # larger than any real distance
-        for i, word in enumerate(wordsDict):
-            if word in (word1, word2):
-                if last != -1 and wordsDict[last] != word:
-                    best = min(best, i - last)
-                last = i
-        return best
+```solution
 ```
 
 Check `last != -1` **before** reading `wordsDict[last]`. In Python `wordsDict[-1]` doesn't fail:

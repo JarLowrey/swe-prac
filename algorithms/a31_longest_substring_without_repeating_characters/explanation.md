@@ -98,18 +98,7 @@ flowchart TD
 
 ## The solution
 
-```python
-class Solution:
-    def lengthOfLongestSubstring(self, s: str) -> int:
-        last_seen = {}  # character -> the index where it last appeared
-        start = 0  # s[start..end] never contains a repeat
-        best = 0
-        for end, c in enumerate(s):
-            if last_seen.get(c, -1) >= start:  # c is inside the window
-                start = last_seen[c] + 1
-            last_seen[c] = end
-            best = max(best, end - start + 1)
-        return best
+```solution
 ```
 
 The window's length is `end - start + 1`: when `start == end` it holds one character.

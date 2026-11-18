@@ -150,20 +150,7 @@ The answer is `dp[0] = 2`: `1 1 10 6` (AAJF) and `11 10 6` (KJF).
 
 Each step reads only the next two values, so keep two variables:
 
-```python
-class Solution:
-    def numDecodings(self, s: str) -> int:
-        n = len(s)
-        after1, after2 = 1, 0  # ways(i + 1) and ways(i + 2); ways(n) = 1
-        for i in range(n - 1, -1, -1):
-            if s[i] == "0":
-                here = 0  # no letter's code starts with 0
-            else:
-                here = after1  # s[i] alone: 1 to 9
-                if i + 1 < n and "10" <= s[i : i + 2] <= "26":
-                    here += after2  # s[i:i + 2]: 10 to 26
-            after1, after2 = here, after1
-        return after1  # ways(0)
+```solution
 ```
 
 `after2` starts at 0, but it's only read when `i + 1 < n`, and by then it holds `ways(n) = 1`.

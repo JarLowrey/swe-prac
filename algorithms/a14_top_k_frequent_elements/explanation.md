@@ -125,24 +125,7 @@ caption: take 2: that's k = 2 values, so stop
 
 ## The solution
 
-```python
-from collections import Counter
-
-
-class Solution:
-    def topKFrequent(self, nums: list[int], k: int) -> list[int]:
-        counts = Counter(nums)
-        buckets = [[] for _ in range(len(nums) + 1)]
-        for value, count in counts.items():
-            buckets[count].append(value)
-
-        top = []
-        for count in range(len(nums), 0, -1):
-            for value in buckets[count]:
-                top.append(value)
-                if len(top) == k:
-                    return top
-        return top
+```solution
 ```
 
 Why it's correct: the walk visits values in order of decreasing count, so the first `k` it collects

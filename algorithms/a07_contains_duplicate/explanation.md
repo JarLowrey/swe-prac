@@ -118,15 +118,7 @@ flowchart LR
 
 ## The solution
 
-```python
-class Solution:
-    def containsDuplicate(self, nums: list[int]) -> bool:
-        seen = set()
-        for x in nums:
-            if x in seen:
-                return True
-            seen.add(x)
-        return False
+```solution
 ```
 
 Why it's correct: when the loop reaches the second copy of any value, the first copy is already

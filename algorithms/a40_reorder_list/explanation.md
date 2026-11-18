@@ -93,34 +93,7 @@ first half's last node (3) is already in the right place with `next = None`.
 
 ## The solution
 
-```python
-class Solution:
-    def reorderList(self, head: ListNode | None) -> None:
-        if head is None or head.next is None:
-            return
-
-        # 1. Find the end of the first half.
-        slow = fast = head
-        while fast.next and fast.next.next:
-            slow = slow.next
-            fast = fast.next.next
-
-        # 2. Cut, and reverse the second half.
-        second, slow.next = slow.next, None
-        prev = None
-        while second:
-            nxt = second.next
-            second.next = prev
-            prev, second = second, nxt
-        second = prev
-
-        # 3. Weave the halves together.
-        first = head
-        while second:
-            first_next, second_next = first.next, second.next
-            first.next = second
-            second.next = first_next
-            first, second = first_next, second_next
+```solution
 ```
 
 ## Complexity

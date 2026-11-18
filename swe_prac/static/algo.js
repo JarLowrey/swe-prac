@@ -53,7 +53,7 @@ function foundationChips(links, label = "Foundations to review") {
 function confirmEnd() {
   return modal({
     title: "End this session?",
-    body: "<p>Your code is locked and the session is scored. The hints, the explanation and the reference solution open on the review page.</p>",
+    body: "<p>Your code is locked and the session is scored. The hints and the explanation, with the commented solution, open on the review page.</p>",
     actions: [{ label: "Keep working", value: false, kind: "ghost" }, { label: "End & review", value: true, kind: "primary" }],
   });
 }
@@ -121,8 +121,8 @@ export async function renderAlgoHome() {
     <p class="lead">One problem against the clock: ${minutes.Easy} minutes for Easy, ${minutes.Medium} for
       Medium, ${minutes.Hard} for Hard. Write a Python <code>Solution</code> class. <strong>Run</strong> checks
       the examples; <strong>Submit</strong> adds hidden tests, from edge cases to inputs big enough that only an
-      efficient algorithm finishes in time. The hints, an explanation with diagrams and the reference
-      solution open when the session ends.</p>
+      efficient algorithm finishes in time. The hints and an explanation with diagrams and the
+      commented solution open when the session ends.</p>
     ${STATIC ? `<div class="callout info"><strong>Static copy.</strong> The problems, the timer, review, the
       explanations and the foundations pages all work here, and your sessions are saved in this browser.
       Python can't run on this site, so Run, Submit and Run scratch are disabled. To solve problems,
@@ -252,9 +252,7 @@ export async function renderAlgoProblem(problemId, kind) {
   } else if (kind === "hints") {
     panel.innerHTML = foundationChips(data.foundations) + data.hints_html;
   } else {
-    panel.innerHTML = `${foundationChips(data.foundations)}${data.explanation_html}
-      <h2 id="reference-solution">Reference solution</h2><div data-code></div>`;
-    await showCode(panel.querySelector("[data-code]"), data.solution_code);
+    panel.innerHTML = foundationChips(data.foundations) + data.explanation_html;
   }
   return undefined;
 }
@@ -294,17 +292,6 @@ async function renderOverview(problemId) {
   });
   bindRows();
   return undefined;
-}
-
-// Read-only, syntax-coloured code that sizes to its content (Monaco's colorizer, no editor).
-async function showCode(host, code) {
-  host.innerHTML = `<pre class="code-view">${esc(code)}</pre>`;
-  try {
-    const monaco = await window.monacoReady;
-    monaco.editor.setTheme("vs-dark");  // makes sure the token colours are in the page
-    const html = await monaco.editor.colorize(code, "python", { tabSize: 4 });
-    if (host.isConnected) host.innerHTML = `<pre class="code-view">${html}</pre>`;
-  } catch { /* plain text is fine */ }
 }
 
 // ---------------------------------------------------------------- session
@@ -604,7 +591,7 @@ export async function renderAlgoSession(sessionId) {
       <span class="faint">${r.ms} ms</span></div>`);
     if (r.solved) {
       parts.push(`<div class="callout good"><strong>Solved at ${fmtClock(r.solved_at)}.</strong> Every test passes,
-        including the hidden ones. Tidy up if you like, then end the session for the explanation and the reference solution.</div>`);
+        including the hidden ones. Tidy up if you like, then end the session for the explanation and the commented solution.</div>`);
     } else if (r.kind === "submit" && r.all_passed) {
       parts.push('<div class="callout good"><strong>All tests pass.</strong></div>');
     } else if (r.kind === "run" && r.all_passed) {
@@ -845,7 +832,6 @@ export async function renderAlgoReview(sessionId) {
   const tabs = [
     ["explanation", "Explanation"],
     ["hints", "Hints"],
-    ["solution", "Reference solution"],
     ["yours", "Your code"],
     ["statement", "Problem"],
     ["timeline", "Timeline"],
@@ -860,13 +846,13 @@ export async function renderAlgoReview(sessionId) {
     $app.querySelector("[data-review-tabs]").innerHTML = tabs.map(([k, label]) =>
       `<button class="tab ${k === current ? "active" : ""}" data-k="${k}">${label}</button>`).join("");
     $app.querySelectorAll("[data-k]").forEach((b) => { b.onclick = () => show(b.dataset.k); });
-    if (key === "solution" || key === "yours") {
+    if (key === "yours") {
       panel.className = "review-panel code";
       panel.innerHTML = "";
       const monaco = await window.monacoReady;
       if (current !== key || !panel.isConnected) return;
       viewer = monaco.editor.create(panel, {
-        value: key === "solution" ? data.solution_code : data.code,
+        value: data.code,
         language: "python", theme: "vs-dark", readOnly: true, domReadOnly: true, automaticLayout: true,
         minimap: { enabled: false }, fontSize: 13, scrollBeyondLastLine: false,
       });

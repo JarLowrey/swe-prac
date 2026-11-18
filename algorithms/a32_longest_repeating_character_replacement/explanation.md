@@ -149,23 +149,7 @@ flowchart TD
 
 ## The solution
 
-```python
-from collections import Counter
-
-
-class Solution:
-    def characterReplacement(self, s: str, k: int) -> int:
-        count = Counter()  # letters in the window s[left..right]
-        max_freq = 0  # the highest count any letter has reached; never lowered
-        left = best = 0
-        for right, c in enumerate(s):
-            count[c] += 1
-            max_freq = max(max_freq, count[c])
-            if right - left + 1 - max_freq > k:  # too many changes: slide
-                count[s[left]] -= 1
-                left += 1
-            best = max(best, right - left + 1)
-        return best
+```solution
 ```
 
 Only `count[c]` can rise when `c` enters, so `max_freq = max(max_freq, count[c])` is the whole

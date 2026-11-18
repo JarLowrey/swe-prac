@@ -167,14 +167,7 @@ caption: dp[5] needs only dp[3] and dp[4]; the dimmed cells aren't read again
 
 So two variables that slide up the staircase are enough:
 
-```python
-class Solution:
-    def climbStairs(self, n: int) -> int:
-        before, current = 1, 1  # ways(0), ways(1)
-        for _ in range(2, n + 1):
-            # The new current is ways(i) = ways(i - 1) + ways(i - 2).
-            before, current = current, before + current
-        return current
+```solution
 ```
 
 For `n = 1` the loop doesn't run and the answer is `current = 1`. The tuple assignment matters:

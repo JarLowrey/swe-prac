@@ -17,4 +17,9 @@ flowchart LR
   B -->|no| D["remember x"]
 ```
 
+## The solution
+
+```solution
+```
+
 The fixture's reference is the explanation the review shows.

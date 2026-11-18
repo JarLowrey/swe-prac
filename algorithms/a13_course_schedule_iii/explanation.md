@@ -147,21 +147,7 @@ caption: drop it: day = 1300 again. Three courses
 
 ## The solution
 
-```python
-import heapq
-
-
-class Solution:
-    def scheduleCourse(self, courses: list[list[int]]) -> int:
-        taken: list[int] = []  # max-heap of durations, stored negated
-        day = 0
-        for duration, last_day in sorted(courses, key=lambda c: c[1]):
-            heapq.heappush(taken, -duration)
-            day += duration
-            if day > last_day:
-                longest = -heapq.heappop(taken)
-                day -= longest
-        return len(taken)
+```solution
 ```
 
 Python's `heapq` is a min-heap, so durations go in negated and the smallest stored value is the

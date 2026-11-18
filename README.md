@@ -41,8 +41,8 @@ The algorithms section practises the classic data structures and algorithms roun
 problem and write a Python `Solution` class. The clock is 20 minutes for Easy, 30 for Medium and
 40 for Hard. **Run** checks your code against the examples. **Submit** adds hidden tests, from edge
 cases to inputs big enough that only an efficient algorithm finishes in time. So a correct brute
-force still fails. Afterwards the review shows hints, an explanation with diagrams and a commented
-reference solution.
+force still fails. Afterwards the review shows hints and an explanation with diagrams, which
+includes the commented reference solution.
 
 It comes with 45 problems (10 Easy, 31 Medium, 4 Hard) on hashing, two pointers, sliding windows,
 binary search, intervals, linked lists, stacks, heaps, trees, graphs, greedy choices and dynamic
@@ -167,7 +167,7 @@ past its time limit, so the submit stops there.
 ![Algorithms session after a submit with a hidden test that is too slow](docs/screenshots/algo-session.png)
 
 **Algorithms review:** the timed result, links to the foundations sections to study next, then the
-explanation with diagrams, hints, reference solution, your code and a timeline.
+explanation with diagrams and the commented solution, hints, your code and a timeline.
 
 ![Algorithms review on the explanation tab](docs/screenshots/algo-review.png)
 
@@ -239,7 +239,7 @@ so an infinite loop can't hang the app. It is not a security sandbox: run only y
 - **Lint and format** work as for coding, except that camelCase method names are allowed, because
   the problems use them. The rules are in `swe_prac/user_ruff_algo.toml`.
 - **End session** opens the review: the timed result and the result including overtime, then
-  tabs for the explanation, hints, reference solution, your code, the problem and a timeline of
+  tabs for the explanation (with the commented solution), hints, your code, the problem and a timeline of
   runs and submits. Links at the top lead to the foundations sections the problem builds on.
 
 Each problem card also has **Question**, **Hints** and **Solution** buttons, and a problem's title

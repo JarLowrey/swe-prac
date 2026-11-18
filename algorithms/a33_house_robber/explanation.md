@@ -149,14 +149,7 @@ caption: to list the houses, walk forward, robbing wherever that wins: 0, 2, 4
 
 Each step reads only the next two values, so two variables replace the table:
 
-```python
-class Solution:
-    def rob(self, nums: list[int]) -> int:
-        after1 = after2 = 0  # best(i + 1) and best(i + 2): 0 past the end
-        for i in range(len(nums) - 1, -1, -1):
-            best_here = max(nums[i] + after2, after1)  # rob house i, or skip it
-            after1, after2 = best_here, after1
-        return after1  # best(0)
+```solution
 ```
 
 The mirror image, walking left to right with "the best total of the houses so far", is just as

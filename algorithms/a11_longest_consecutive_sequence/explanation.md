@@ -120,19 +120,7 @@ walk from 1. Nothing is walked twice.
 
 ## The solution
 
-```python
-class Solution:
-    def longestConsecutive(self, nums: list[int]) -> int:
-        values = set(nums)
-        best = 0
-        for x in values:
-            if x - 1 in values:
-                continue  # x is inside a run; its start will count it
-            end = x
-            while end + 1 in values:
-                end += 1
-            best = max(best, end - x + 1)
-        return best
+```solution
 ```
 
 The run from `x` to `end` holds `end - x + 1` numbers: from 1 to 4 is 4 numbers, not 4 - 1 = 3.

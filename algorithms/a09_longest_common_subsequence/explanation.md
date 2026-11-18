@@ -177,22 +177,7 @@ Row `i` reads only row `i + 1` (below) and itself (to the right). So keep just t
 being filled and the one below it. Putting the shorter string along the columns makes each row
 as short as possible.
 
-```python
-class Solution:
-    def longestCommonSubsequence(self, text1: str, text2: str) -> int:
-        if len(text2) > len(text1):
-            text1, text2 = text2, text1  # the answer is symmetric; keep rows short
-        n = len(text2)
-        below = [0] * (n + 1)  # row i + 1, starting with the all-zero empty-suffix row
-        for i in range(len(text1) - 1, -1, -1):
-            row = [0] * (n + 1)  # row i; row[n] = 0 is the empty-suffix column
-            for j in range(n - 1, -1, -1):
-                if text1[i] == text2[j]:
-                    row[j] = 1 + below[j + 1]  # match: diagonal
-                else:
-                    row[j] = max(below[j], row[j + 1])  # drop one: below or right
-            below = row
-        return below[0]
+```solution
 ```
 
 ## Complexity

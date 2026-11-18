@@ -130,23 +130,7 @@ Both routes from the start end up at position 7, and nothing splits `"og"`, so `
 
 ## The solution
 
-```python
-class Solution:
-    def wordBreak(self, s: str, wordDict: list[str]) -> bool:
-        words = set(wordDict)
-        lengths = sorted({len(w) for w in words})  # only these lengths can be words
-        n = len(s)
-        ok = [False] * (n + 1)
-        ok[n] = True  # the empty rest is already split
-        for i in range(n - 1, -1, -1):
-            for length in lengths:
-                j = i + length
-                if j > n:
-                    break  # this length and every longer one run past the end
-                if ok[j] and s[i:j] in words:
-                    ok[i] = True  # word s[i:j], then a splittable rest
-                    break
-        return ok[0]
+```solution
 ```
 
 Checking `ok[j]` before `s[i:j] in words` skips building the slice whenever the rest can't be

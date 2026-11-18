@@ -85,16 +85,7 @@ considered exactly once: when we stand on its right element. So one pass finds t
 
 ## The solution
 
-```python
-class Solution:
-    def twoSum(self, nums: list[int], target: int) -> list[int]:
-        seen = {}  # value -> index, for the elements left of i
-        for i, x in enumerate(nums):
-            need = target - x
-            if need in seen:
-                return [seen[need], i]
-            seen[x] = i
-        return []  # not reached: the input always has an answer
+```solution
 ```
 
 Duplicates need no special care. With `[3, 3]`, target 6: at index 0 the map is empty, so we

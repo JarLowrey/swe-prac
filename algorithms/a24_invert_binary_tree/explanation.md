@@ -62,13 +62,7 @@ caption: swap at 2: 1 and 3 trade places. Swaps at the leaves change nothing
 
 Recursion says it most directly: invert both subtrees, then attach each on the other side.
 
-```python
-class Solution:
-    def invertTree(self, root: TreeNode | None) -> TreeNode | None:
-        if root is None:
-            return None
-        root.left, root.right = self.invertTree(root.right), self.invertTree(root.left)
-        return root
+```solution
 ```
 
 Python evaluates the whole right-hand side (both recursive calls) before assigning either

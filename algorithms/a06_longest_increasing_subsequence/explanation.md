@@ -182,20 +182,7 @@ caption: x = 18 replaces 101; the answer is len(tails) = 4
 
 ## The solution
 
-```python
-from bisect import bisect_left
-
-
-class Solution:
-    def lengthOfLIS(self, nums: list[int]) -> int:
-        tails: list[int] = []  # tails[k]: smallest tail of an increasing run of length k + 1
-        for x in nums:
-            k = bisect_left(tails, x)  # the first tail >= x
-            if k == len(tails):
-                tails.append(x)  # x extends the longest run
-            else:
-                tails[k] = x  # a run of length k + 1 can now end in x, a smaller tail
-        return len(tails)
+```solution
 ```
 
 Why it's correct: after each step, `tails[k]` is the smallest possible last element of an

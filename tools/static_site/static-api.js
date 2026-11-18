@@ -772,10 +772,7 @@
       if (kind === "question") return { ...out, ...algoQuestion(data) };
       out.foundations = data.foundations;
       out.hints_html = data.hints_html;
-      if (kind === "solution") {
-        out.explanation_html = data.explanation_html;
-        out.solution_code = data.solution_code;
-      }
+      if (kind === "solution") out.explanation_html = data.explanation_html;
       return out;
     },
 
@@ -880,7 +877,6 @@
         ...algoQuestion(data),
         hints_html: data.hints_html,
         explanation_html: data.explanation_html,
-        solution_code: data.solution_code,
         foundations: data.foundations,
         code: s.code,
       };

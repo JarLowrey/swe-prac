@@ -155,28 +155,7 @@ flowchart TD
 
 ## The solution
 
-```python
-from collections import Counter
-
-
-class Solution:
-    def minWindow(self, s: str, t: str) -> str:
-        need = Counter(t)  # how many more of each character the window needs
-        missing = len(t)  # total still needed: 0 means the window covers t
-        best_start, best_len = 0, len(s) + 1  # longer than any window: "none yet"
-        left = 0
-        for right, c in enumerate(s):
-            if need[c] > 0:
-                missing -= 1  # c was still needed
-            need[c] -= 1  # below 0: a spare copy (or a character t doesn't have)
-            while missing == 0:  # the window covers t: record it, then shrink
-                if right - left + 1 < best_len:
-                    best_start, best_len = left, right - left + 1
-                need[s[left]] += 1
-                if need[s[left]] > 0:
-                    missing += 1  # we just dropped a character we needed
-                left += 1
-        return s[best_start : best_start + best_len] if best_len <= len(s) else ""
+```solution
 ```
 
 Details worth saying out loud:

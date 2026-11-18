@@ -82,12 +82,7 @@ flowchart TD
 
 ## The solution
 
-```python
-class Solution:
-    def maxDepth(self, root: TreeNode | None) -> int:
-        if root is None:
-            return 0
-        return 1 + max(self.maxDepth(root.left), self.maxDepth(root.right))
+```solution
 ```
 
 Why it is correct, by induction on the size of the tree: an empty tree has depth 0. For a

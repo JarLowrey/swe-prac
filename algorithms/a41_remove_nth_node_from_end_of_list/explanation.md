@@ -122,18 +122,7 @@ Both are correct. The dummy node is the general trick whenever the head might ch
 
 ## The solution
 
-```python
-class Solution:
-    def removeNthFromEnd(self, head: ListNode | None, n: int) -> ListNode | None:
-        dummy = ListNode(0, head)
-        slow = fast = dummy
-        for _ in range(n):
-            fast = fast.next
-        while fast.next:
-            slow = slow.next
-            fast = fast.next
-        slow.next = slow.next.next
-        return dummy.next
+```solution
 ```
 
 **Why it works.** After the first loop `fast` is `n` nodes after `slow`, and each step of the

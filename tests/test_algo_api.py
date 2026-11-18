@@ -175,7 +175,8 @@ class AlgoApiTests(ClientCase):
         self.assertEqual([s["kind"] for s in review["submissions"]], ["submit", "submit"])
         self.assertIn("Remember the numbers", review["hints_html"])
         self.assertIn("ds-figure", review["explanation_html"])  # the array diagram
-        self.assertIn("seen[target - x]", review["solution_code"])
+        self.assertIn("seen[target - x]", review["explanation_html"])  # solution.py, expanded
+        self.assertNotIn("solution_code", review)
         self.assertEqual(
             [f["href"] for f in review["foundations"]],
             ["#/algo/learn/basics/hashing", "#/algo/learn/basics"],
@@ -188,7 +189,7 @@ class AlgoApiTests(ClientCase):
         self.assertNotIn("solution_code", hints)
         self.assertEqual(hints["foundations"][0]["title"], "Hashing")
         solution = self.client.get(f"/api/algo/problems/{PAIR}/solution").json()
-        self.assertIn("seen[target - x]", solution["solution_code"])
+        self.assertIn("seen[target - x]", solution["explanation_html"])
         self.assertIn("The idea", solution["explanation_html"])
         question = self.client.get(f"/api/algo/problems/{PAIR}/question").json()
         self.assertEqual(len(question["examples"]), 2)

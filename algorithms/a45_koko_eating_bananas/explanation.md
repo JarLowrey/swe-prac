@@ -135,20 +135,7 @@ wrong for integers above 2^53, and in Java or C++ `p / k` on integers truncates 
 
 ## The solution
 
-```python
-class Solution:
-    def minEatingSpeed(self, piles: list[int], h: int) -> int:
-        lo, hi = 1, max(piles)
-        while lo < hi:
-            mid = (lo + hi) // 2
-            if self.hours_needed(piles, mid) <= h:
-                hi = mid  # fast enough: the answer is mid or slower
-            else:
-                lo = mid + 1  # too slow: the answer is faster
-        return lo
-
-    def hours_needed(self, piles: list[int], k: int) -> int:
-        return sum((p + k - 1) // k for p in piles)
+```solution
 ```
 
 **Why it's correct.** The loop keeps the answer inside `[lo, hi]`. It starts there: `hi =

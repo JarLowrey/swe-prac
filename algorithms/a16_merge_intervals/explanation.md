@@ -113,16 +113,7 @@ caption: [15,18] starts after 10: another gap
 
 ## The solution
 
-```python
-class Solution:
-    def merge(self, intervals: list[list[int]]) -> list[list[int]]:
-        merged: list[list[int]] = []
-        for start, end in sorted(intervals, key=lambda iv: iv[0]):
-            if merged and start <= merged[-1][1]:
-                merged[-1][1] = max(merged[-1][1], end)  # overlaps or touches: extend
-            else:
-                merged.append([start, end])  # a gap: start a new merged interval
-        return merged
+```solution
 ```
 
 `if merged and ...` handles the first interval (and an empty input) without a special case:

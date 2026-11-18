@@ -86,20 +86,7 @@ element and -1 < 1.
 
 ## The solution
 
-```python
-class Solution:
-    def countOfAirplanes(self, airplanes: list[list[int]]) -> int:
-        events = []
-        for takeoff, landing in airplanes:
-            events.append((takeoff, 1))
-            events.append((landing, -1))
-        events.sort()  # by time; at equal times (t, -1) comes before (t, 1)
-
-        in_sky = most = 0
-        for _, change in events:
-            in_sky += change
-            most = max(most, in_sky)
-        return most
+```solution
 ```
 
 **Why it's correct.** After the events at time `t` are processed, `in_sky` equals the number of

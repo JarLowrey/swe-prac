@@ -137,21 +137,7 @@ flowchart TD
 
 ## The solution
 
-```python
-class Solution:
-    def convert(self, samples: list[tuple[int, list[str]]]) -> list[tuple[str, int, str]]:
-        events = []
-        prev = []  # the previous sample's stack: empty before the first sample
-        for time, stack in samples:
-            common = 0  # length of the longest common prefix of prev and stack
-            limit = min(len(prev), len(stack))
-            while common < limit and prev[common] == stack[common]:
-                common += 1
-            # Ends innermost first, then starts outermost first.
-            events.extend(("end", time, name) for name in reversed(prev[common:]))
-            events.extend(("start", time, name) for name in stack[common:])
-            prev = stack
-        return events
+```solution
 ```
 
 Checking it against the edge cases:

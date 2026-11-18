@@ -145,8 +145,24 @@ def hints_html(problem: Problem) -> str:
     return _md(problem, "hints.md")
 
 
+# explanation.md doesn't repeat the reference solution: an empty ```solution block marks where
+# solution.py goes, so the explanation shows the one, fully commented copy.
+SOLUTION_MARKER = re.compile(r"^```solution[ \t]*\r?\n```[ \t]*$", re.M)
+
+
+def expand_solution(text: str, code: str) -> str:
+    """explanation.md with its ```solution marker replaced by solution.py as a python block."""
+    block = "```python\n" + code.strip("\n") + "\n```"
+    return SOLUTION_MARKER.sub(lambda _: block, text)
+
+
+def explanation_markdown(problem: Problem) -> str:
+    text = (problem.path / "explanation.md").read_text(encoding="utf-8")
+    return expand_solution(text, solution_code(problem))
+
+
 def explanation_html(problem: Problem) -> str:
-    return _md(problem, "explanation.md")
+    return render_markdown(explanation_markdown(problem))
 
 
 def solution_code(problem: Problem) -> str:

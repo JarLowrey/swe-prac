@@ -113,35 +113,7 @@ caption: skip the other copies of 4, then push 7
 
 ## The solution
 
-```python
-import heapq
-
-
-class Solution:
-    def kCommon(self, streams: list[list[int]], k: int) -> list[int]:
-        feeds = [iter(stream) for stream in streams]  # read each one only from the front
-        heap = []  # (head, stream index): one entry per stream that still has values
-        for i, feed in enumerate(feeds):
-            head = next(feed, None)
-            if head is not None:
-                heap.append((head, i))
-        heapq.heapify(heap)
-
-        found = []
-        while len(heap) >= k:  # fewer than k live streams: nothing more can qualify
-            value = heap[0][0]
-            count = 0
-            while heap and heap[0][0] == value:
-                _, i = heapq.heappop(heap)
-                count += 1
-                head = next(feeds[i], None)
-                while head == value:  # skip this stream's other copies
-                    head = next(feeds[i], None)
-                if head is not None:
-                    heapq.heappush(heap, (head, i))
-            if count >= k:
-                found.append(value)
-        return found
+```solution
 ```
 
 The iterators make the streaming explicit: the code never indexes into a stream or looks ahead,

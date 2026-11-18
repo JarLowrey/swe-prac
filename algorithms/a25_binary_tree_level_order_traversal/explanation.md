@@ -90,25 +90,7 @@ flowchart LR
 
 ## The solution
 
-```python
-from collections import deque
-
-
-class Solution:
-    def levelOrder(self, root: TreeNode | None) -> list[list[int]]:
-        levels = []
-        queue = deque([root] if root else [])
-        while queue:
-            level = []
-            for _ in range(len(queue)):
-                node = queue.popleft()
-                level.append(node.val)
-                if node.left:
-                    queue.append(node.left)
-                if node.right:
-                    queue.append(node.right)
-            levels.append(level)
-        return levels
+```solution
 ```
 
 `range(len(queue))` is evaluated once, when the `for` loop starts, so the children appended

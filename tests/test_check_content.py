@@ -12,7 +12,7 @@ from pathlib import Path
 
 from support import EnvCase
 
-from swe_prac import config
+from swe_prac import algorithms, config
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools"))
 import check_content  # noqa: E402
@@ -93,6 +93,25 @@ class FixtureContentTests(EnvCase):
         self.assertIn("link to unknown problem #/algo/problem/x99_missing", out)
         self.assertIn("array needs", out)
         self.assertIn("Unsupported markdown: list", out)
+
+    def test_the_solution_marker_expands_to_solution_py(self):
+        solution = (config.ALGO_DIR / "x01_pair_sum" / "solution.py").read_text(encoding="utf-8")
+        text = "## The solution\n\n```solution\n```\n\nAfter.\n"
+        out = algorithms.expand_solution(text, solution)
+        self.assertIn("```python\nclass Solution:", out)
+        self.assertIn("return [seen[target - x], i]", out)
+        self.assertNotIn("```solution", out)
+        self.assertTrue(out.endswith("```\n\nAfter.\n"))
+
+    def test_an_explanation_needs_exactly_one_solution_marker(self):
+        explanation = config.ALGO_DIR / "x01_pair_sum" / "explanation.md"
+        text = explanation.read_text(encoding="utf-8")
+        marker = "```solution\n```"
+        for broken in (text.replace(marker, "```python\npass\n```"), text + "\n" + marker + "\n"):
+            explanation.write_text(broken, encoding="utf-8")
+            code, out = run_main("algorithms")
+            self.assertEqual(code, 1)
+            self.assertIn("x01_pair_sum/explanation.md: needs one empty ```solution block", out)
 
     def test_design_foundations_references_must_resolve(self):
         path = config.DESIGNS_DIR / "d00_pastebin" / "design.json"

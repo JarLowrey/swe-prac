@@ -65,7 +65,6 @@ class StaticBuildTests(EnvCase):
             "scratch_starter",
             "hints_html",
             "explanation_html",
-            "solution_code",
         ):
             self.assertTrue(item[key], key)
         self.assertEqual(item["foundations"][0]["href"], "#/algo/learn/basics/hashing")

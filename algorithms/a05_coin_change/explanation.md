@@ -193,18 +193,7 @@ variations below.
 
 ## The solution
 
-```python
-import math
-
-
-class Solution:
-    def coinChange(self, coins: list[int], amount: int) -> int:
-        fewest = [0] + [math.inf] * amount  # fewest[a] for a = 0..amount
-        for a in range(1, amount + 1):
-            for c in coins:
-                if c <= a and fewest[a - c] + 1 < fewest[a]:
-                    fewest[a] = fewest[a - c] + 1  # c as the last coin
-        return fewest[amount] if fewest[amount] != math.inf else -1
+```solution
 ```
 
 Why it's correct: any way to pay `a` ends with some coin `c`, and the coins before it pay

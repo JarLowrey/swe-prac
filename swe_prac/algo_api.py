@@ -170,7 +170,7 @@ STUDY_VIEWS = ("question", "hints", "solution")
 
 @router.get("/problems/{problem_id}/{kind}")
 def study(problem_id: str, kind: str) -> dict:
-    """The question, hints or explained solution outside a session.
+    """The question, hints or the solution (explanation and commented code) outside a session.
 
     Refused while a session on this problem is running, so a live timed attempt can't peek.
     """
@@ -189,7 +189,6 @@ def study(problem_id: str, kind: str) -> dict:
         out["hints_html"] = algorithms.hints_html(problem)
         if kind == "solution":
             out["explanation_html"] = algorithms.explanation_html(problem)
-            out["solution_code"] = algorithms.solution_code(problem)
     return out
 
 
@@ -351,7 +350,6 @@ def review(session_id: int) -> dict:
             **_question(problem),
             "hints_html": algorithms.hints_html(problem),
             "explanation_html": algorithms.explanation_html(problem),
-            "solution_code": algorithms.solution_code(problem),
             "foundations": algorithms.foundation_links(problem),
             "code": row["code"],
         }

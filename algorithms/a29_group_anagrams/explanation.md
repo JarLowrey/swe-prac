@@ -116,16 +116,7 @@ without one.
 
 ## The solution
 
-```python
-class Solution:
-    def groupAnagrams(self, strs: list[str]) -> list[list[str]]:
-        groups = {}
-        for word in strs:
-            counts = [0] * 26
-            for ch in word:
-                counts[ord(ch) - ord("a")] += 1
-            groups.setdefault(tuple(counts), []).append(word)
-        return list(groups.values())
+```solution
 ```
 
 Why it's correct: two words get the same key exactly when they have the same count of every

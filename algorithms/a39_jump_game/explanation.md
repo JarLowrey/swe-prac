@@ -137,15 +137,7 @@ flowchart TD
 
 ## The solution
 
-```python
-class Solution:
-    def canJump(self, nums: list[int]) -> bool:
-        reach = 0  # every index up to reach can be reached
-        for i, jump in enumerate(nums):
-            if i > reach:
-                return False
-            reach = max(reach, i + jump)
-        return True
+```solution
 ```
 
 **Why it's correct.** Before index `i` is processed, `reach` is the furthest index reachable from

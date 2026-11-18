@@ -183,28 +183,7 @@ caption: lo > hi: the range is empty, so 3 isn't in nums. Return -1
 
 ## The solution
 
-```python
-class Solution:
-    def search(self, nums: list[int], target: int) -> int:
-        first = nums[0]
-        target_in_first = target >= first
-        lo, hi = 0, len(nums) - 1
-        while lo <= hi:
-            mid = (lo + hi) // 2
-            if nums[mid] == target:
-                return mid
-            mid_in_first = nums[mid] >= first
-            if mid_in_first != target_in_first:
-                # Different runs: the first run is on the left, the second on the right.
-                if target_in_first:
-                    hi = mid - 1
-                else:
-                    lo = mid + 1
-            elif nums[mid] < target:  # same run, and a run is sorted
-                lo = mid + 1
-            else:
-                hi = mid - 1
-        return -1
+```solution
 ```
 
 **Why it's correct.** The loop keeps one promise: if the target is in `nums`, its index is in
