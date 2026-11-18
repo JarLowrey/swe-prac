@@ -1,0 +1,33 @@
+{
+  "id": "d09_notifications",
+  "number": 9,
+  "title": "Notification system",
+  "prompt": "Design a notification system that other services use to send push, SMS, email and in-app messages to users.",
+  "hard_part": "Reliability, dedupe, user preferences, throttling",
+  "building_blocks": [
+    "queues",
+    "retries",
+    "rate limits"
+  ],
+  "key_points": [
+    "Accepted requests asynchronously and processed them through a pipeline of queues",
+    "Separated transactional and marketing traffic, so a campaign can't starve a password reset",
+    "Checked preferences, opt-outs and quiet hours at send time, and rendered templates per locale",
+    "Retried with backoff and jitter, used a dead-letter queue, and failed over between providers",
+    "Deduplicated with a dedupe key and idempotent workers, and said which way to lean for critical messages",
+    "Throttled per user and per provider, and spread large campaigns over time"
+  ],
+  "foundations": [
+    "networking/async-request-reply",
+    "networking/webhooks",
+    "networking/idempotency-keys",
+    "building-blocks/message-queues-and-streams",
+    "building-blocks/token-bucket",
+    "building-blocks/backpressure-and-consumer-lag",
+    "reliability/retries-with-backoff-and-jitter",
+    "reliability/dead-letter-queues",
+    "reliability/deduplicating-consumers",
+    "reliability/circuit-breakers",
+    "reliability/bulkheads"
+  ]
+}

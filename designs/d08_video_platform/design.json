@@ -1,0 +1,32 @@
+{
+  "id": "d08_video_platform",
+  "number": 8,
+  "title": "Video upload and streaming",
+  "prompt": "Design a video platform where users upload videos and others stream them on any device, anywhere in the world.",
+  "hard_part": "Huge files, global delivery, processing pipeline",
+  "building_blocks": [
+    "object storage",
+    "CDN",
+    "queues"
+  ],
+  "key_points": [
+    "Sent uploads straight to object storage with pre-signed, resumable multipart uploads",
+    "Built processing as an async pipeline: split into segments, transcode in parallel into several renditions, package manifests",
+    "Made workers stateless and idempotent, with a workflow engine retrying failed tasks",
+    "Served playback with adaptive bitrate streaming (HLS/DASH) from a CDN",
+    "Used numbers to show that bandwidth and storage dominate cost, and covered CDN tiers and hot content",
+    "Recovered stuck or abandoned uploads, with the metadata status as the source of truth"
+  ],
+  "foundations": [
+    "networking/async-request-reply",
+    "data/metadata-and-blobs",
+    "building-blocks/presigned-url-uploads",
+    "building-blocks/multipart-and-resumable-uploads",
+    "building-blocks/upload-states-and-cleanup",
+    "building-blocks/video-processing-and-adaptive-bitrate",
+    "building-blocks/cdns-and-edge-caching",
+    "reliability/naturally-idempotent-operations",
+    "reliability/orchestration-vs-choreography",
+    "reliability/dead-letter-queues"
+  ]
+}

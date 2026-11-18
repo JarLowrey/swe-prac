@@ -1,0 +1,32 @@
+{
+  "id": "d10_autocomplete",
+  "number": 10,
+  "title": "Search autocomplete",
+  "prompt": "Design search autocomplete: as a user types into a search box, suggest the most likely completions.",
+  "hard_part": "Sub-100 ms suggestions over huge query logs",
+  "building_blocks": [
+    "tries",
+    "caching",
+    "offline aggregation"
+  ],
+  "key_points": [
+    "Sized the suggestion corpus with numbers and kept it in memory (it fits on one node)",
+    "Used a trie with precomputed top-K per node, or a prefix-to-top-K key-value table",
+    "Split the system into an online serving path and an offline aggregation and build path",
+    "Rebuilt snapshots and swapped them atomically instead of updating in place, with a trending overlay for freshness",
+    "Cut latency with client debouncing, caching (browser and CDN) and regional servers",
+    "Ranked with recency decay, filtered blocked or private suggestions, and failed gracefully when down"
+  ],
+  "foundations": [
+    "networking/round-trips-and-latency-budgets",
+    "networking/http-caching",
+    "building-blocks/autocomplete-and-typeahead",
+    "building-blocks/top-k-heavy-hitters",
+    "building-blocks/count-min-sketch",
+    "building-blocks/batch-vs-stream-processing",
+    "building-blocks/cdns-and-edge-caching",
+    "reliability/atomic-snapshot-swaps",
+    "reliability/rollout-strategies",
+    "reliability/graceful-degradation"
+  ]
+}

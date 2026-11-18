@@ -1,0 +1,32 @@
+{
+  "id": "d06_proximity_search",
+  "number": 6,
+  "title": "Proximity and listing search",
+  "prompt": "Design the search behind a map of places: users look at an area on the map and see the listings in it that match their filters.",
+  "hard_part": "Geographic queries plus filters at scale",
+  "building_blocks": [
+    "geohash/S2",
+    "search index",
+    "sharding"
+  ],
+  "key_points": [
+    "Indexed location (geohash or S2 cells, a quadtree, or the search engine's geo index) and explained the query",
+    "Fed a denormalized search index from the source of truth through change events, eventually consistent",
+    "Had a plan for date availability in search (in-document bitmap, post-filtering the top candidates, or precomputing)",
+    "Handled density skew: return the top N, cluster results server-side for map views",
+    "Chose how to shard the index (by ID with scatter-gather, or by geography) and named the trade-off",
+    "Cached common queries with canonical keys, or explained what changes for moving objects (in-memory grid, expiring updates)"
+  ],
+  "foundations": [
+    "networking/pagination-offset-vs-cursor",
+    "data/secondary-indexes-on-sharded-data",
+    "building-blocks/geohash",
+    "building-blocks/quadtrees",
+    "building-blocks/geospatial-indexes-compared",
+    "building-blocks/nearby-search",
+    "building-blocks/sharding-by-location",
+    "building-blocks/moving-objects",
+    "reliability/read-models-and-search-indexes",
+    "reliability/the-outbox-pattern"
+  ]
+}

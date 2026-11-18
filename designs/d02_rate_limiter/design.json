@@ -1,0 +1,32 @@
+{
+  "id": "d02_rate_limiter",
+  "number": 2,
+  "title": "Rate limiter",
+  "prompt": "Design a rate limiter that protects a public API from clients who send too many requests.",
+  "hard_part": "Accurate counting across many servers",
+  "building_blocks": [
+    "token bucket",
+    "Redis",
+    "fail-open"
+  ],
+  "key_points": [
+    "Chose an algorithm (token bucket, or a sliding window for strict quotas) and explained how it works",
+    "Made check-and-decrement atomic across servers (for example one script in the shared store), avoiding the read-modify-write race",
+    "Sized state and throughput with numbers (bytes per key, shards needed)",
+    "Decided fail-open vs fail-closed per kind of limit when the store is down",
+    "Handled hot keys and added latency (local pre-limiter, edge limits), or traded exactness for less central load",
+    "Rejected with 429, Retry-After and rate-limit headers; rules change without a redeploy"
+  ],
+  "foundations": [
+    "networking/rate-limiting-429-and-retry-after",
+    "networking/api-gateway",
+    "data/atomic-updates-and-counters",
+    "data/hot-keys",
+    "building-blocks/rate-limiting-algorithms-compared",
+    "building-blocks/token-bucket",
+    "building-blocks/sliding-window-counter",
+    "building-blocks/distributed-rate-limiting-with-redis",
+    "building-blocks/fail-open-or-fail-closed",
+    "reliability/load-shedding"
+  ]
+}

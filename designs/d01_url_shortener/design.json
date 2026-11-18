@@ -1,0 +1,33 @@
+{
+  "id": "d01_url_shortener",
+  "number": 1,
+  "title": "URL shortener",
+  "prompt": "Design a URL shortening service. Users submit a long URL and get back a short link; anyone who opens the short link is redirected to the original.",
+  "hard_part": "Unique short codes at scale; read-heavy traffic",
+  "building_blocks": [
+    "IDs",
+    "caching",
+    "CDN",
+    "sharding"
+  ],
+  "key_points": [
+    "Picked a short-code scheme (counter + base62, random with a unique insert, or a hash) and named its trade-off",
+    "Chose 301 or 302 on purpose and said what it costs (browser caching vs analytics, edits and takedowns)",
+    "Scaled the redirect path with a cache (and optionally the CDN), including brief negative caching for missing codes",
+    "Checked expiry at read time and never reused codes",
+    "Covered abuse: rate-limited creation, scanned destinations, could disable a code instantly",
+    "Kept analytics off the redirect path (asynchronous click events)"
+  ],
+  "foundations": [
+    "networking/redirects-301-vs-302",
+    "networking/http-caching",
+    "data/unique-constraints",
+    "data/choosing-a-partition-key",
+    "building-blocks/short-codes-and-base62",
+    "building-blocks/ticket-servers-and-id-ranges",
+    "building-blocks/cache-aside",
+    "building-blocks/cdns-and-edge-caching",
+    "reliability/circuit-breakers",
+    "reliability/graceful-degradation"
+  ]
+}

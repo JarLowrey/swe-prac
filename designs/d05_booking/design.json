@@ -1,0 +1,33 @@
+{
+  "id": "d05_booking",
+  "number": 5,
+  "title": "Booking and availability calendar",
+  "prompt": "Design a reservation system where guests check availability and book a vacation rental for a range of dates. (Variants: hotel rooms, event tickets.)",
+  "hard_part": "No double-booking under concurrency",
+  "building_blocks": [
+    "constraints",
+    "transactions",
+    "holds"
+  ],
+  "key_points": [
+    "Prevented double booking in the database (a unique key per listing-night, or a conditional update with a row-count check) inside one transaction",
+    "Modeled holds with an expiry enforced on the server and a sweeper that releases them",
+    "Put an idempotency key on booking creation",
+    "Let search be slightly stale, with the booking transaction as the final check",
+    "Handled hot inventory or flash demand (waiting room, per-section rows, serialized writes)",
+    "Coordinated payment as a saga with compensation (release the hold, refund)"
+  ],
+  "foundations": [
+    "networking/idempotency-keys",
+    "data/check-then-act-races",
+    "data/unique-constraints",
+    "data/atomic-updates-and-counters",
+    "data/pessimistic-locking-and-deadlocks",
+    "data/holds-that-expire",
+    "reliability/concurrency-control-and-double-booking",
+    "reliability/hot-rows-and-flash-sales",
+    "reliability/sagas-and-compensation",
+    "reliability/read-models-and-search-indexes",
+    "reliability/reconciliation"
+  ]
+}

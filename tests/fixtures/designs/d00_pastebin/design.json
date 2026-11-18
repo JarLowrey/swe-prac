@@ -1,0 +1,9 @@
+{
+  "id": "d00_pastebin",
+  "number": 0,
+  "title": "Pastebin (test fixture)",
+  "prompt": "Design a service for sharing text snippets by link.",
+  "hard_part": "Read-heavy traffic",
+  "building_blocks": ["object storage", "caching"],
+  "key_points": ["Stored blobs in object storage", "Cached hot pastes"]
+}

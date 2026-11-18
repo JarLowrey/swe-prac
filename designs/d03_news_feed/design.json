@@ -1,0 +1,32 @@
+{
+  "id": "d03_news_feed",
+  "number": 3,
+  "title": "News feed",
+  "prompt": "Design the home feed of a social network: users post updates, follow other users, and see recent posts from the people they follow.",
+  "hard_part": "Fan-out on write vs read; celebrities",
+  "building_blocks": [
+    "queues",
+    "caching",
+    "denormalization"
+  ],
+  "key_points": [
+    "Compared fan-out on write with fan-out on read, with the cost of each",
+    "Proposed the hybrid: push for ordinary accounts, merge celebrity posts at read time",
+    "Used cursor pagination and time-ordered IDs, not offsets",
+    "Covered hydration: batch-fetching post bodies, authors and counts from caches",
+    "Gave authors read-your-writes on their own posts, and handled deletes and unfollows by filtering at read time",
+    "Treated feed lists as a rebuildable cache, with a tested fallback when they're lost"
+  ],
+  "foundations": [
+    "networking/pagination-offset-vs-cursor",
+    "data/fan-out-on-write-vs-fan-out-on-read",
+    "data/read-replicas-and-replication-lag",
+    "building-blocks/snowflake-ids",
+    "building-blocks/cache-aside",
+    "building-blocks/hot-keys",
+    "building-blocks/backpressure-and-consumer-lag",
+    "reliability/the-outbox-pattern",
+    "reliability/deduplicating-consumers",
+    "reliability/graceful-degradation"
+  ]
+}

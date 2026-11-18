@@ -1,149 +1,88 @@
-// SWE Practice frontend: hash-routed single page (home, session, review, history).
+// SWE Practice frontend: hash-routed single page. The home page picks a track; this file holds the
+// router and the coding pages (problems, session, review, study, history). System design lives in
+// design.js, the foundations pages in learn.js, shared helpers in common.js.
 
-const $app = document.getElementById("app");
-const $modalRoot = document.getElementById("modal-root");
-const $toastRoot = document.getElementById("toast-root");
-
-// ---------------------------------------------------------------- utilities
-// On the static site (GitHub Pages) static-api.js defines window.SWE_STATIC and answers every API
-// call in the browser. Nothing can execute Python there, so the controls that need it are disabled.
-const STATIC = Boolean(window.SWE_STATIC);
-const NEEDS_SERVER_NOTE = "Disabled on the static site: running code needs the local server";
-
-async function api(method, path, body, opts = {}) {
-  if (STATIC) return window.SWE_STATIC.handle(method, path, body);
-  const res = await fetch(path, {
-    method,
-    headers: body !== undefined ? { "Content-Type": "application/json" } : {},
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-    keepalive: opts.keepalive || false,
-  });
-  let data = null;
-  try { data = await res.json(); } catch { /* empty body */ }
-  if (!res.ok) {
-    const err = new Error((data && data.detail) || `${res.status} ${res.statusText}`);
-    err.status = res.status;
-    throw err;
-  }
-  return data;
-}
-
-function esc(value) {
-  return String(value ?? "").replace(/[&<>"']/g, (c) => (
-    { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
-  ));
-}
-
-function fmtClock(seconds) {
-  const s = Math.max(0, Math.floor(seconds));
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  const sec = String(s % 60).padStart(2, "0");
-  return h ? `${h}:${String(m).padStart(2, "0")}:${sec}` : `${String(m).padStart(2, "0")}:${sec}`;
-}
-
-function fmtMinutes(seconds) {
-  if (seconds == null) return "—";
-  return `${(seconds / 60).toFixed(1)} min`;
-}
-
-function fmtDelta(seconds) {
-  if (seconds == null) return "—";
-  const sign = seconds > 0 ? "+" : "−";
-  return `${sign}${fmtClock(Math.abs(seconds))}`;
-}
-
-function plural(count, word) {
-  return `${count} ${word}${count === 1 ? "" : "s"}`;
-}
-
-function fmtDate(epoch) {
-  return new Date(epoch * 1000).toLocaleString(undefined, {
-    year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
-  });
-}
-
-function storage(key, value) {
-  try {
-    if (value === undefined) return localStorage.getItem(key);
-    localStorage.setItem(key, value);
-  } catch { /* storage unavailable: preferences just don't persist */ }
-  return null;
-}
-
-function toast(message, kind = "") {
-  const el = document.createElement("div");
-  el.className = `toast ${kind}`;
-  el.textContent = message;
-  $toastRoot.appendChild(el);
-  setTimeout(() => el.remove(), 3500);
-}
-
-function modal({ title, body, actions }) {
-  return new Promise((resolve) => {
-    const wrap = document.createElement("div");
-    wrap.className = "modal-backdrop";
-    wrap.innerHTML = `<div class="modal" role="dialog" aria-modal="true">
-      <h2>${esc(title)}</h2><div>${body}</div><div class="actions"></div></div>`;
-    const bar = wrap.querySelector(".actions");
-    for (const action of actions) {
-      const btn = document.createElement("button");
-      btn.textContent = action.label;
-      if (action.kind) btn.className = action.kind;
-      btn.onclick = () => { wrap.remove(); resolve(action.value); };
-      bar.appendChild(btn);
-    }
-    wrap.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") { wrap.remove(); resolve(null); }
-    });
-    $modalRoot.appendChild(wrap);
-    bar.lastElementChild?.focus();
-  });
-}
-
-function topnav(active) {
-  return `<header class="topnav">
-    <a class="brand" href="#/"><span class="brand-mark">&lt;/&gt;</span>SWE Practice</a>
-    <nav>
-      <a href="#/" class="${active === "home" ? "active" : ""}">Practice</a>
-      <a href="#/history" class="${active === "history" ? "active" : ""}">History</a>
-    </nav>
-  </header>`;
-}
-
-function levelDots(count, total = 4, overtimeFrom = null) {
-  let html = '<span class="level-dots">';
-  for (let i = 1; i <= total; i++) {
-    const cls = i <= count ? (overtimeFrom && i >= overtimeFrom ? "over" : "on") : "";
-    html += `<i class="${cls}"></i>`;
-  }
-  return `${html}</span>`;
-}
+import {
+  $app, $modalRoot, STATIC, NEEDS_SERVER_NOTE, api, esc, fmtClock, fmtDelta, plural, fmtDate,
+  storage, toast, modal, chooseMode, confirmSpoil, topnav, levelDots, dragGutter, resizableSplit,
+  watchDiagrams,
+} from "./common.js";
+import {
+  renderDesignHome, renderDesignSession, renderDesignReview, renderDesignStudy, renderFramework,
+  designHistoryTable, designTrackCard,
+} from "./design.js";
+import { renderLearn } from "./learn.js";
 
 // ---------------------------------------------------------------- router
 let cleanup = null;
+
+// [hash pattern, page]; captured groups are passed to the page. A page may return its cleanup.
+const ROUTES = [
+  [/^#\/?$/, renderHome],
+  [/^#\/coding$/, renderCodingHome],
+  [/^#\/session\/(\d+)$/, (id) => renderSession(Number(id))],
+  [/^#\/review\/(\d+)$/, (id) => renderReview(Number(id))],
+  [/^#\/problem\/([\w-]+)\/(question|hints|reference)$/, renderStudy],
+  [/^#\/history$/, renderHistory],
+  [/^#\/design$/, renderDesignHome],
+  [/^#\/design\/framework$/, renderFramework],
+  [/^#\/design\/session\/(\d+)$/, (id) => renderDesignSession(Number(id))],
+  [/^#\/design\/review\/(\d+)$/, (id) => renderDesignReview(Number(id))],
+  [/^#\/design\/question\/([\w-]+)\/(hints|reference)$/, renderDesignStudy],
+  [/^#\/design\/learn(?:\/([\w-]+))?(?:\/([\w-]+))?$/, (slug, section) => renderLearn("design", slug, section)],
+];
 
 async function route() {
   if (cleanup) { await cleanup(); cleanup = null; }
   $modalRoot.innerHTML = "";
   const hash = location.hash || "#/";
-  const m = hash.match(/^#\/(session|review)\/(\d+)$/);
-  const pm = hash.match(/^#\/problem\/([\w-]+)\/(question|hints|reference)$/);
   try {
-    if (m && m[1] === "session") await renderSession(Number(m[2]));
-    else if (m && m[1] === "review") await renderReview(Number(m[2]));
-    else if (pm) await renderStudy(pm[1], pm[2]);
-    else if (hash === "#/history") await renderHistory();
-    else await renderHome();
+    for (const [pattern, page] of ROUTES) {
+      const m = hash.match(pattern);
+      if (!m) continue;
+      const done = await page(...m.slice(1));
+      if (typeof done === "function") cleanup = done;
+      return;
+    }
+    await renderHome();
   } catch (err) {
     $app.innerHTML = `${topnav("")}<div class="page"><div class="callout bad">${esc(err.message)}</div>
-      <a href="#/">Back to problems</a></div>`;
+      <a href="#/">Back to the home page</a></div>`;
   }
 }
 window.addEventListener("hashchange", route);
 
-// ---------------------------------------------------------------- home
+// ---------------------------------------------------------------- home: pick a track
 async function renderHome() {
+  const [coding, codingActive, designCard] = await Promise.all([
+    api("GET", "/api/problems"), api("GET", "/api/active"), designTrackCard(),
+  ]);
+  const active = codingActive.session;
+  const attempts = coding.problems.reduce((sum, p) => sum + p.attempts, 0);
+  const status = active
+    ? `<span class="chip good">In progress: ${esc(active.problem.title)} · ${active.timer.paused ? "paused"
+      : active.timer.overtime ? "overtime" : `${fmtClock(active.timer.remaining)} left`}</span>`
+    : `<span class="faint">${attempts ? `${plural(attempts, "attempt")} so far` : "No attempts yet"}</span>`;
+
+  $app.innerHTML = `${topnav("home")}<main class="page">
+    <h1>Interview practice</h1>
+    <p class="lead">Two kinds of timed practice, run the way the real rounds are. Pick one.</p>
+    <div class="track-grid">
+      <a class="track-card" href="#/coding">
+        <div class="track-head"><span class="track-mark">&lt;/&gt;</span><h2>Coding assessment</h2></div>
+        <p>90 minutes, one problem in four levels, revealed one at a time. You write Python against
+          shown and hidden tests, and each level unlocks when everything up to it passes.</p>
+        <ul class="track-facts"><li>${plural(coding.problems.length, "problem")}</li><li>${coding.time_limit / 60} min</li><li>auto-graded</li></ul>
+        ${STATIC ? '<p class="faint track-note">Code can\'t run on this static copy, so levels can\'t be passed here.</p>' : ""}
+        <div class="track-foot">${status}<span class="track-cta">Open →</span></div>
+      </a>
+      ${designCard}
+    </div>
+  </main>`;
+}
+
+// ---------------------------------------------------------------- coding: problem list
+async function renderCodingHome() {
   const [{ problems }, { session: active }] = await Promise.all([
     api("GET", "/api/problems"), api("GET", "/api/active"),
   ]);
@@ -176,7 +115,7 @@ async function renderHome() {
     </article>`;
   }).join("");
 
-  $app.innerHTML = `${topnav("home")}<main class="page">
+  $app.innerHTML = `${topnav("coding")}<main class="page">
     <h1>90-minute coding assessment practice</h1>
     <p class="lead">One problem, four levels, revealed one at a time. Each level unlocks when every shown and hidden test up to it passes.</p>
     ${STATIC ? `<div class="callout info"><strong>Static copy.</strong> Reading the problems, the timer, pausing, review and
@@ -196,20 +135,7 @@ async function renderHome() {
   unseenBox.addEventListener("change", () => storage("swe-prac-prefer-unseen", unseenBox.checked ? "1" : "0"));
 
   const start = async (problemId) => {
-    // No default: the user picks a mode explicitly by choosing which Start button to press.
-    const mode = await modal({
-      title: "Start a 90-minute session?",
-      body: `<p>The timer starts immediately and you'll see Level 1 only. Choose a timer mode:</p>
-        <ul class="mode-help">
-          <li><strong>Strict</strong> &mdash; no pausing. Like the real thing: the clock keeps running even if you close the tab.</li>
-          <li><strong>Pausable</strong> &mdash; pause any time. While paused, the problem and your code are hidden. Every pause is recorded.</li>
-        </ul>`,
-      actions: [
-        { label: "Cancel", value: null, kind: "ghost" },
-        { label: "Start strict", value: "strict", kind: "primary" },
-        { label: "Start pausable", value: "pausable", kind: "primary" },
-      ],
-    });
+    const mode = await chooseMode(90, "Level 1 only");
     if (!mode) return;
     try {
       const s = await api("POST", "/api/sessions", {
@@ -221,7 +147,7 @@ async function renderHome() {
   $app.querySelectorAll("[data-start]").forEach((b) => b.addEventListener("click", () => start(b.dataset.start)));
   $app.querySelectorAll("[data-study]").forEach((b) => b.addEventListener("click", async () => {
     const problem = problems.find((p) => p.id === b.dataset.pid);
-    if (!problem.attempts && !(await confirmSpoil(problem))) return;
+    if (!problem.attempts && !(await confirmSpoil(problem.title, "question, hints or reference solution"))) return;
     location.hash = `#/problem/${b.dataset.pid}/${b.dataset.study}`;
   }));
   $app.querySelector("[data-random]").addEventListener("click", () => start(null));
@@ -231,20 +157,6 @@ async function renderHome() {
       await api("POST", `/api/sessions/${active.id}/end`);
       location.hash = `#/review/${active.id}`;
     }
-  });
-}
-
-// A speed bump, not a gate: opening the question, hints or solution of a problem you haven't
-// attempted costs you a fresh timed run at it. Cancel is the default so Enter doesn't spoil.
-function confirmSpoil(problem) {
-  return modal({
-    title: "This will spoil it",
-    body: `<p>You haven't attempted <strong>${esc(problem.title)}</strong> yet. Reading its question,
-      hints or reference solution now means you won't get a fresh, honest timed run at it.</p>`,
-    actions: [
-      { label: "Show it anyway", value: true },
-      { label: "Cancel", value: false, kind: "primary" },
-    ],
   });
 }
 
@@ -284,7 +196,7 @@ async function renderSession(sessionId) {
 
   $app.innerHTML = `<div class="session">
     <div class="session-bar">
-      <a href="#/" class="ghost" title="Back to problems" style="color:var(--text-dim)">←</a>
+      <a href="#/coding" class="ghost" title="Back to problems" style="color:var(--text-dim)">←</a>
       <span class="title">${esc(session.problem.title)}</span>
       <span class="level-pills" data-pills></span>
       <span class="mode-badge">${session.mode}</span>
@@ -343,6 +255,8 @@ async function renderSession(sessionId) {
     renderWhitespace: "selection",
     padding: { top: 8 },
     fixedOverflowWidgets: true,
+    // While readOnly is set, also mark the hidden textarea readonly so mobile keeps its keyboard closed.
+    domReadOnly: true,
   });
 
   const formatProvider = monaco.languages.registerDocumentFormattingEditProvider("python", {
@@ -797,31 +711,9 @@ async function renderSession(sessionId) {
   window.addEventListener("keydown", keyHandler);
 
   // ----- resizable panes
-  function dragGutter(gutter, onMove) {
-    gutter.addEventListener("pointerdown", (e) => {
-      e.preventDefault();
-      gutter.classList.add("dragging");
-      gutter.setPointerCapture(e.pointerId);
-      const move = (ev) => onMove(ev);
-      const up = () => {
-        gutter.classList.remove("dragging");
-        gutter.removeEventListener("pointermove", move);
-        gutter.removeEventListener("pointerup", up);
-      };
-      gutter.addEventListener("pointermove", move);
-      gutter.addEventListener("pointerup", up);
-    });
-  }
-  const savedLeft = storage("swe-prac-left-width");
   const savedBottom = storage("swe-prac-bottom-height");
-  if (savedLeft) workspace.style.setProperty("--left-width", savedLeft);
   if (savedBottom) q(".code-pane").style.setProperty("--bottom-height", savedBottom);
-  dragGutter(q("[data-gutter-x]"), (e) => {
-    const rect = workspace.getBoundingClientRect();
-    const pct = Math.min(70, Math.max(20, ((e.clientX - rect.left) / rect.width) * 100));
-    workspace.style.setProperty("--left-width", `${pct}%`);
-    storage("swe-prac-left-width", `${pct}%`);
-  });
+  resizableSplit(workspace, q("[data-gutter-x]"));
   dragGutter(q("[data-gutter-y]"), (e) => {
     const pane = q(".code-pane").getBoundingClientRect();
     const px = Math.min(pane.height - 120, Math.max(80, pane.bottom - e.clientY));
@@ -934,7 +826,7 @@ async function renderReview(sessionId) {
       const monaco = await window.monacoReady;
       if (current !== key) return;
       viewer = monaco.editor.create(panel, {
-        value: code, language: "python", theme: "vs-dark", readOnly: true, automaticLayout: true,
+        value: code, language: "python", theme: "vs-dark", readOnly: true, domReadOnly: true, automaticLayout: true,
         minimap: { enabled: false }, fontSize: 13, scrollBeyondLastLine: false,
       });
       return;
@@ -963,8 +855,8 @@ function fullStatementHtml({ conventions_html, levels }) {
 async function renderStudy(problemId, kind) {
   const data = await api("GET", `/api/problems/${encodeURIComponent(problemId)}/${kind}`);
   const tabs = [["question", "Question"], ["hints", "Hints"], ["reference", "Reference solution"]];
-  $app.innerHTML = `${topnav("home")}<main class="page">
-    <p class="faint" style="margin:0 0 4px"><a href="#/">← Problems</a></p>
+  $app.innerHTML = `${topnav("coding")}<main class="page">
+    <p class="faint" style="margin:0 0 4px"><a href="#/coding">← Problems</a></p>
     <h1>${esc(data.problem.title)}</h1>
     <p class="lead">${esc(data.problem.summary)}</p>
     <div class="review-tabs" style="margin-top:0">
@@ -983,7 +875,7 @@ async function renderStudy(problemId, kind) {
     if (!panel.isConnected) return;  // navigated away while Monaco was loading
     viewer = monaco.editor.create(panel, {
       value: data.reference_code ?? "# No reference solution available.",
-      language: "python", theme: "vs-dark", readOnly: true, automaticLayout: true,
+      language: "python", theme: "vs-dark", readOnly: true, domReadOnly: true, automaticLayout: true,
       minimap: { enabled: false }, fontSize: 13, scrollBeyondLastLine: false,
     });
     return;
@@ -1017,10 +909,12 @@ function renderTimeline(data) {
     ${events.map((e) => `<tr><td class="mono">${fmtClock(e.t)}</td>${e.html}</tr>`).join("")}</table>`;
 }
 
-// ---------------------------------------------------------------- history
+// ---------------------------------------------------------------- history (both tracks)
 async function renderHistory() {
-  const { sessions } = await api("GET", "/api/history");
-  const rows = sessions.map((s) => `<tr class="clickable" data-id="${s.id}" data-status="${s.status}">
+  const [{ sessions }, designTable] = await Promise.all([
+    api("GET", "/api/history"), designHistoryTable(),
+  ]);
+  const rows = sessions.map((s) => `<tr class="clickable" data-href="${s.status === "active" ? `#/session/${s.id}` : `#/review/${s.id}`}">
       <td>${fmtDate(s.started_at)}</td>
       <td>${esc(s.problem_title)}</td>
       <td>${s.mode}</td>
@@ -1031,15 +925,17 @@ async function renderHistory() {
     </tr>`).join("");
   $app.innerHTML = `${topnav("history")}<main class="page">
     <h1>History</h1>
-    <p class="lead">Every attempt, newest first. Open one to see its results, pacing, hints and your final code.</p>
+    <p class="lead">Every attempt, newest first. Open one to see its results, pacing and your final work.</p>
+    <h2 class="section-title">Coding</h2>
     ${sessions.length ? `<table class="table"><tr><th>Date</th><th>Problem</th><th>Mode</th><th>Timed levels</th><th>Incl. overtime</th><th>Time</th><th>Pauses</th></tr>${rows}</table>`
-      : '<p class="dim">No attempts yet. <a href="#/">Start one</a>.</p>'}
+      : '<p class="dim">No coding attempts yet. <a href="#/coding">Start one</a>.</p>'}
+    <h2 class="section-title">System design</h2>
+    ${designTable}
   </main>`;
-  $app.querySelectorAll("tr[data-id]").forEach((tr) => {
-    tr.onclick = () => {
-      location.hash = tr.dataset.status === "active" ? `#/session/${tr.dataset.id}` : `#/review/${tr.dataset.id}`;
-    };
+  $app.querySelectorAll("tr[data-href]").forEach((tr) => {
+    tr.onclick = () => { location.hash = tr.dataset.href; };
   });
 }
 
+watchDiagrams();
 route();

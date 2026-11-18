@@ -1,11 +1,14 @@
 // Browser-side stand-in for the FastAPI backend, used on the static site (GitHub Pages).
 //
-// app.js sends every request through api(); when this file has defined window.SWE_STATIC, that
-// call lands in handle() below instead of the network. Responses have the same shape as the real
-// API's. Sessions live in localStorage and mirror swe_prac/sessions.py (timer, pausing, scoring).
+// The frontend sends every request through api() (common.js); when this file has defined
+// window.SWE_STATIC, that call lands in handle() below instead of the network. Responses have the
+// same shape as the real API's. Sessions live in localStorage and mirror swe_prac/sessions.py
+// (timer, pausing, scoring) and swe_prac/design_sessions.py (system design).
 //
 // Nothing here can run Python, so run / submit / scratch / format are refused and lint reports
 // that it is unavailable. app.js disables those buttons, so no level can be passed on this site.
+// System design needs no code execution, so that whole section works here, and so do its
+// foundations pages.
 (() => {
   const STORAGE_KEY = "swe-prac-static-v1";
   const NEEDS_SERVER = "Running code needs the local server. It isn't available on the static site.";
@@ -118,6 +121,15 @@
     s.status = "finished";
   }
 
+  // Count and total length of pauses; one still open counts up to now.
+  function pauseSummary(pauses) {
+    const now = clock();
+    return {
+      count: pauses.length,
+      total_seconds: pauses.reduce((sum, p) => sum + (p.ended_at ?? now) - p.started_at, 0),
+    };
+  }
+
   // ---------------------------------------------------------------- results (sessions.results)
   // A static session can't submit code, so completions and submissions stay empty. The shape is
   // kept anyway so the review and history pages render exactly as they do with the server.
@@ -142,7 +154,6 @@
       return row;
     });
     const spent = elapsed(s);
-    const now = clock();
     return {
       time_limit: limit,
       elapsed: spent,
@@ -158,10 +169,7 @@
         stopped_level_ratio: null,
       },
       levels,
-      pauses: {
-        count: s.pauses.length,
-        total_seconds: s.pauses.reduce((sum, p) => sum + (p.ended_at ?? now) - p.started_at, 0),
-      },
+      pauses: pauseSummary(s.pauses),
       runs: 0,
       submits: 0,
     };
@@ -371,8 +379,328 @@
     needsServer() { throw new ApiError(NEEDS_SERVER, 501); },
   };
 
+  // ---------------------------------------------------------------- system design (design_api.py)
+  // Kept in state.design so it shares the storage key, and the clock helpers above, with coding.
+  function designState() {
+    state.design ??= { nextId: 1, sessions: [] };
+    return state.design;
+  }
+
+  function designData(questionId) {
+    const found = bundle.design.questions.find((q) => q.question.id === questionId);
+    if (!found) throw new ApiError(`Unknown question '${questionId}'`, 404);
+    return found;
+  }
+
+  function getDesignSession(id) {
+    const s = designState().sessions.find((x) => x.id === id);
+    if (!s) throw new ApiError("Session not found.", 404);
+    return s;
+  }
+
+  const activeDesign = () => [...designState().sessions].reverse().find((s) => s.status === "active") ?? null;
+
+  const designSizes = (data) => [bundle.design.checklist.length, data.key_points.length];
+
+  function designScore(s, [checklistSize, keyPointsSize]) {
+    if (!s.assessment) return null;
+    const checklist = s.assessment.checklist.filter((i) => i < checklistSize).length;
+    const keyPoints = s.assessment.key_points.filter((i) => i < keyPointsSize).length;
+    return {
+      done: checklist + keyPoints,
+      total: checklistSize + keyPointsSize,
+      checklist,
+      key_points: keyPoints,
+    };
+  }
+
+  // Time spent on each step against its target, and the overall clock.
+  function designResults(s) {
+    const starts = Object.entries(s.step_starts).map(([step, t]) => [Number(step), t]);
+    const spentTotal = elapsed(s);
+    const limit = s.time_limit;
+    let targetStart = 0;
+    const steps = bundle.design.steps.map(({ step, title, minutes }) => {
+      const start = s.step_starts[step] ?? null;
+      const later = starts.filter(([m]) => m > step).map(([, t]) => t);
+      const end = later.length ? Math.min(...later) : spentTotal;
+      const spent = start === null ? null : Math.max(0, end - start);
+      const row = {
+        step,
+        title,
+        target: minutes * 60,
+        target_start: targetStart,
+        started_at: start,
+        spent,
+        delta: spent === null ? null : spent - minutes * 60,
+        overtime: start !== null && start > limit,
+      };
+      targetStart += minutes * 60;
+      return row;
+    });
+    return {
+      time_limit: limit,
+      elapsed: spentTotal,
+      overtime_seconds: Math.max(0, spentTotal - limit),
+      steps,
+      steps_reached: starts.length,
+      pauses: pauseSummary(s.pauses),
+    };
+  }
+
+  // Merge notes for known steps and replace the diagram. Refused while paused or finished.
+  function saveDesign(s, body) {
+    requireEditable(s);
+    if (body?.notes != null) {
+      const known = new Set(bundle.design.steps.map((st) => String(st.step)));
+      for (const [k, v] of Object.entries(body.notes)) if (known.has(k)) s.notes[k] = v;
+    }
+    if (body?.diagram != null) s.diagram = body.diagram;
+  }
+
+  // The session payload carries no hints, key points or reference design.
+  function designPayload(s) {
+    return {
+      id: s.id,
+      question: designData(s.question_id).question,
+      mode: s.mode,
+      status: s.status,
+      current_step: s.current_step,
+      steps: bundle.design.steps,
+      step_starts: s.step_starts,
+      notes: s.notes,
+      diagram: s.diagram,
+      timer: timerState(s),
+    };
+  }
+
+  const design = {
+    listQuestions() {
+      const attempts = {};
+      const best = {};
+      for (const s of designState().sessions) {
+        attempts[s.question_id] = (attempts[s.question_id] ?? 0) + 1;
+        const data = bundle.design.questions.find((q) => q.question.id === s.question_id);
+        const got = data && designScore(s, designSizes(data));
+        if (got && (!best[s.question_id] || got.done > best[s.question_id].done)) best[s.question_id] = got;
+      }
+      return {
+        questions: bundle.design.questions.map(({ question }) => ({
+          ...question,
+          attempts: attempts[question.id] ?? 0,
+          best: best[question.id] ?? null,
+        })),
+        time_limit: bundle.design.time_limit,
+        steps: bundle.design.steps,
+      };
+    },
+
+    framework() {
+      const { steps, checklist, time_limit, guide_html, walkthrough_html } = bundle.design;
+      return { steps, checklist, time_limit, guide_html, walkthrough_html };
+    },
+
+    study(questionId, kind) {
+      if (!["hints", "reference"].includes(kind)) throw new ApiError(`Unknown view '${kind}'`, 404);
+      const data = designData(questionId);
+      const live = activeDesign();
+      if (live && live.question_id === questionId) {
+        throw new ApiError("This question is in a running session. End the session to open it.");
+      }
+      const out = { question: data.question, kind, hints: data.hints };
+      if (kind === "reference") {
+        out.reference_html = data.reference_html;
+        out.key_points = data.key_points;
+      }
+      return out;
+    },
+
+    active() {
+      const s = activeDesign();
+      if (!s) return { session: null };
+      return {
+        session: {
+          id: s.id,
+          question: designData(s.question_id).question,
+          mode: s.mode,
+          current_step: s.current_step,
+          timer: timerState(s),
+        },
+      };
+    },
+
+    start({ question_id: questionId, mode, prefer_unseen: preferUnseen = true }) {
+      let data;
+      if (questionId == null) {
+        let pool = bundle.design.questions;
+        if (preferUnseen) {
+          const seen = new Set(designState().sessions.map((s) => s.question_id));
+          const unseen = pool.filter((q) => !seen.has(q.question.id));
+          if (unseen.length) pool = unseen;
+        }
+        data = pool[Math.floor(Math.random() * pool.length)];
+      } else {
+        data = designData(questionId);
+      }
+      if (!["strict", "pausable"].includes(mode)) throw new ApiError("Mode must be 'strict' or 'pausable'.", 400);
+      if (activeDesign()) {
+        throw new ApiError("Finish or end your system design session before starting another.");
+      }
+      const store = designState();
+      const s = {
+        id: store.nextId++,
+        question_id: data.question.id,
+        mode,
+        status: "active",
+        started_at: clock(),
+        time_limit: bundle.design.time_limit,
+        paused_at: null,
+        total_paused: 0,
+        current_step: 1,
+        step_starts: { 1: 0 }, // step 1 (requirements) starts with the clock
+        notes: Object.fromEntries(bundle.design.steps.map((st) => [String(st.step), st.starter ?? ""])),
+        diagram: {},
+        assessment: null,
+        finished_at: null,
+        final_elapsed: null,
+        pauses: [],
+      };
+      store.sessions.push(s);
+      return designPayload(s);
+    },
+
+    session(id) {
+      const s = getDesignSession(id);
+      if (s.status !== "active") throw new ApiError("This session has ended; open its review instead.", 410);
+      return designPayload(s);
+    },
+
+    timer: (id) => timerState(getDesignSession(id)),
+
+    save(id, body) {
+      const s = getDesignSession(id);
+      saveDesign(s, body);
+      return { ok: true, timer: timerState(s) };
+    },
+
+    // Steps only go forward; skipping one is allowed.
+    step(id, body) {
+      const s = getDesignSession(id);
+      requireEditable(s);
+      const step = body?.step;
+      if (!Number.isInteger(step) || !(s.current_step < step && step <= bundle.design.steps.length)) {
+        throw new ApiError(`You're on step ${s.current_step}; you can only move forward.`, 400);
+      }
+      s.step_starts[step] = elapsed(s);
+      s.current_step = step;
+      return designPayload(s);
+    },
+
+    pause(id) {
+      const s = getDesignSession(id);
+      pause(s);
+      return timerState(s);
+    },
+
+    resume(id) {
+      const s = getDesignSession(id);
+      resume(s);
+      return timerState(s);
+    },
+
+    end(id, body) {
+      const s = getDesignSession(id);
+      if (body && s.paused_at === null && s.status === "active") saveDesign(s, body);
+      finish(s);
+      return { ok: true, id };
+    },
+
+    review(id) {
+      const s = getDesignSession(id);
+      if (s.status !== "finished") {
+        throw new ApiError("The review (reference design, self-check) opens when the session ends.");
+      }
+      const data = designData(s.question_id);
+      return {
+        id: s.id,
+        question: data.question,
+        hints: data.hints,
+        mode: s.mode,
+        started_at: s.started_at,
+        finished_at: s.finished_at,
+        results: designResults(s),
+        pauses: s.pauses,
+        steps: bundle.design.steps,
+        notes: s.notes,
+        diagram: s.diagram,
+        checklist: bundle.design.checklist,
+        key_points: data.key_points,
+        assessment: s.assessment,
+        score: designScore(s, designSizes(data)),
+        reference_html: data.reference_html,
+      };
+    },
+
+    // Which checklist items and key points you ticked (indices). Only after the session.
+    assess(id, body) {
+      const s = getDesignSession(id);
+      if (s.status !== "finished") throw new ApiError("Self-review opens when the session ends.");
+      const sizes = designSizes(designData(s.question_id));
+      const picked = { checklist: body?.checklist ?? [], key_points: body?.key_points ?? [] };
+      Object.keys(picked).forEach((name, n) => {
+        const items = picked[name];
+        if (!Array.isArray(items) || items.some((i) => !Number.isInteger(i) || i < 0 || i >= sizes[n])) {
+          throw new ApiError(`${name}: item index out of range.`, 400);
+        }
+        picked[name] = [...new Set(items)].sort((a, b) => a - b);
+      });
+      s.assessment = picked;
+      return { assessment: picked, score: designScore(s, sizes) };
+    },
+
+    history() {
+      const stepCount = bundle.design.steps.length;
+      return {
+        sessions: [...designState().sessions].reverse().map((s) => {
+          const data = bundle.design.questions.find((q) => q.question.id === s.question_id);
+          const res = designResults(s);
+          return {
+            id: s.id,
+            question_id: s.question_id,
+            question_title: data ? data.question.title : s.question_id,
+            mode: s.mode,
+            status: s.status,
+            started_at: s.started_at,
+            elapsed: res.elapsed,
+            time_limit: res.time_limit,
+            steps_reached: res.steps_reached,
+            step_count: stepCount,
+            pauses: res.pauses,
+            score: data ? designScore(s, designSizes(data)) : null,
+          };
+        }),
+      };
+    },
+  };
+
+  // ---------------------------------------------------------------- foundations (pages.py)
+  // Every page is pre-rendered into data.json; the track is the first captured group.
+  function foundations(track) {
+    return bundle.foundations?.[track] ?? { cards: [], pages: {} };
+  }
+
+  const learn = {
+    list: (track) => ({ pages: foundations(track).cards }),
+    page(track, slug) {
+      const page = foundations(track).pages[slug];
+      if (!page) throw new ApiError(`Unknown page '${slug}'`, 404);
+      return page;
+    },
+  };
+
   // [method, path pattern, handler]; captured groups are passed first (ids as numbers).
   const E = endpoints;
+  const D = design;
   const ROUTES = [
     ["GET", /^\/api\/problems$/, E.listProblems],
     ["GET", /^\/api\/problems\/([\w-]+)\/([\w-]+)$/, E.study],
@@ -389,8 +717,28 @@
     ["POST", /^\/api\/sessions\/(\d+)\/lint$/, E.lint],
     ["POST", /^\/api\/sessions\/(\d+)\/(run|submit|scratch)$/, E.needsServer],
     ["POST", /^\/api\/format$/, E.needsServer],
+    ["GET", /^\/api\/design\/questions$/, D.listQuestions],
+    ["GET", /^\/api\/design\/framework$/, D.framework],
+    ["GET", /^\/api\/design\/questions\/([\w-]+)\/([\w-]+)$/, D.study],
+    ["GET", /^\/api\/design\/active$/, D.active],
+    ["POST", /^\/api\/design\/sessions$/, D.start],
+    ["GET", /^\/api\/design\/sessions\/(\d+)$/, D.session],
+    ["GET", /^\/api\/design\/sessions\/(\d+)\/timer$/, D.timer],
+    ["PUT", /^\/api\/design\/sessions\/(\d+)\/notes$/, D.save],
+    ["POST", /^\/api\/design\/sessions\/(\d+)\/step$/, D.step],
+    ["POST", /^\/api\/design\/sessions\/(\d+)\/pause$/, D.pause],
+    ["POST", /^\/api\/design\/sessions\/(\d+)\/resume$/, D.resume],
+    ["POST", /^\/api\/design\/sessions\/(\d+)\/end$/, D.end],
+    ["GET", /^\/api\/design\/sessions\/(\d+)\/review$/, D.review],
+    ["PUT", /^\/api\/design\/sessions\/(\d+)\/assessment$/, D.assess],
+    ["GET", /^\/api\/design\/history$/, D.history],
+    ["GET", /^\/api\/(design)\/foundations$/, learn.list],
+    ["GET", /^\/api\/(design)\/foundations\/([\w-]+)$/, learn.page],
   ];
-  const ID_ROUTES = new Set([E.session, E.timer, E.save, E.pause, E.resume, E.end, E.review]);
+  const ID_ROUTES = new Set([
+    E.session, E.timer, E.save, E.pause, E.resume, E.end, E.review,
+    D.session, D.timer, D.save, D.step, D.pause, D.resume, D.end, D.review, D.assess,
+  ]);
 
   async function handle(method, path, body) {
     if (!bundle) await loadBundle(); // after the first call everything below runs synchronously

@@ -11,7 +11,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from . import config, db, execution, problems, sessions
+from . import config, db, design_api, execution, problems, sessions
 from .sessions import SessionError
 
 
@@ -27,6 +27,9 @@ app = FastAPI(title="SWE Practice", docs_url=None, redoc_url=None, lifespan=_lif
 @app.exception_handler(SessionError)
 def _session_error(_: Request, exc: SessionError) -> JSONResponse:
     return JSONResponse({"detail": str(exc)}, status_code=exc.status)
+
+
+app.include_router(design_api.router)  # system design practice: /api/design/...
 
 
 # -- request bodies ----------------------------------------------------------------------

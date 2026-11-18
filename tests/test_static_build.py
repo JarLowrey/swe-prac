@@ -35,6 +35,24 @@ class StaticBuildTests(EnvCase):
         for key in ("starter_code", "scratch_starter", "hints_html", "analysis_html"):
             self.assertTrue(item[key], key)
 
+    def test_bundle_has_the_system_design_section(self):
+        design = json.loads((self.out / "data.json").read_text(encoding="utf-8"))["design"]
+        self.assertEqual([s["step"] for s in design["steps"]], [1, 2, 3])
+        self.assertEqual(len(design["checklist"]), 3)
+        self.assertEqual(design["time_limit"], 45 * 60)
+        self.assertIn("test fixture", design["guide_html"])
+        (item,) = design["questions"]
+        self.assertEqual(item["question"]["id"], "d00_pastebin")
+        self.assertEqual(item["hints"]["hard_part"], "Read-heavy traffic")
+        self.assertEqual(len(item["key_points"]), 2)
+        self.assertIn("Cache hot pastes", item["reference_html"])
+        self.assertTrue((self.out / "design.js").exists())
+        self.assertTrue((self.out / "diagram.js").exists())
+
+    def test_bundle_has_the_foundations_pages(self):
+        found = json.loads((self.out / "data.json").read_text(encoding="utf-8"))["foundations"]
+        self.assertEqual(found, {"design": {"cards": [], "pages": {}}})  # the fixture has none
+
     def test_hidden_tests_are_not_exported(self):
         tests = json.loads(
             (self.tmp_path / "problems" / "p0_counter" / "tests.json").read_text(encoding="utf-8")

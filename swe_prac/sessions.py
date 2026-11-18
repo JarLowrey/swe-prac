@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import sqlite3
 import time
+from dataclasses import dataclass
 
 from . import config
 
@@ -18,6 +19,17 @@ class SessionError(Exception):
     def __init__(self, message: str, status: int = 409):
         super().__init__(message)
         self.status = status
+
+
+@dataclass(frozen=True)
+class Tables:
+    """Where one kind of session keeps its rows. Every kind of session shares the timer code."""
+
+    sessions: str
+    pauses: str
+
+
+CODING = Tables("sessions", "pauses")
 
 
 # -- timer -------------------------------------------------------------------------------
@@ -65,11 +77,20 @@ def completions(conn: sqlite3.Connection, session_id: int) -> dict[int, float]:
     return {r["level"]: r["elapsed"] for r in rows}
 
 
-def pauses(conn: sqlite3.Connection, session_id: int) -> list[dict]:
+def pauses(conn: sqlite3.Connection, session_id: int, tables: Tables = CODING) -> list[dict]:
     rows = conn.execute(
-        "SELECT * FROM pauses WHERE session_id = ? ORDER BY id", (session_id,)
+        f"SELECT * FROM {tables.pauses} WHERE session_id = ? ORDER BY id", (session_id,)
     ).fetchall()
     return [dict(r) for r in rows]
+
+
+def pause_summary(pause_rows: list[dict]) -> dict:
+    """Count and total length of pauses; one still open counts up to now."""
+    total = sum(
+        (p["ended_at"] if p["ended_at"] is not None else clock()) - p["started_at"]
+        for p in pause_rows
+    )
+    return {"count": len(pause_rows), "total_seconds": total}
 
 
 def submissions(conn: sqlite3.Connection, session_id: int) -> list[dict]:
@@ -127,32 +148,33 @@ def save_code(
         conn.execute("UPDATE sessions SET scratch = ? WHERE id = ?", (scratch, row["id"]))
 
 
-def pause(conn: sqlite3.Connection, row: sqlite3.Row) -> None:
+def pause(conn: sqlite3.Connection, row: sqlite3.Row, tables: Tables = CODING) -> None:
     if row["mode"] != "pausable":
         raise SessionError("This is a strict session: the timer cannot be paused.")
     require_editable(row)
     now = clock()
     if elapsed(row, now) >= row["time_limit"]:
         raise SessionError("Time is up; overtime is untimed, so there is nothing to pause.")
-    conn.execute("UPDATE sessions SET paused_at = ? WHERE id = ?", (now, row["id"]))
+    conn.execute(f"UPDATE {tables.sessions} SET paused_at = ? WHERE id = ?", (now, row["id"]))
     conn.execute(
-        "INSERT INTO pauses (session_id, started_at, start_elapsed) VALUES (?, ?, ?)",
+        f"INSERT INTO {tables.pauses} (session_id, started_at, start_elapsed) VALUES (?, ?, ?)",
         (row["id"], now, elapsed(row, now)),
     )
 
 
-def resume(conn: sqlite3.Connection, row: sqlite3.Row) -> None:
+def resume(conn: sqlite3.Connection, row: sqlite3.Row, tables: Tables = CODING) -> None:
     if row["status"] != "active":
         raise SessionError("This session has ended.")
     if row["paused_at"] is None:
         raise SessionError("The session is not paused.")
     now = clock()
     conn.execute(
-        "UPDATE sessions SET total_paused = total_paused + ?, paused_at = NULL WHERE id = ?",
+        f"UPDATE {tables.sessions} SET total_paused = total_paused + ?, paused_at = NULL"
+        " WHERE id = ?",
         (now - row["paused_at"], row["id"]),
     )
     conn.execute(
-        "UPDATE pauses SET ended_at = ? WHERE session_id = ? AND ended_at IS NULL",
+        f"UPDATE {tables.pauses} SET ended_at = ? WHERE session_id = ? AND ended_at IS NULL",
         (now, row["id"]),
     )
 
@@ -196,15 +218,16 @@ def complete_level(conn: sqlite3.Connection, row: sqlite3.Row) -> int:
     return level + 1
 
 
-def finish(conn: sqlite3.Connection, row: sqlite3.Row) -> None:
+def finish(conn: sqlite3.Connection, row: sqlite3.Row, tables: Tables = CODING) -> None:
     if row["status"] != "active":
         raise SessionError("This session has already ended.")
     if row["paused_at"] is not None:
-        resume(conn, row)
-        row = get(conn, row["id"])
+        resume(conn, row, tables)
+        row = conn.execute(f"SELECT * FROM {tables.sessions} WHERE id = ?", (row["id"],)).fetchone()
     now = clock()
     conn.execute(
-        "UPDATE sessions SET status = 'finished', finished_at = ?, final_elapsed = ? WHERE id = ?",
+        f"UPDATE {tables.sessions} SET status = 'finished', finished_at = ?, final_elapsed = ?"
+        " WHERE id = ?",
         (now, elapsed(row, now), row["id"]),
     )
 
@@ -260,10 +283,6 @@ def results(conn: sqlite3.Connection, row: sqlite3.Row) -> dict:
     timed_stop = timed_levels + 1 if timed_levels < total_levels else None
     final_stop = final_levels + 1 if final_levels < total_levels else None
     spent = elapsed(row)
-    paused_total = sum(
-        (p["ended_at"] if p["ended_at"] is not None else clock()) - p["started_at"]
-        for p in pause_rows
-    )
     return {
         "time_limit": limit,
         "elapsed": spent,
@@ -279,7 +298,7 @@ def results(conn: sqlite3.Connection, row: sqlite3.Row) -> dict:
             "stopped_level_ratio": _level_ratio(subs, final_stop, None) if final_stop else None,
         },
         "levels": levels,
-        "pauses": {"count": len(pause_rows), "total_seconds": paused_total},
+        "pauses": pause_summary(pause_rows),
         "runs": sum(1 for s in subs if s["kind"] == "run"),
         "submits": sum(1 for s in subs if s["kind"] == "submit"),
     }

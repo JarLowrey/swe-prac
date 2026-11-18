@@ -1,0 +1,32 @@
+{
+  "id": "d04_chat",
+  "number": 4,
+  "title": "Chat and messaging",
+  "prompt": "Design a chat app with one-to-one and group conversations and real-time delivery.",
+  "hard_part": "Real-time delivery, ordering, offline users",
+  "building_blocks": [
+    "WebSockets",
+    "ordering",
+    "queues"
+  ],
+  "key_points": [
+    "Used persistent connections (WebSockets) through a gateway tier, with a session store mapping users to gateways",
+    "Guaranteed ordering per conversation (sequence numbers), not globally",
+    "Stored before delivering and deduped retries on a client-generated message ID (at-least-once, idempotent)",
+    "Handled offline users: push notifications, then sync by cursor on reconnect",
+    "Partitioned message storage by conversation in a store suited to append-heavy range reads",
+    "Addressed group fan-out, presence without a broadcast storm, or gateway failure and reconnect storms"
+  ],
+  "foundations": [
+    "networking/websockets",
+    "networking/scaling-websockets",
+    "networking/heartbeats-presence-and-reconnects",
+    "data/wide-column-tables",
+    "data/choosing-a-partition-key",
+    "data/ordering-per-key",
+    "building-blocks/long-lived-connections-and-websockets",
+    "reliability/delivery-guarantees",
+    "reliability/deduplicating-consumers",
+    "reliability/retries-with-backoff-and-jitter"
+  ]
+}

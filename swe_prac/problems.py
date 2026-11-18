@@ -9,7 +9,7 @@ from pathlib import Path
 
 import markdown as md
 
-from . import config, testsource
+from . import config, diagrams, testsource
 
 
 class ProblemNotFound(KeyError):
@@ -41,7 +41,9 @@ class Problem:
 
 
 def render_markdown(text: str) -> str:
-    return md.markdown(text, extensions=["fenced_code", "tables", "sane_lists"])
+    """Markdown to HTML; ```array/tree/... blocks become SVG (see diagrams.py)."""
+    html = md.markdown(text, extensions=["fenced_code", "tables", "sane_lists"])
+    return diagrams.render_blocks(html)
 
 
 def _is_ready(path: Path) -> bool:

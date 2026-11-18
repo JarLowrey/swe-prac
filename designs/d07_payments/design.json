@@ -1,0 +1,33 @@
+{
+  "id": "d07_payments",
+  "number": 7,
+  "title": "Payments system",
+  "prompt": "Design a payments system that lets merchants charge their customers' cards and issue refunds.",
+  "hard_part": "Exactly-once effect, money correctness",
+  "building_blocks": [
+    "idempotency",
+    "sagas",
+    "ledger",
+    "reconciliation"
+  ],
+  "key_points": [
+    "Required idempotency keys, enforced by a unique constraint, and passed our payment ID to the provider as its idempotency key",
+    "Used a double-entry ledger with integer minor units, never floats",
+    "Modeled an explicit payment state machine with conditional-update transitions, never deleting",
+    "Handled the unknown outcome of a timeout: stay pending, retry with the same key or query status, never assume failure",
+    "Reconciled against processor settlement files, with mismatches becoming tickets",
+    "Kept PCI scope small with tokenization; published events through an outbox and signed, retried webhooks"
+  ],
+  "foundations": [
+    "networking/idempotency-keys",
+    "networking/webhooks",
+    "data/unique-constraints",
+    "data/transactions-across-partitions-and-services",
+    "reliability/charging-a-card-exactly-once",
+    "reliability/atomic-conditional-updates",
+    "reliability/the-outbox-pattern",
+    "reliability/sagas-and-compensation",
+    "reliability/reconciliation",
+    "reliability/double-entry-ledgers"
+  ]
+}

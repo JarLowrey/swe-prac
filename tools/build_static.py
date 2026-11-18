@@ -2,13 +2,14 @@
 
 Code can't run on a static host, so Run, Submit, Run scratch, Format and lint are disabled there
 (app.js checks `window.SWE_STATIC`). Everything else (sessions, the timer, pausing, review,
-history, study pages) runs in the browser, with sessions kept in localStorage.
+history, the study pages of the coding track, the foundations pages, and the whole system design
+section) runs in the browser, with sessions kept in localStorage.
 
     python tools/build_static.py            # writes site/
     python tools/build_static.py --out dist
 
 Only what the browser needs is exported: statements, stubs, the shown tests, the review texts and
-the reference solution. Hidden tests are never written to the output.
+the reference solutions. Hidden tests are never written to the output.
 """
 
 from __future__ import annotations
@@ -22,9 +23,42 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from swe_prac import config, problems  # noqa: E402
+from swe_prac import config, designs, pages, problems  # noqa: E402
 
 STATIC_SITE_DIR = Path(__file__).resolve().parent / "static_site"
+
+
+def design_bundle() -> dict:
+    """The system design section: questions with their review material, and the framework."""
+    framework = designs.framework() if (config.DESIGNS_DIR / "framework.json").exists() else {}
+    return {
+        "questions": [
+            {
+                "question": q.public(),
+                "hints": q.hints(),
+                "key_points": list(q.key_points),
+                "reference_html": designs.reference_html(q),
+            }
+            for q in designs.list_questions()
+        ],
+        "steps": framework.get("steps", []),
+        "checklist": framework.get("checklist", []),
+        "time_limit": config.DESIGN_TIME_LIMIT_SECONDS,
+        "guide_html": designs.guide_html("framework"),
+        "walkthrough_html": designs.guide_html("walkthrough"),
+    }
+
+
+def foundations_bundle() -> dict:
+    """The foundations pages of each track: the cards for its home page and every page's payload."""
+    out = {}
+    for track, folder in [("design", designs.foundations_dir())]:
+        found = pages.list_pages(folder)
+        out[track] = {
+            "cards": [p.card() for p in found],
+            "pages": {p.slug: pages.payload(folder, p.slug) for p in found},
+        }
+    return out
 
 
 def bundle() -> dict:
@@ -60,6 +94,8 @@ def bundle() -> dict:
         "time_limit": config.TIME_LIMIT_SECONDS,
         "pacing": config.PACING_SECONDS,
         "levels": list(config.LEVELS),
+        "design": design_bundle(),
+        "foundations": foundations_bundle(),
     }
 
 

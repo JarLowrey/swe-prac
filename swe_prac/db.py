@@ -1,4 +1,4 @@
-"""SQLite persistence for sessions, level completions, pauses and submissions."""
+"""SQLite persistence: coding and system design sessions, pauses and submissions."""
 
 from __future__ import annotations
 
@@ -50,6 +50,38 @@ CREATE TABLE IF NOT EXISTS submissions (
     lint_count INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_submissions_session ON submissions(session_id);
+
+-- System design sessions. Same timer columns as `sessions`, so sessions.py runs both clocks.
+CREATE TABLE IF NOT EXISTS design_sessions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    question_id TEXT NOT NULL,
+    mode TEXT NOT NULL CHECK (mode IN ('strict', 'pausable')),
+    status TEXT NOT NULL CHECK (status IN ('active', 'finished')),
+    started_at REAL NOT NULL,
+    time_limit INTEGER NOT NULL,
+    paused_at REAL,
+    total_paused REAL NOT NULL DEFAULT 0,
+    current_step INTEGER NOT NULL DEFAULT 1,
+    notes TEXT NOT NULL DEFAULT '{}',       -- JSON: {"<step>": text}
+    diagram TEXT NOT NULL DEFAULT '{}',     -- JSON: {"nodes": [...], "edges": [...]}
+    assessment TEXT,                        -- JSON: ticked item indices, set on the review page
+    finished_at REAL,
+    final_elapsed REAL
+);
+CREATE TABLE IF NOT EXISTS design_steps (
+    session_id INTEGER NOT NULL REFERENCES design_sessions(id),
+    step INTEGER NOT NULL,
+    elapsed REAL NOT NULL,
+    at REAL NOT NULL,
+    PRIMARY KEY (session_id, step)
+);
+CREATE TABLE IF NOT EXISTS design_pauses (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id INTEGER NOT NULL REFERENCES design_sessions(id),
+    started_at REAL NOT NULL,
+    ended_at REAL,
+    start_elapsed REAL NOT NULL
+);
 """
 
 
