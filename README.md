@@ -1,5 +1,8 @@
 # SWE Practice
 
+Live site: https://jarlowrey.github.io/swe-prac/ (a static copy: code can't run there, see
+[Static site](#static-site-github-pages))
+
 Local practice for three kinds of software engineering interview: 90-minute, four-level coding
 assessments in Python, classic algorithm problems against a 20 to 40-minute clock, and 45-minute
 system design rounds. The home page lets you pick one. The algorithms and system design sections
