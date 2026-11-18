@@ -280,6 +280,21 @@ question's hints and review to the foundations sections it needs, as `"page/sect
 They show up as "Foundations to review" in the hints box and on the review page. `reference.md`
 (the worked answer) can also link to foundations sections inline.
 
+`reference.md` draws the design as it grows. It needs at least one Mermaid diagram
+(`tools/check_content.py` reports one without), and the ten questions follow this pattern:
+
+- **High-level design**: the first architecture, as a `flowchart TD` with no colours.
+- The flow the question hinges on, as a `sequenceDiagram` or `stateDiagram-v2`: two requests
+  racing, a retry after a timeout, a payment's states.
+- **The design after the deep dives**: the same architecture again, with every box the deep dives
+  added or changed marked `:::good` (green), and the line "Green marks what they added or
+  changed." above it.
+
+The review's compare tab shows the reference beside the user's notes, in a column about 500 px
+wide, and a wider diagram shrinks to fit. Keep a flowchart to about 12 nodes and at most four
+side by side; prefer `TD` to a long `LR` chain. A sequence diagram gets 150 px per participant, so
+use three participants where you can, and break long messages and notes with `<br/>`.
+
 ## Algorithm problems
 
 Each problem is a folder `algorithms/<id>/`. The format is described in
@@ -293,8 +308,8 @@ python tools/check_content.py designs    # or: algorithms
 ```
 
 It renders every page and reports data-structure blocks that don't parse, links to pages,
-sections or problems that don't exist, design questions whose `foundations` don't resolve, and
-Mermaid labels that start like a list. The test suite runs it too.
+sections or problems that don't exist, design questions whose `foundations` don't resolve,
+reference designs without a diagram, and Mermaid labels that start like a list. The test suite runs it too.
 
 Otherwise Mermaid is only drawn in the browser: run the app (`python -m swe_prac`) and open the
 page. A broken diagram is a red box with the parser's message.

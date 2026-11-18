@@ -102,6 +102,13 @@ class FixtureContentTests(EnvCase):
         self.assertEqual(code, 1)
         self.assertIn("foundations link 'networking/nope' doesn't resolve", out)
 
+    def test_a_reference_design_needs_a_diagram(self):
+        path = config.DESIGNS_DIR / "d00_pastebin" / "reference.md"
+        path.write_text("**Requirements.** Create and read pastes.\n", encoding="utf-8")
+        code, out = run_main("designs")
+        self.assertEqual(code, 1)
+        self.assertIn("d00_pastebin/reference.md: no design diagram", out)
+
 
 class RealContentTests(unittest.TestCase):
     def test_the_real_study_content_passes(self):

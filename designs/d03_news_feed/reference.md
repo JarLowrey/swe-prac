@@ -22,12 +22,34 @@
 
 **Hybrid (the answer to give).** Push for normal users (cheap, reads are fast). For celebrities above a threshold (say 100K followers), don't fan out; at read time, merge the user's precomputed feed with recent posts from the few celebrities they follow. Also skip fan-out for inactive users (no login in 30 days): they rebuild the feed on return.
 
+```mermaid
+flowchart TD
+  A[Author with<br/>300 followers] ==>|"push at post time"| FL[(Each follower's<br/>feed list)]
+  CB[Author with<br/>50M followers] -->|"stored once"| CP[(The author's<br/>recent posts)]
+  FL --> M[Merge at<br/>read time]
+  CP -->|"pulled"| M
+  M --> PG([One feed page])
+```
+
 **High-level design.**
 
 1. Post service writes the post to the posts store and publishes a `PostCreated` event ([via outbox](#/design/learn/reliability/the-outbox-pattern), so it's never lost).
 2. [Fan-out workers consume the event](#/design/learn/building-blocks/message-queues-and-streams), look up followers (paginated from the follow graph), and push the post ID into each follower's feed cache, in batches, partitioned by follower.
 3. Feed service handles `GET /feed`: reads the user's feed list from Redis, merges in celebrity posts, [hydrates post IDs into full posts](#/design/learn/data/normalize-or-denormalize) (batch get from a post cache/store, plus author profile and counts), applies filtering and ranking, and returns a page with a cursor.
 4. Media goes to object storage [behind a CDN](#/design/learn/building-blocks/cdns-and-edge-caching) (see the video question).
+
+```mermaid
+flowchart TD
+  U((User)) -->|"POST /posts"| PS[Post service]
+  U -->|"GET /feed"| FS[Feed service]
+  PS --> P[(Posts store<br/>with outbox)]
+  P -.->|PostCreated| K[[Event stream]]
+  K --> FW[Fan-out workers]
+  FW -->|"who follows the author?"| G[(Follow graph)]
+  FW -->|"push post ID"| FC[(Feed cache<br/>sorted set per user)]
+  FS -->|"precomputed list"| FC
+  FS -->|"celebrity posts,<br/>hydrate IDs"| P
+```
 
 **Deep dives.**
 
@@ -36,5 +58,23 @@
 3. **Ranking.** Simple version: reverse chronological. Better: score = recency × affinity × engagement predicted by a model, computed at read time on a few hundred candidates, with features from a feature store. Say you'd start chronological and add ranking behind a flag, measuring engagement.
 4. **Consistency.** A user's own post should appear in their own feed immediately ([read-your-writes](#/design/learn/data/read-replicas-and-replication-lag)): insert it locally on post, don't wait for the fan-out. Deletes and unfollows need cleanup: filter at read time using a tombstone check rather than rewriting millions of lists.
 5. **Cache failure.** Feed lists are a derived cache; if lost, rebuild from the follow graph and recent posts (the pull path). [Keep this fallback tested](#/design/learn/reliability/graceful-degradation).
+
+**The design after the deep dives.** Green marks what they added or changed.
+
+```mermaid
+flowchart TD
+  U((User)) --> PS[Post service]
+  U --> FS[Feed service<br/>own posts shown at once,<br/>deletes filtered]:::good
+  PS --> P[(Posts store)]
+  P -.-> K[[Event stream]]
+  K --> FW[Fan-out workers<br/>chunked, active followers first]:::good
+  FW --> G[(Follow graph)]
+  FW --> FC[(Feed cache)]
+  FS --> FC
+  FS -->|"batch get"| HC[(Post and profile cache<br/>hot keys replicated)]:::good
+  HC -.->|miss| P
+  FS --> CT[(Counters<br/>approximate)]:::good
+  FS --> RK[Ranker<br/>with a feature store]:::good
+```
 
 **Wrap-up.** Metrics: feed latency p99, [fan-out lag](#/design/learn/building-blocks/backpressure-and-consumer-lag) (post creation to last follower write), cache hit rate, queue depth. Scale levers: shard feed cache by user, add fan-out workers, cap feed length at a few hundred entries and fall back to pull for deeper scroll.

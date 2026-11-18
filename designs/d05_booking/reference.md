@@ -18,12 +18,55 @@ This is the classic reservation question ("design a reservation system"), with e
 
 Status values: `HELD`, `CONFIRMED`, `CANCELLED`, `EXPIRED`.
 
+**High-level design.** Search and booking need different things, so they take different paths. Search reads an index kept up to date from the database's change events and may lag by seconds. Booking writes to the relational database, the single source of truth, in one transaction.
+
+```mermaid
+flowchart TD
+  G((Guest)) --> LB[Load balancer]
+  LB -->|search| SS[Search service]
+  LB -->|"book, confirm, cancel"| BS[Booking service]
+  SS --> IX[(Search index<br/>may lag by seconds)]
+  BS --> DB[(Relational DB<br/>listing, calendar, booking)]
+  BS -->|"charge"| PAY[Payment service]
+  SW[Hold sweeper] -->|"release expired holds"| DB
+  DB -.->|change events| IW[Indexer]
+  IW -.-> IX
+```
+
 **Booking flow without double-booking.**
 
 1. In a single transaction: insert a `booking` row (`HELD`, `expires_at = now + 10 min`) and claim every night in the range, either by inserting rows into a `booking_nights(listing_id, night)` table with a unique key `(listing_id, night)`, or with `UPDATE calendar SET status='HELD', booking_id=? WHERE listing_id=? AND night BETWEEN ? AND ? AND status='AVAILABLE'` and checking that [the affected row count](#/design/learn/reliability/atomic-conditional-updates) equals the number of nights.
 2. If any night is already taken the constraint/row count fails, the transaction rolls back, and the user sees "no longer available". No application-level locks needed: [the database arbitrates](#/design/learn/data/check-then-act-races).
 3. Payment proceeds with the booking's idempotency key (see the payments question). On success, mark `CONFIRMED`; on failure or timeout, release the nights.
 4. [A sweeper job](#/design/learn/data/holds-that-expire) releases nights for `HELD` bookings past `expires_at` (and the confirm step re-checks that the hold is still valid).
+
+Two guests asking for overlapping nights at the same moment, each through the booking service:
+
+```mermaid
+sequenceDiagram
+  participant A as Guest A
+  participant DB as Database
+  participant B as Guest B
+  A->>DB: txn: booking HELD,<br/>claim nights 1 to 3
+  B->>DB: txn: booking HELD,<br/>claim nights 2 to 4
+  DB-->>A: committed
+  DB-->>B: night 2 taken,<br/>rolled back
+  Note over A,DB: A gets 201 HELD,<br/>expires in 10 min
+  Note over DB,B: B gets 409,<br/>no longer available
+```
+
+The booking's status through the flow:
+
+```mermaid
+stateDiagram-v2
+  [*] --> HELD: nights claimed
+  HELD --> CONFIRMED: payment succeeded
+  HELD --> CANCELLED: payment failed
+  HELD --> EXPIRED: sweeper, past expires_at
+  CONFIRMED --> CANCELLED: guest or host cancels
+  CANCELLED --> [*]: nights released
+  EXPIRED --> [*]: nights released
+```
 
 **Fungible inventory (hotel room types).** Keep `inventory(hotel_id, room_type, night, total, reserved)` and book with `UPDATE ... SET reserved = reserved + 1 WHERE reserved < total` for every night in one transaction. Contention concentrates on popular nights, so keep transactions short and ordered consistently by night to [avoid deadlocks](#/design/learn/data/pessimistic-locking-and-deadlocks).
 
@@ -35,5 +78,23 @@ Status values: `HELD`, `CONFIRMED`, `CANCELLED`, `EXPIRED`.
 4. **Payments and sagas.** Booking spans our database and the payment provider: [model as a saga](#/design/learn/reliability/sagas-and-compensation) (hold, charge, confirm; compensate by releasing the hold and refunding), driven from the booking status. See the payments question.
 5. **Host calendar sync.** Hosts also have external calendars (iCal feeds). Sync can be late, so treat them as eventual and accept occasional conflicts that need host cancellation policy; reconcile regularly.
 6. **Multi-region.** Keep each listing's calendar in one home region ([single leader](#/design/learn/data/single-leader-replication)) so booking is strongly consistent; replicate reads globally. Cross-region writes for one listing would need consensus and add latency.
+
+**The design after the deep dives.** Green marks what they added or changed.
+
+```mermaid
+flowchart TD
+  G((Guest)) --> WR[Waiting room<br/>for flash sales]:::good
+  WR --> LB[Load balancer]
+  LB --> SS[Search service]
+  LB --> BS[Booking service]
+  SS --> IX[(Search index)]
+  BS --> DB[(Relational DB<br/>home region per listing)]:::good
+  BS -->|"saga: hold, charge, confirm"| PAY[Payment service]
+  SW[Hold sweeper] --> DB
+  DB -.->|change events| IW[Indexer]
+  IW -.-> IX
+  CAL[iCal sync<br/>host calendars]:::good -.-> DB
+  DB -.->|"read replicas"| RR[(Other regions)]:::good
+```
 
 **Wrap-up.** Metrics: booking success rate, hold-expiry rate, search-to-book conversion, calendar/search index lag, conflicts at booking time. [Reconciliation](#/design/learn/reliability/reconciliation): nightly job verifying every `CONFIRMED` booking has exactly the right calendar rows and a matching payment.

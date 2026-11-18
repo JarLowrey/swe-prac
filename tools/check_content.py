@@ -7,7 +7,8 @@ It renders every markdown file the app shows and reports:
 - data-structure diagram blocks that fail to render (```array, ```tree, ...),
 - internal links (#/design/learn/<page>/<section>, #/algo/learn/..., #/algo/problem/...) whose
   target doesn't exist,
-- design questions whose `foundations` references don't resolve,
+- design questions whose `foundations` references don't resolve, or whose reference design has
+  no Mermaid diagram,
 - foundations pages without a summary paragraph or with duplicate section titles,
 - mermaid labels that start like a markdown list ("1. step"), which mermaid draws as
   "Unsupported markdown: list",
@@ -173,7 +174,10 @@ def main(argv: list[str]) -> int:
             where = f"designs/{q.id}"
             reference = q.path / "reference.md"
             if reference.exists():
-                check_source(reference.read_text(encoding="utf-8"), f"{where}/reference.md", errors)
+                text = reference.read_text(encoding="utf-8")
+                check_source(text, f"{where}/reference.md", errors)
+                if not MERMAID_BLOCK.search(text):
+                    errors.append(f"{where}/reference.md: no design diagram (a ```mermaid block)")
             check_html(designs.reference_html(q), f"{where}/reference.md", targets, errors)
             data = json.loads((q.path / "design.json").read_text(encoding="utf-8"))
             for ref in data.get("foundations", []):

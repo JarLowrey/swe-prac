@@ -18,6 +18,37 @@ Card data is tokenized by a secure vault (or the processor's hosted fields) so o
 
 **Payment state machine.** `CREATED → PENDING (sent to provider) → SUCCEEDED | FAILED`, then `REFUND_PENDING → REFUNDED`. Allow only legal transitions, enforce them with [conditional updates](#/design/learn/reliability/atomic-conditional-updates) (`WHERE status = 'PENDING'`), and never delete.
 
+```mermaid
+stateDiagram-v2
+  [*] --> CREATED: row and key inserted
+  CREATED --> PENDING: sent to provider
+  PENDING --> SUCCEEDED: approved
+  PENDING --> FAILED: declined
+  SUCCEEDED --> REFUND_PENDING: refund requested
+  REFUND_PENDING --> REFUNDED: provider confirmed
+  note right of PENDING
+    A timeout leaves it here
+    until reconciliation settles it
+  end note
+```
+
+**High-level design.** The payment service owns one relational database holding payments, their events, the ledger and an outbox. Card numbers go from the customer's browser to a vault and never reach our servers. Events leave through the outbox to the webhook service and other consumers.
+
+```mermaid
+flowchart TD
+  CU((Customer)) -->|"card number"| V[Card vault]
+  V -.->|token| MC((Merchant))
+  MC -->|"POST /payments,<br/>Idempotency-Key"| API[Payments API]
+  API --> PS[Payment service]
+  PS --> DB[(Payments DB<br/>payment, events,<br/>ledger, outbox)]
+  PS -->|"key = payment_id,<br/>explicit timeout"| PR[Processor]
+  RW[Reconciliation worker] -->|"what happened to p1?"| PR
+  RW -->|"settle p1"| PS
+  DB -.->|outbox| K[[Event stream]]
+  K --> WH[Webhook service]
+  WH -->|"signed, retried"| MC
+```
+
 **Flow.**
 
 1. API receives the request; inserts the `payment` row with the idempotency key in one transaction (a duplicate returns the stored result).
@@ -25,6 +56,26 @@ Card data is tokenized by a secure vault (or the processor's hosted fields) so o
 3. On a definite response, update status and post ledger entries in **one transaction**, plus [an outbox event](#/design/learn/reliability/the-outbox-pattern).
 4. The outbox publishes `payment.succeeded`; the webhook service notifies the merchant; downstream systems (receipts, analytics) consume the event.
 5. On a **timeout or unknown outcome**, status stays `PENDING`; do not assume failure. [A reconciliation worker](#/design/learn/reliability/reconciliation) queries the provider for the real outcome (by `payment_id`) and settles it.
+
+Step 5, the unknown outcome, with the merchant retrying meanwhile:
+
+```mermaid
+sequenceDiagram
+  participant M as Merchant
+  participant PS as Payments
+  participant P as Processor
+  M->>PS: POST /payments, key k1
+  PS->>PS: insert p1, PENDING
+  PS->>P: charge, key p1
+  P--xPS: connection drops,<br/>outcome unknown
+  PS-->>M: 202, p1 PENDING
+  M->>PS: retry with key k1
+  PS-->>M: same p1, PENDING,<br/>no second charge
+  Note over PS,P: later, the reconciliation worker
+  PS->>P: what happened to p1?
+  P-->>PS: succeeded
+  PS->>PS: one transaction:<br/>p1 SUCCEEDED, ledger<br/>entries, outbox event
+```
 
 **Deep dives.**
 
@@ -35,5 +86,22 @@ Card data is tokenized by a secure vault (or the processor's hosted fields) so o
 5. **Consistency and sharding.** Shard the payment and ledger tables [by merchant or account ID](#/design/learn/data/choosing-a-partition-key); keep an account's entries on one shard so balance checks are local transactions. [Cross-account transfers](#/design/learn/data/transactions-across-partitions-and-services) use a saga or a two-phase ledger posting (pending, then posted), not distributed locks.
 6. **Security and compliance.** Tokenization, encryption at rest and in transit, least-privilege access, audit logs, fraud checks (rule engine and ML score before authorization, with a synchronous decision budget of tens of milliseconds), and strong authentication (3-D Secure) where required.
 7. **Webhooks.** At-least-once delivery with signatures and event IDs [so merchants can dedupe](#/design/learn/reliability/deduplicating-consumers); exponential backoff for up to a few days; a dashboard to replay.
+
+**The design after the deep dives.** Green marks what they added or changed.
+
+```mermaid
+flowchart TD
+  MC((Merchant)) --> API[Payments API]
+  API --> FR[Fraud checks<br/>rules and ML score]:::good
+  FR --> PS[Payment service<br/>auth and capture as sagas]:::good
+  PS --> PR[Processor]
+  PS --> DB[(Payments and ledger<br/>sharded by merchant)]:::good
+  DB -.->|outbox| K[[Event stream]]
+  K --> WH[Webhook service]
+  WH -->|"signed, event IDs,<br/>backoff for days"| MC
+  OPS[Replay dashboard]:::good --> WH
+  SF[(Settlement files,<br/>bank statements)]:::good --> RC[Reconciliation<br/>diffs become tickets]:::good
+  RC --> DB
+```
 
 **Wrap-up.** Metrics: success rate by provider/issuer, pending-aged count, reconciliation diffs, p99 latency, webhook lag. Multi-provider routing with fallback (if one processor is down, route to another) improves availability but needs care so one payment isn't charged twice across providers.

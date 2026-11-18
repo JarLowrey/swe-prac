@@ -13,7 +13,30 @@
 3. The gateway runs an [atomic check-and-decrement](#/design/learn/data/atomic-updates-and-counters) in Redis ([a Lua script](#/design/learn/building-blocks/distributed-rate-limiting-with-redis) performing the token bucket math in one round trip).
 4. Allowed requests proceed to the backend; rejected ones get `429` immediately.
 
+```mermaid
+flowchart TD
+  C((Client)) --> G[API gateway<br/>extract key, match rule]
+  RS[(Rules store)] -.->|"pushed, cached locally"| G
+  G <-->|"one Lua call:<br/>refill, take a token"| R[(Redis cluster<br/>sharded by key)]
+  G -->|allowed| B[Backend services]
+  G -.->|"429, Retry-After"| C
+```
+
 Redis is sharded by key ([consistent hashing](#/design/learn/building-blocks/consistent-hashing) or hash slots), so each key lives on one shard and the Lua script makes the read-modify-write atomic, avoiding [the classic race](#/design/learn/data/check-then-act-races) where two gateways both read "one token left."
+
+```mermaid
+sequenceDiagram
+  participant G1 as Gateway 1
+  participant R as Redis shard
+  participant G2 as Gateway 2
+  Note over R: key 42 has<br/>1 token left
+  G1->>R: run token_bucket(key 42)
+  G2->>R: run token_bucket(key 42)
+  Note over R: scripts run<br/>one at a time
+  R-->>G1: allowed, 0 left
+  R-->>G2: denied, refill in 600 ms
+  Note over G2: replies 429<br/>Retry-After: 1
+```
 
 **Deep dives.**
 
@@ -22,5 +45,21 @@ Redis is sharded by key ([consistent hashing](#/design/learn/building-blocks/con
 3. **Failure behavior.** If Redis is unreachable, [fail **open**](#/design/learn/building-blocks/fail-open-or-fail-closed) for ordinary API traffic (log and alert, fall back to the local limiter) but fail **closed** for security-critical limits such as login attempts. Replicate shards ([leader + replica](#/design/learn/data/single-leader-replication)) so a failover loses at most a few seconds of counts.
 4. **Multiple rule dimensions.** Check several limits per request (per user, per IP, per endpoint) in a single Lua call, rejecting if any fails. Tier plans (free vs paid) are rules keyed by the customer's plan.
 5. **Rules management.** Rules stored in a database, cached at gateways with a TTL or pushed via config service; changes are [canaried like code](#/design/learn/reliability/rollout-strategies) (bad limits cause outages).
+
+**The design after the deep dives.** Green marks what they added or changed.
+
+```mermaid
+flowchart TD
+  C((Client)) --> E[Edge<br/>coarse per-IP limits]:::good
+  E --> G
+  subgraph GW [Each gateway]
+    G[Match rules<br/>user, IP, endpoint] --> L[Local pre-limiter<br/>budget and fallback]:::good
+  end
+  RS[(Rules store)] -.->|"pushed, canaried"| G
+  L <-->|"batched syncs, or every<br/>call for exact quotas"| R[(Redis cluster)]
+  R -.->|replication| RP[(Replica per shard)]:::good
+  L -->|allowed| B[Backend services]
+  L -.->|"counts, drift, top keys"| M[Metrics]:::good
+```
 
 **Wrap-up.** Observability: allowed/rejected counts per rule, Redis latency, local-vs-central drift, top rejected keys. Extensions: concurrency limits (in-flight requests), quotas with durable daily/monthly counters, and adaptive limits that tighten when the backend is stressed ([load shedding](#/design/learn/reliability/load-shedding)).

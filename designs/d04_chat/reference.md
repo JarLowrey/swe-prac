@@ -17,6 +17,34 @@
 4. Recipients ack; the service updates delivery and read state.
 5. When a client reconnects, it requests everything after its last seen message ID (sync by cursor) so nothing is lost.
 
+```mermaid
+flowchart TD
+  A((Alice)) <-->|WebSocket| G1[Chat gateway 1]
+  G1 --> CS[Chat service]
+  CS -->|"persist first"| M[(Messages<br/>by conv_id)]
+  CS -->|"Bob's gateway?"| S[(Session store<br/>user to gateway,<br/>TTL kept by heartbeats)]
+  CS -->|deliver| G2[Chat gateway 2]
+  CS -.->|"if offline"| PN[[Push notifications]]
+  G2 <-->|WebSocket| B((Bob))
+```
+
+One message, with the gateways left out:
+
+```mermaid
+sequenceDiagram
+  participant A as Alice
+  participant CS as Chat service
+  participant B as Bob
+  A->>CS: send(conv 7, id m1, "hi")
+  CS->>CS: store as seq 42
+  CS-->>A: stored (one tick)
+  CS->>B: deliver seq 42
+  B-->>CS: ack 42
+  CS-->>A: delivered (two ticks)
+  Note over A,CS: no "stored" reply?<br/>Alice resends m1,<br/>the server dedupes it
+  Note over CS,B: Bob was offline?<br/>On reconnect he asks<br/>for all after seq 41
+```
+
 **Deep dives.**
 
 1. **Ordering.** [Guarantee ordering](#/design/learn/data/ordering-per-key) **per conversation**, not globally. Assign sequence numbers per conversation (a single writer per conversation via partitioning by `conv_id` on the chat service, or a per-conversation counter), and clients display by sequence. Time-ordered IDs alone drift with clock skew.
@@ -25,5 +53,20 @@
 4. **Presence.** Heartbeats every ~5–30 s; presence is "best effort": mark offline after missed heartbeats. Don't broadcast every change to every contact (a fan-out storm); send presence on demand or to active conversations only.
 5. **Gateway scaling and failure.** [Gateways are stateful](#/design/learn/networking/scaling-websockets) (hold sockets), so use a load balancer with consistent hashing or [least connections](#/design/learn/building-blocks/load-balancing-algorithms), and spread reconnect storms with [jittered backoff](#/design/learn/reliability/retries-with-backoff-and-jitter) after a gateway dies. The session store is the routing table; if a gateway dies, entries expire and clients reconnect elsewhere.
 6. **Multi-device.** Treat each device as a session; a message is delivered to all of a user's devices; read state syncs across them.
+
+**The design after the deep dives.** Green marks what they added or changed.
+
+```mermaid
+flowchart TD
+  P((Phone)) & L((Laptop)) <-->|WebSocket| LB[Load balancer<br/>least connections]:::good
+  LB <--> G[Chat gateways<br/>jittered reconnects]:::good
+  G -->|register| S[(Session store<br/>one entry per device)]:::good
+  G --> CS[Chat service<br/>one writer per conv_id,<br/>dedupe on message_id]:::good
+  CS -->|"members' gateways?"| S
+  CS --> M[(Messages)]
+  CS --> RS[(Read state per user<br/>synced across devices)]:::good
+  CS -->|"small group: all members,<br/>large group: online only"| G
+  CS --> PN[[Push notifications]]
+```
 
 **Wrap-up.** Metrics: end-to-end delivery latency, connection count and churn, undelivered backlog, reconnect rate. Mention end-to-end encryption: it removes server-side search and moderation and complicates multi-device sync, so it's a product decision.

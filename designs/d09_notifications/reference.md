@@ -16,6 +16,20 @@
 3. **Channel workers** (push, SMS, email, in-app) send through providers (APNs, FCM, SMS and email providers) with [per-provider rate limiting](#/design/learn/building-blocks/rate-limiting) and connection pooling.
 4. **Provider callbacks** update delivery state (delivered, bounced, unsubscribed, invalid token), which feeds back into the user's records (remove dead device tokens, suppress bounced addresses).
 
+```mermaid
+flowchart TD
+  S[Calling services] -->|"POST /notifications"| IN[Ingest API<br/>validate, dedupe, persist]
+  IN --> DB[(Notifications,<br/>preferences, tokens)]
+  IN --> QT[[Transactional topic]]
+  IN --> QM[[Marketing topic]]
+  QT & QM --> OR[Routing workers<br/>preferences, template, caps]
+  OR --> CQ[[Per-channel queues]]
+  CQ --> CW[Channel workers<br/>push, SMS, email, in-app]
+  CW --> PR[Providers<br/>APNs, FCM, SMS, email]
+  PR -.->|"delivered, bounced"| CB[Callback receiver]
+  CB --> DB
+```
+
 **Deep dives.**
 
 1. **Reliability and retries.** At-least-once with retries ([exponential backoff and jitter](#/design/learn/reliability/retries-with-backoff-and-jitter), capped), [a dead-letter queue](#/design/learn/reliability/dead-letter-queues) for permanent failures, and provider failover (a second SMS or email provider when the first degrades, with a [circuit breaker](#/design/learn/reliability/circuit-breakers)). Persist state before sending so a crash resumes instead of losing work.
@@ -25,5 +39,21 @@
 5. **Scheduling.** Scheduled sends live in a time-indexed store (a delayed queue, or a table sharded by minute that a scheduler scans); user-local-time sends are bucketed by time zone.
 6. **Preferences and compliance.** Honor opt-outs instantly (check at send time, not just at enqueue time), keep a global suppression list, respect quiet hours and regional regulations (consent, unsubscribe links), and keep audit logs.
 7. **Observability.** Metrics per channel and provider: send latency, delivery rate, bounce rate, [queue depth/lag](#/design/learn/building-blocks/backpressure-and-consumer-lag), retry rate, dead-letter volume. [Alert on delivery rate drops](#/design/learn/reliability/alerting-on-symptoms), which signal provider or credential problems.
+
+**The design after the deep dives.** Green marks what they added or changed. The ingest API and callbacks are as before.
+
+```mermaid
+flowchart TD
+  SCH[(Scheduled sends<br/>by minute and time zone)]:::good -->|due| QT[[Transactional topic]]
+  SCH -->|due| QM[[Marketing topic]]
+  QT --> ORT[Routing pool<br/>transactional]:::good
+  QM --> ORM[Routing pool<br/>marketing, shed first]:::good
+  ORT & ORM -->|"opt-outs checked at send time"| CQ[[Per-channel queues]]
+  CQ --> CW[Channel workers<br/>idempotent per channel]:::good
+  CW -->|"token bucket per provider"| P1[Primary provider]
+  CW -.->|"circuit open"| P2[Backup provider]:::good
+  CW -.->|"retry, backoff and jitter"| CQ
+  CW -->|"failed for good"| DLQ[[Dead-letter queue]]:::good
+```
 
 **Wrap-up.** Extensions: in-app notification feed (stored per user, read/unread state, real-time push over the chat-style WebSocket), A/B testing of content, digest batching (combine ten notifications into one summary), and analytics on opens and conversions.

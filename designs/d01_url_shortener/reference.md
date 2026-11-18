@@ -21,7 +21,35 @@
 
 Recommend the [range-allocation counter](#/design/learn/building-blocks/ticket-servers-and-id-ranges) with bit scrambling, or random codes with a conditional insert. Custom aliases use the same unique constraint and return `409` on conflict.
 
-**High-level design.** Client → CDN/edge → load balancer → stateless redirect service → cache (Redis) → database. A separate write service handles creation. The redirect path is `GET code → cache lookup → on miss, database read, fill cache → 302`.
+**High-level design.** Client → load balancer → stateless redirect service → cache (Redis) → database. A separate write service handles creation, taking codes from ID ranges it leases.
+
+```mermaid
+flowchart TD
+  C((Client)) --> LB[Load balancer]
+  LB -->|"GET /{code}"| R[Redirect service<br/>stateless]
+  LB -->|"POST /urls"| W[Write service]
+  R --> K[(Cache<br/>Redis)]
+  R -.->|cache miss| DB[(URL store<br/>sharded by code)]
+  W --> DB
+  W -->|"lease 10,000 IDs at a time"| ID[ID range service]
+```
+
+The redirect path is `GET code → cache lookup → on miss, database read, fill cache → 302`:
+
+```mermaid
+sequenceDiagram
+  participant R as Redirect service
+  participant C as Cache
+  participant DB as URL store
+  Note over R: GET /aB3xK9q
+  R->>C: GET aB3xK9q
+  C-->>R: miss
+  R->>DB: read row aB3xK9q
+  DB-->>R: long_url, expires_at
+  R->>C: SET aB3xK9q, TTL 1 day
+  Note over R: reply 302 to long_url
+  Note over R,DB: expired: reply 410<br/>unknown code: cache<br/>the miss for 60 s, reply 404
+```
 
 **Deep dives.**
 
@@ -29,5 +57,22 @@ Recommend the [range-allocation counter](#/design/learn/building-blocks/ticket-s
 2. **Expiry and cleanup.** Check `expires_at` at read time (never serve an expired link); a background job deletes expired rows and recycles nothing (don't reuse codes, or old links could point somewhere new).
 3. **Abuse.** [Rate-limit creation](#/design/learn/building-blocks/rate-limiting) per user/IP, scan destinations against malware lists, and keep a way to disable a code instantly (a denylist in the cache).
 4. **Analytics (extension).** Emit a click event to a stream (Kafka) from the redirect service, asynchronously, and aggregate offline; never write analytics synchronously on the redirect path.
+
+**The design after the deep dives.** Green marks what they added or changed.
+
+```mermaid
+flowchart TD
+  C((Client)) --> CDN[CDN edge<br/>hot redirects, short TTL]:::good
+  CDN --> LB[Load balancer]
+  LB --> R[Redirect service]
+  LB --> AB[Abuse checks<br/>rate limit, malware scan]:::good
+  AB --> W[Write service]
+  R --> K[(Cache<br/>with misses and a denylist)]:::good
+  R -.->|cache miss| DB[(URL store)]
+  R -.->|"click events"| Q[[Kafka to<br/>analytics jobs]]:::good
+  W --> DB
+  W --> ID[ID range service]
+  J[Expiry cleanup job]:::good --> DB
+```
 
 **Failure modes and wrap-up.** Cache down: reads fall back to the database (add [load shedding](#/design/learn/reliability/load-shedding) and a [circuit breaker](#/design/learn/reliability/circuit-breakers)). Database shard down: replicas serve reads; writes for that range [fail over](#/design/learn/reliability/redundancy-and-failover). ID service down: servers hold ranges and keep issuing. Monitor redirect latency p99, error rate, cache hit rate and creation errors. If asked to scale 10x: more cache nodes and shards, and push hot links to the CDN.

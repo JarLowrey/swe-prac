@@ -21,10 +21,15 @@ listings plus availability.
 
 **5. High-level design.**
 
-```
-Guest app -> Load balancer -> Search service  -> Search index (listings + availability)
-                           -> Booking service -> Relational DB (listings, bookings, booked nights)
-Relational DB --change stream--> Indexer -> Search index
+```mermaid
+flowchart TD
+  G((Guest app)) --> LB[Load balancer]
+  LB --> SS[Search service]
+  LB --> BS[Booking service]
+  SS --> IX[(Search index<br/>listings, availability)]
+  BS --> DB[(Relational DB<br/>listings, bookings, booked nights)]
+  DB -.->|change stream| IW[Indexer]
+  IW --> IX
 ```
 
 Search reads from the index, which an indexer keeps up to date from database change streams. That
