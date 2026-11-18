@@ -1,0 +1,10 @@
+# Lint rules for algorithm solutions: the coding track's rules (user_ruff.toml), minus the two
+# naming checks that the classic camelCase method and argument names (twoSum, newInterval) trip.
+# Informational only, like the coding track.
+extend = "user_ruff.toml"
+
+[lint]
+ignore = [
+    "N802", # function name should be lowercase: twoSum, maxProfit, ...
+    "N803", # argument name should be lowercase: newInterval, numCourses, wordDict, ...
+]

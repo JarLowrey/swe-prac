@@ -15,6 +15,7 @@ DESIGNS_DIR = Path(os.environ.get("SWE_PRAC_DESIGNS", ROOT / "designs"))
 STATIC_DIR = PACKAGE_DIR / "static"
 RUNNER_PATH = PACKAGE_DIR / "runner.py"
 USER_RUFF_CONFIG = PACKAGE_DIR / "user_ruff.toml"
+ALGO_RUFF_CONFIG = PACKAGE_DIR / "user_ruff_algo.toml"  # user_ruff.toml minus camelCase checks
 
 DATA_DIR = Path(os.environ.get("SWE_PRAC_DATA", ROOT / "data"))
 

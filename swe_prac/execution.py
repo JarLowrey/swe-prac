@@ -27,17 +27,24 @@ class TestRun:
     import_stdout: str = ""
     timed_out: bool = False
     crashed: str | None = None
+    stopped: str | None = None  # a test ran past its time limit; later tests didn't run
     results: dict[str, dict] = field(default_factory=dict)  # test id -> end event
     ms: float = 0.0
 
 
-def run_tests(workdir: Path, code: str, class_name: str, tests: list[dict]) -> TestRun:
-    """Run `tests` against `code` in a fresh process. Missing results mean not run."""
+def run_tests(
+    workdir: Path, code: str, class_name: str, tests: list[dict], options: dict | None = None
+) -> TestRun:
+    """Run `tests` against `code` in a fresh process. Missing results mean not run.
+
+    `options` (adapters, compare mode...) are documented at the top of runner.py.
+    """
     workdir.mkdir(parents=True, exist_ok=True)
     solution = workdir / "solution.py"
     solution.write_text(code, encoding="utf-8")
     tests_file = workdir / "tests_run.json"
-    tests_file.write_text(json.dumps({"tests": tests}), encoding="utf-8")
+    payload = {"tests": tests, **({"options": options} if options else {})}
+    tests_file.write_text(json.dumps(payload), encoding="utf-8")
     results_file = workdir / "results.jsonl"
     results_file.write_text("", encoding="utf-8")
 
@@ -87,6 +94,8 @@ def run_tests(workdir: Path, code: str, class_name: str, tests: list[dict]) -> T
         elif kind == "end":
             run.results[event["id"]] = event
             in_progress = None
+        elif kind == "stopped":
+            run.stopped = event["reason"]
     if in_progress is not None:
         reason = (
             f"Timed out: the whole run exceeded {config.RUN_TIMEOUT_SECONDS}s "
@@ -107,10 +116,17 @@ def run_tests(workdir: Path, code: str, class_name: str, tests: list[dict]) -> T
     return run
 
 
-def run_scratch(workdir: Path, code: str, scratch: str) -> dict:
-    """Run the scratch script with the user's solution importable as `solution`."""
+def run_scratch(
+    workdir: Path, code: str, scratch: str, extra_files: dict[str, str] | None = None
+) -> dict:
+    """Run the scratch script with the user's solution importable as `solution`.
+
+    `extra_files` ({name: text}) are written next to it first, e.g. helpers.py.
+    """
     workdir.mkdir(parents=True, exist_ok=True)
     (workdir / "solution.py").write_text(code, encoding="utf-8")
+    for name, text in (extra_files or {}).items():
+        (workdir / name).write_text(text, encoding="utf-8")
     script = workdir / "scratch.py"
     script.write_text(scratch, encoding="utf-8")
     started = time.perf_counter()
@@ -150,7 +166,9 @@ def run_scratch(workdir: Path, code: str, scratch: str) -> dict:
     return out
 
 
-def _ruff(args: list[str], code: str) -> subprocess.CompletedProcess:
+def _ruff(
+    args: list[str], code: str, ruff_config: Path | None = None
+) -> subprocess.CompletedProcess:
     return subprocess.run(
         [
             config.PYTHON,
@@ -158,7 +176,7 @@ def _ruff(args: list[str], code: str) -> subprocess.CompletedProcess:
             "ruff",
             *args,
             "--config",
-            str(config.USER_RUFF_CONFIG),
+            str(ruff_config or config.USER_RUFF_CONFIG),
             "--stdin-filename",
             "solution.py",
             "-",
@@ -174,8 +192,9 @@ def _ruff(args: list[str], code: str) -> subprocess.CompletedProcess:
     )
 
 
-def lint(code: str) -> dict:
-    proc = _ruff(["check", "--output-format", "json", "--no-fix"], code)
+def lint(code: str, ruff_config: Path | None = None) -> dict:
+    """ruff issues in `code`; `ruff_config` defaults to the coding track's user_ruff.toml."""
+    proc = _ruff(["check", "--output-format", "json", "--no-fix"], code, ruff_config)
     try:
         items = json.loads(proc.stdout or "[]")
     except json.JSONDecodeError:
