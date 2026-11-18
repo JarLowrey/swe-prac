@@ -1,0 +1,14 @@
+{
+  "id": "a25_binary_tree_level_order_traversal",
+  "number": 25,
+  "title": "Binary Tree Level Order Traversal",
+  "difficulty": "Medium",
+  "patterns": ["Trees", "BFS"],
+  "signature": "def levelOrder(self, root: TreeNode | None) -> list[list[int]]:",
+  "adapters": {"args": ["tree"]},
+  "foundations": [
+    "patterns/bfs-by-levels-and-shortest-paths",
+    "data-structures/stacks-and-queues",
+    "data-structures/tree-traversals"
+  ]
+}

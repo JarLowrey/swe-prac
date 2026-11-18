@@ -49,9 +49,37 @@ class StaticBuildTests(EnvCase):
         self.assertTrue((self.out / "design.js").exists())
         self.assertTrue((self.out / "diagram.js").exists())
 
+    def test_bundle_has_the_algorithms_track(self):
+        algo = json.loads((self.out / "data.json").read_text(encoding="utf-8"))["algo"]
+        self.assertEqual(
+            [p["problem"]["id"] for p in algo["problems"]], ["x01_pair_sum", "x02_reverse_list"]
+        )
+        self.assertEqual(algo["minutes"], {"Easy": 20, "Medium": 30, "Hard": 40})
+        self.assertEqual(algo["patterns"], ["Hashing", "Linked lists", "Two pointers"])
+        item = algo["problems"][0]
+        self.assertEqual([e["name"] for e in item["examples"]], ["Example 1", "Example 2"])
+        self.assertEqual(item["params"], ["nums", "target"])
+        for key in (
+            "statement_html",
+            "starter_code",
+            "scratch_starter",
+            "hints_html",
+            "explanation_html",
+            "solution_code",
+        ):
+            self.assertTrue(item[key], key)
+        self.assertEqual(item["foundations"][0]["href"], "#/algo/learn/basics/hashing")
+        for name in ("algo.js", "learn.js", "common.js"):
+            self.assertTrue((self.out / name).exists(), name)
+
     def test_bundle_has_the_foundations_pages(self):
         found = json.loads((self.out / "data.json").read_text(encoding="utf-8"))["foundations"]
-        self.assertEqual(found, {"design": {"cards": [], "pages": {}}})  # the fixture has none
+        self.assertEqual(found["design"], {"cards": [], "pages": {}})  # the fixture has none
+        self.assertEqual([c["slug"] for c in found["algo"]["cards"]], ["basics"])
+        page = found["algo"]["pages"]["basics"]
+        self.assertEqual((page["title"], page["prev"], page["next"]), ("Basics", None, None))
+        self.assertIn('id="hashing"', page["html"])
+        self.assertEqual([s["id"] for s in page["toc"]], ["hashing", "two-pointers"])
 
     def test_hidden_tests_are_not_exported(self):
         tests = json.loads(
@@ -62,3 +90,9 @@ class StaticBuildTests(EnvCase):
         exported = (self.out / "data.json").read_text(encoding="utf-8")
         for test in hidden:
             self.assertNotIn(test["name"], exported)
+        for problem in ("x01_pair_sum", "x02_reverse_list"):
+            path = self.tmp_path / "algorithms" / problem / "tests.json"
+            cases = json.loads(path.read_text(encoding="utf-8"))["hidden"]
+            self.assertTrue(cases, f"{problem} should have hidden tests")
+            for case in cases:
+                self.assertNotIn(case["name"], exported)

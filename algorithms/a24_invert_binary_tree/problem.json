@@ -1,0 +1,14 @@
+{
+  "id": "a24_invert_binary_tree",
+  "number": 24,
+  "title": "Invert Binary Tree",
+  "difficulty": "Easy",
+  "patterns": ["Trees", "DFS"],
+  "signature": "def invertTree(self, root: TreeNode | None) -> TreeNode | None:",
+  "adapters": {"args": ["tree"], "result": "tree"},
+  "foundations": [
+    "data-structures/trees",
+    "data-structures/tree-traversals",
+    "complexity/recursion"
+  ]
+}

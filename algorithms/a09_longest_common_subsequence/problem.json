@@ -1,0 +1,13 @@
+{
+  "id": "a09_longest_common_subsequence",
+  "number": 9,
+  "title": "Longest Common Subsequence",
+  "difficulty": "Medium",
+  "patterns": ["Dynamic programming"],
+  "signature": "def longestCommonSubsequence(self, text1: str, text2: str) -> int:",
+  "foundations": [
+    "dynamic-programming/two-sequences-and-grids",
+    "dynamic-programming/choosing-the-memo-key",
+    "dynamic-programming/bottom-up-tables"
+  ]
+}

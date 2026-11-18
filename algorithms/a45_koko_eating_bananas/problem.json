@@ -1,0 +1,13 @@
+{
+  "id": "a45_koko_eating_bananas",
+  "number": 45,
+  "title": "Koko Eating Bananas",
+  "difficulty": "Medium",
+  "patterns": ["Binary search", "Binary search on the answer"],
+  "signature": "def minEatingSpeed(self, piles: list[int], h: int) -> int:",
+  "foundations": [
+    "patterns/binary-search",
+    "complexity/input-size-tells-you-the-target",
+    "approach/test-it"
+  ]
+}

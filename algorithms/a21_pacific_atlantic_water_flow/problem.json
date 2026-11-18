@@ -1,0 +1,15 @@
+{
+  "id": "a21_pacific_atlantic_water_flow",
+  "number": 21,
+  "title": "Pacific Atlantic Water Flow",
+  "difficulty": "Medium",
+  "patterns": ["Graphs", "Grids", "DFS"],
+  "signature": "def pacificAtlantic(self, heights: list[list[int]]) -> list[list[int]]:",
+  "compare": "unordered",
+  "foundations": [
+    "patterns/graph-traversal",
+    "data-structures/graphs",
+    "approach/brute-force-first",
+    "complexity/input-size-tells-you-the-target"
+  ]
+}

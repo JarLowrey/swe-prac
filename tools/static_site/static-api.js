@@ -3,12 +3,13 @@
 // The frontend sends every request through api() (common.js); when this file has defined
 // window.SWE_STATIC, that call lands in handle() below instead of the network. Responses have the
 // same shape as the real API's. Sessions live in localStorage and mirror swe_prac/sessions.py
-// (timer, pausing, scoring) and swe_prac/design_sessions.py (system design).
+// (timer, pausing, scoring), swe_prac/design_sessions.py (system design) and
+// swe_prac/algo_sessions.py (algorithms).
 //
 // Nothing here can run Python, so run / submit / scratch / format are refused and lint reports
-// that it is unavailable. app.js disables those buttons, so no level can be passed on this site.
-// System design needs no code execution, so that whole section works here, and so do its
-// foundations pages.
+// that it is unavailable. app.js and algo.js disable those buttons, so no level can be passed and
+// no algorithm problem solved on this site. System design needs no code execution, so that whole
+// section works here, and so do the foundations pages of both tracks.
 (() => {
   const STORAGE_KEY = "swe-prac-static-v1";
   const NEEDS_SERVER = "Running code needs the local server. It isn't available on the static site.";
@@ -683,6 +684,233 @@
     },
   };
 
+  // ---------------------------------------------------------------- algorithms (algo_api.py)
+  // Kept in state.algo. Without code execution there are no runs or submits, so a session is
+  // never solved; the shapes still match the server's so the pages render the same.
+  function algoState() {
+    state.algo ??= { nextId: 1, sessions: [] };
+    return state.algo;
+  }
+
+  function algoData(problemId) {
+    const found = bundle.algo.problems.find((p) => p.problem.id === problemId);
+    if (!found) throw new ApiError(`Unknown problem '${problemId}'`, 404);
+    return found;
+  }
+
+  function getAlgoSession(id) {
+    const s = algoState().sessions.find((x) => x.id === id);
+    if (!s) throw new ApiError("Session not found.", 404);
+    return s;
+  }
+
+  const activeAlgo = () => [...algoState().sessions].reverse().find((s) => s.status === "active") ?? null;
+
+  // What the solver sees: the statement and the examples (the shown tests).
+  const algoQuestion = (data) => ({
+    statement_html: data.statement_html,
+    params: data.params,
+    examples: data.examples,
+  });
+
+  function algoPayload(s) {
+    const data = algoData(s.problem_id);
+    return {
+      id: s.id,
+      problem: data.problem,
+      mode: s.mode,
+      status: s.status,
+      ...algoQuestion(data),
+      code: s.code,
+      scratch: s.scratch,
+      solved_at: null,
+      timer: timerState(s),
+    };
+  }
+
+  // algo_sessions.results for a session with no submits: not solved, no best attempt.
+  function algoResults(s) {
+    const spent = elapsed(s);
+    return {
+      time_limit: s.time_limit,
+      elapsed: spent,
+      overtime_seconds: Math.max(0, spent - s.time_limit),
+      solved_at: null,
+      timed: { solved: false, best: null },
+      final: { solved: false, best: null },
+      pauses: pauseSummary(s.pauses),
+      runs: 0,
+      submits: 0,
+    };
+  }
+
+  const algo = {
+    listProblems() {
+      const attempts = {};
+      for (const s of algoState().sessions) attempts[s.problem_id] = (attempts[s.problem_id] ?? 0) + 1;
+      return {
+        problems: bundle.algo.problems.map(({ problem }) => ({
+          ...problem,
+          attempts: attempts[problem.id] ?? 0,
+          solved: false,
+          solved_in_time: false,
+          best_time: null,
+        })),
+        minutes: bundle.algo.minutes,
+        patterns: bundle.algo.patterns,
+      };
+    },
+
+    study(problemId, kind) {
+      if (!["question", "hints", "solution"].includes(kind)) throw new ApiError(`Unknown view '${kind}'`, 404);
+      const data = algoData(problemId);
+      const live = activeAlgo();
+      if (live && live.problem_id === problemId) {
+        throw new ApiError("This problem is in a running session. End the session to open it.");
+      }
+      const out = { problem: data.problem, kind };
+      if (kind === "question") return { ...out, ...algoQuestion(data) };
+      out.foundations = data.foundations;
+      out.hints_html = data.hints_html;
+      if (kind === "solution") {
+        out.explanation_html = data.explanation_html;
+        out.solution_code = data.solution_code;
+      }
+      return out;
+    },
+
+    active() {
+      const s = activeAlgo();
+      if (!s) return { session: null };
+      return {
+        session: {
+          id: s.id,
+          problem: algoData(s.problem_id).problem,
+          mode: s.mode,
+          solved_at: null,
+          timer: timerState(s),
+        },
+      };
+    },
+
+    start({ problem_id: problemId, mode, prefer_unseen: preferUnseen = true, difficulty = null, pattern = null }) {
+      if (!bundle.algo.problems.length) throw new ApiError("No algorithm problems are built. Run tools/build_algo.py.", 500);
+      let data;
+      if (problemId == null) {
+        let pool = bundle.algo.problems.filter(({ problem }) => (difficulty == null || problem.difficulty === difficulty)
+          && (pattern == null || problem.patterns.includes(pattern)));
+        if (!pool.length) throw new ApiError("No problem matches those filters.", 400);
+        if (preferUnseen) {
+          const seen = new Set(algoState().sessions.map((s) => s.problem_id));
+          const unseen = pool.filter((p) => !seen.has(p.problem.id));
+          if (unseen.length) pool = unseen;
+        }
+        data = pool[Math.floor(Math.random() * pool.length)];
+      } else {
+        data = algoData(problemId);
+      }
+      if (!["strict", "pausable"].includes(mode)) throw new ApiError("Mode must be 'strict' or 'pausable'.", 400);
+      if (activeAlgo()) throw new ApiError("Finish or end your algorithms session before starting another.");
+      const store = algoState();
+      const s = {
+        id: store.nextId++,
+        problem_id: data.problem.id,
+        mode,
+        status: "active",
+        started_at: clock(),
+        time_limit: data.problem.minutes * 60,
+        paused_at: null,
+        total_paused: 0,
+        code: data.starter_code,
+        scratch: data.scratch_starter,
+        finished_at: null,
+        final_elapsed: null,
+        pauses: [],
+      };
+      store.sessions.push(s);
+      return algoPayload(s);
+    },
+
+    session(id) {
+      const s = getAlgoSession(id);
+      if (s.status !== "active") throw new ApiError("This session has ended; open its review instead.", 410);
+      return algoPayload(s);
+    },
+
+    timer: (id) => timerState(getAlgoSession(id)),
+
+    save(id, body) {
+      const s = getAlgoSession(id);
+      saveCode(s, body);
+      return { ok: true, timer: timerState(s) };
+    },
+
+    pause(id) {
+      const s = getAlgoSession(id);
+      pause(s);
+      return timerState(s);
+    },
+
+    resume(id) {
+      const s = getAlgoSession(id);
+      resume(s);
+      return timerState(s);
+    },
+
+    end(id, body) {
+      const s = getAlgoSession(id);
+      if (body && s.paused_at === null && s.status === "active") saveCode(s, body);
+      finish(s);
+      return { ok: true, id };
+    },
+
+    review(id) {
+      const s = getAlgoSession(id);
+      if (s.status !== "finished") throw new ApiError("The review (hints, explanation, solution) opens when it ends.");
+      const data = algoData(s.problem_id);
+      return {
+        id: s.id,
+        problem: data.problem,
+        mode: s.mode,
+        started_at: s.started_at,
+        finished_at: s.finished_at,
+        results: algoResults(s),
+        pauses: s.pauses,
+        submissions: [],
+        ...algoQuestion(data),
+        hints_html: data.hints_html,
+        explanation_html: data.explanation_html,
+        solution_code: data.solution_code,
+        foundations: data.foundations,
+        code: s.code,
+      };
+    },
+
+    history() {
+      return {
+        sessions: [...algoState().sessions].reverse().map((s) => {
+          const data = bundle.algo.problems.find((p) => p.problem.id === s.problem_id);
+          const res = algoResults(s);
+          return {
+            id: s.id,
+            problem_id: s.problem_id,
+            problem_title: data ? data.problem.title : s.problem_id,
+            difficulty: data ? data.problem.difficulty : null,
+            mode: s.mode,
+            status: s.status,
+            started_at: s.started_at,
+            elapsed: res.elapsed,
+            time_limit: res.time_limit,
+            solved_at: null,
+            timed: res.timed,
+            final: res.final,
+            pauses: res.pauses,
+          };
+        }),
+      };
+    },
+  };
+
   // ---------------------------------------------------------------- foundations (pages.py)
   // Every page is pre-rendered into data.json; the track is the first captured group.
   function foundations(track) {
@@ -701,6 +929,7 @@
   // [method, path pattern, handler]; captured groups are passed first (ids as numbers).
   const E = endpoints;
   const D = design;
+  const A = algo;
   const ROUTES = [
     ["GET", /^\/api\/problems$/, E.listProblems],
     ["GET", /^\/api\/problems\/([\w-]+)\/([\w-]+)$/, E.study],
@@ -732,12 +961,27 @@
     ["GET", /^\/api\/design\/sessions\/(\d+)\/review$/, D.review],
     ["PUT", /^\/api\/design\/sessions\/(\d+)\/assessment$/, D.assess],
     ["GET", /^\/api\/design\/history$/, D.history],
-    ["GET", /^\/api\/(design)\/foundations$/, learn.list],
-    ["GET", /^\/api\/(design)\/foundations\/([\w-]+)$/, learn.page],
+    ["GET", /^\/api\/algo\/problems$/, A.listProblems],
+    ["GET", /^\/api\/algo\/problems\/([\w-]+)\/([\w-]+)$/, A.study],
+    ["GET", /^\/api\/algo\/active$/, A.active],
+    ["POST", /^\/api\/algo\/sessions$/, A.start],
+    ["GET", /^\/api\/algo\/sessions\/(\d+)$/, A.session],
+    ["GET", /^\/api\/algo\/sessions\/(\d+)\/timer$/, A.timer],
+    ["PUT", /^\/api\/algo\/sessions\/(\d+)\/code$/, A.save],
+    ["POST", /^\/api\/algo\/sessions\/(\d+)\/pause$/, A.pause],
+    ["POST", /^\/api\/algo\/sessions\/(\d+)\/resume$/, A.resume],
+    ["POST", /^\/api\/algo\/sessions\/(\d+)\/end$/, A.end],
+    ["GET", /^\/api\/algo\/sessions\/(\d+)\/review$/, A.review],
+    ["GET", /^\/api\/algo\/history$/, A.history],
+    ["POST", /^\/api\/algo\/sessions\/(\d+)\/lint$/, E.lint],
+    ["POST", /^\/api\/algo\/sessions\/(\d+)\/(run|submit|scratch)$/, E.needsServer],
+    ["GET", /^\/api\/(design|algo)\/foundations$/, learn.list],
+    ["GET", /^\/api\/(design|algo)\/foundations\/([\w-]+)$/, learn.page],
   ];
   const ID_ROUTES = new Set([
     E.session, E.timer, E.save, E.pause, E.resume, E.end, E.review,
     D.session, D.timer, D.save, D.step, D.pause, D.resume, D.end, D.review, D.assess,
+    A.session, A.timer, A.save, A.pause, A.resume, A.end, A.review,
   ]);
 
   async function handle(method, path, body) {

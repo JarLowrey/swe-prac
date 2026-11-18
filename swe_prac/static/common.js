@@ -132,6 +132,7 @@ export function topnav(active) {
     <a class="brand" href="#/"><span class="brand-mark">&lt;/&gt;</span>SWE Practice</a>
     <nav>
       ${link("coding", "#/coding", "Coding")}
+      ${link("algo", "#/algo", "Algorithms")}
       ${link("design", "#/design", "System design")}
       ${link("history", "#/history", "History")}
     </nav>

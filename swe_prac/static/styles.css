@@ -417,6 +417,47 @@ details.walkthrough .md { padding: 0 16px 16px; }
 }
 .notes-block p { margin: 0; }
 
+/* ---------- algorithms ---------- */
+.track-mark.algo { background: var(--pass); font-size: 13px; }
+.diff {
+  font: 600 11.5px var(--sans); padding: 1px 8px; border-radius: 999px; border: 1px solid;
+  white-space: nowrap; vertical-align: middle;
+}
+.diff.easy { color: var(--pass); border-color: var(--pass); background: var(--pass-soft); }
+.diff.medium { color: var(--warn); border-color: var(--warn); background: var(--warn-soft); }
+.diff.hard { color: var(--fail); border-color: var(--fail); background: var(--fail-soft); }
+.filter-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 12px; }
+.filter-row input[type="search"], .filter-row select {
+  font: inherit; color: var(--text); background: var(--bg-input); border: 1px solid var(--border-strong);
+  border-radius: 6px; padding: 6px 10px;
+}
+.filter-row input[type="search"] { min-width: 220px; }
+.filter-row label { display: flex; gap: 6px; align-items: center; }
+.algo-card .card-top { display: flex; align-items: center; gap: 8px; }
+.algo-card .card-top .faint { margin-left: auto; font-size: 12px; }
+.algo-card h3 a { color: var(--text); }
+.pattern-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.pattern-chips .chip { font-size: 11.5px; padding: 1px 7px; }
+.hide-patterns .pattern-chips { display: none; }
+.solved-badge {
+  font: 600 12px var(--sans); color: var(--pass); border: 1px solid var(--pass);
+  background: var(--pass-soft); border-radius: 999px; padding: 2px 9px; white-space: nowrap;
+}
+.overview-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 12px; }
+.code-view {
+  background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 12px 14px; font-size: 13px; line-height: 1.5; white-space: pre; overflow-x: auto; word-break: normal;
+}
+.algo-study { line-height: 1.6; }
+.algo-study h2 {
+  font-size: 19px; margin: 30px 0 8px; padding-top: 14px; border-top: 1px solid var(--border);
+}
+.algo-study > h2:first-child, .algo-study .hint-box + h2 { border-top: none; padding-top: 0; margin-top: 8px; }
+.algo-study h3 { font-size: 16px; margin: 20px 0 6px; }
+.algo-study p { margin: 8px 0; }
+.algo-session .steps th { width: 90px; }
+.results-body .steps td.call { white-space: pre-wrap; }
+
 /* ---------- foundations (study pages) ---------- */
 .learn-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
 .learn-card {

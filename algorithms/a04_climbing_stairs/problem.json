@@ -1,0 +1,14 @@
+{
+  "id": "a04_climbing_stairs",
+  "number": 4,
+  "title": "Climbing Stairs",
+  "difficulty": "Easy",
+  "patterns": ["Dynamic programming"],
+  "signature": "def climbStairs(self, n: int) -> int:",
+  "foundations": [
+    "dynamic-programming/top-down-helper-plus-memo",
+    "dynamic-programming/bottom-up-tables",
+    "dynamic-programming/one-dimensional-dp",
+    "complexity/recursion"
+  ]
+}

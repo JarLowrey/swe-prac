@@ -1,0 +1,14 @@
+{
+  "id": "a10_clone_graph",
+  "number": 10,
+  "title": "Clone Graph",
+  "difficulty": "Medium",
+  "patterns": ["Graphs", "Hashing", "DFS"],
+  "signature": "def cloneGraph(self, node: Node | None) -> Node | None:",
+  "adapters": {"args": ["graph"], "result": "graph"},
+  "foundations": [
+    "patterns/graph-traversal",
+    "data-structures/graphs",
+    "data-structures/hash-maps-and-sets"
+  ]
+}

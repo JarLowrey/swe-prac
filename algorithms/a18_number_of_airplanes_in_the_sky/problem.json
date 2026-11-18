@@ -1,0 +1,13 @@
+{
+  "id": "a18_number_of_airplanes_in_the_sky",
+  "number": 18,
+  "title": "Number of Airplanes in the Sky",
+  "difficulty": "Medium",
+  "patterns": ["Sweep line", "Intervals"],
+  "signature": "def countOfAirplanes(self, airplanes: list[list[int]]) -> int:",
+  "foundations": [
+    "patterns/intervals",
+    "data-structures/sorting-and-searching",
+    "patterns/heaps-and-top-k"
+  ]
+}

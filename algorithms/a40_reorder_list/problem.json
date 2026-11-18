@@ -1,0 +1,14 @@
+{
+  "id": "a40_reorder_list",
+  "number": 40,
+  "title": "Reorder List",
+  "difficulty": "Medium",
+  "patterns": ["Linked lists", "Fast and slow pointers"],
+  "signature": "def reorderList(self, head: ListNode | None) -> None:",
+  "adapters": {"args": ["listnode"], "check": "arg0"},
+  "foundations": [
+    "patterns/linked-list-techniques",
+    "data-structures/linked-lists",
+    "complexity/space-complexity"
+  ]
+}

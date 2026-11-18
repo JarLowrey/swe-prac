@@ -7,6 +7,8 @@ your work. Everything here is plain files: edit them, reload the page, and the a
 |---|---|
 | System design foundations pages | `designs/foundations/NN_slug.md` |
 | System design questions | `designs/dNN_name/design.json` and `reference.md` |
+| Algorithms foundations pages | `algorithms/foundations/NN_slug.md` |
+| Algorithm problems | `algorithms/<id>/` (see [Algorithm problems](#algorithm-problems)) |
 
 ## Foundations pages
 
@@ -51,6 +53,8 @@ Link to another page or section with an ordinary markdown link:
 
 ```markdown
 See [consistent hashing](#/design/learn/data/consistent-hashing) for how keys move.
+Two pointers are covered in [the patterns page](#/algo/learn/patterns/two-pointers).
+Try [Merge intervals](#/algo/problem/a16_merge_intervals) next.
 ```
 
 | Route | Shows |
@@ -58,6 +62,8 @@ See [consistent hashing](#/design/learn/data/consistent-hashing) for how keys mo
 | `#/design/learn` | the list of system design foundations pages |
 | `#/design/learn/<page>` | one page |
 | `#/design/learn/<page>/<section>` | one page, scrolled to a section |
+| `#/algo/learn/...` | the same, for the algorithms foundations |
+| `#/algo/problem/<id>` | an algorithm problem's card |
 
 ### Writing style
 
@@ -274,15 +280,21 @@ question's hints and review to the foundations sections it needs, as `"page/sect
 They show up as "Foundations to review" in the hints box and on the review page. `reference.md`
 (the worked answer) can also link to foundations sections inline.
 
+## Algorithm problems
+
+Each problem is a folder `algorithms/<id>/`. The format is described in
+[algorithms/README.md](../algorithms/README.md).
+
 ## Checking your work
 
 ```sh
-python tools/check_content.py
+python tools/check_content.py            # everything
+python tools/check_content.py designs    # or: algorithms
 ```
 
-It renders every page and reports data-structure blocks that don't parse, links to pages or
-sections that don't exist, design questions whose `foundations` don't resolve, and Mermaid
-labels that start like a list. The test suite runs it too.
+It renders every page and reports data-structure blocks that don't parse, links to pages,
+sections or problems that don't exist, design questions whose `foundations` don't resolve, and
+Mermaid labels that start like a list. The test suite runs it too.
 
 Otherwise Mermaid is only drawn in the browser: run the app (`python -m swe_prac`) and open the
 page. A broken diagram is a red box with the parser's message.

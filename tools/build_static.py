@@ -1,15 +1,16 @@
 """Build the static site (GitHub Pages): the frontend plus a browser-side backend.
 
 Code can't run on a static host, so Run, Submit, Run scratch, Format and lint are disabled there
-(app.js checks `window.SWE_STATIC`). Everything else (sessions, the timer, pausing, review,
-history, the study pages of the coding track, the foundations pages, and the whole system design
-section) runs in the browser, with sessions kept in localStorage.
+(app.js and algo.js check `window.SWE_STATIC`). Everything else (sessions, the timer, pausing,
+review, history, the study pages of the coding and algorithms tracks, the foundations pages, and
+the whole system design section) runs in the browser, with sessions kept in localStorage.
 
     python tools/build_static.py            # writes site/
     python tools/build_static.py --out dist
 
-Only what the browser needs is exported: statements, stubs, the shown tests, the review texts and
-the reference solutions. Hidden tests are never written to the output.
+Only what the browser needs is exported: statements, stubs, the shown tests (the examples of an
+algorithm problem), the review texts and the reference solutions. Hidden tests are never written
+to the output.
 """
 
 from __future__ import annotations
@@ -23,7 +24,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from swe_prac import config, designs, pages, problems  # noqa: E402
+from swe_prac import algorithms, config, designs, pages, problems  # noqa: E402
 
 STATIC_SITE_DIR = Path(__file__).resolve().parent / "static_site"
 
@@ -49,10 +50,37 @@ def design_bundle() -> dict:
     }
 
 
+def algo_bundle() -> dict:
+    """The algorithms track: each problem's question (shown examples only) and study material."""
+    found = algorithms.list_problems()
+    return {
+        "problems": [
+            {
+                "problem": p.public(),
+                "statement_html": algorithms.statement_html(p),
+                "params": algorithms.param_names(p),
+                "examples": algorithms.shown_cases(p),
+                "starter_code": algorithms.starter_code(p),
+                "scratch_starter": algorithms.scratch_starter(p),
+                "hints_html": algorithms.hints_html(p),
+                "explanation_html": algorithms.explanation_html(p),
+                "solution_code": algorithms.solution_code(p),
+                "foundations": algorithms.foundation_links(p),
+            }
+            for p in found
+        ],
+        "minutes": config.ALGO_MINUTES,
+        "patterns": sorted({pattern for p in found for pattern in p.patterns}),
+    }
+
+
 def foundations_bundle() -> dict:
     """The foundations pages of each track: the cards for its home page and every page's payload."""
     out = {}
-    for track, folder in [("design", designs.foundations_dir())]:
+    for track, folder in (
+        ("design", designs.foundations_dir()),
+        ("algo", algorithms.foundations_dir()),
+    ):
         found = pages.list_pages(folder)
         out[track] = {
             "cards": [p.card() for p in found],
@@ -95,6 +123,7 @@ def bundle() -> dict:
         "pacing": config.PACING_SECONDS,
         "levels": list(config.LEVELS),
         "design": design_bundle(),
+        "algo": algo_bundle(),
         "foundations": foundations_bundle(),
     }
 

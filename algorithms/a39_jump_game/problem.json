@@ -1,0 +1,14 @@
+{
+  "id": "a39_jump_game",
+  "number": 39,
+  "title": "Jump Game",
+  "difficulty": "Medium",
+  "patterns": ["Greedy"],
+  "signature": "def canJump(self, nums: list[int]) -> bool:",
+  "foundations": [
+    "patterns/greedy",
+    "dynamic-programming/greedy-or-dp",
+    "dynamic-programming/top-down-helper-plus-memo",
+    "patterns/running-state-in-one-pass"
+  ]
+}

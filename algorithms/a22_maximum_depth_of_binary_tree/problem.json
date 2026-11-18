@@ -1,0 +1,15 @@
+{
+  "id": "a22_maximum_depth_of_binary_tree",
+  "number": 22,
+  "title": "Maximum Depth of Binary Tree",
+  "difficulty": "Easy",
+  "patterns": ["Trees", "DFS", "BFS"],
+  "signature": "def maxDepth(self, root: TreeNode | None) -> int:",
+  "adapters": {"args": ["tree"]},
+  "foundations": [
+    "data-structures/trees",
+    "complexity/recursion",
+    "patterns/bfs-by-levels-and-shortest-paths",
+    "complexity/space-complexity"
+  ]
+}

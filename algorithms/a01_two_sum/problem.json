@@ -1,0 +1,14 @@
+{
+  "id": "a01_two_sum",
+  "number": 1,
+  "title": "Two Sum",
+  "difficulty": "Easy",
+  "patterns": ["Hashing"],
+  "signature": "def twoSum(self, nums: list[int], target: int) -> list[int]:",
+  "compare": "unordered",
+  "foundations": [
+    "patterns/hashing",
+    "data-structures/hash-maps-and-sets",
+    "approach/brute-force-first"
+  ]
+}

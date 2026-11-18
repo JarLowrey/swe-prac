@@ -1,0 +1,23 @@
+{
+"_generated": "by tools/build_algo.py from cases.py and solution.py; do not edit",
+"shown": [
+{"id":"s1","name":"Example 1","args":["abcde","ace"],"expect":3},
+{"id":"s2","name":"Example 2","args":["abc","abc"],"expect":3},
+{"id":"s3","name":"Example 3","args":["abc","def"],"expect":0}
+],
+"hidden": [
+{"id":"h1","name":"one matching letter","args":["a","a"],"expect":1},
+{"id":"h2","name":"one letter each, different","args":["a","b"],"expect":0},
+{"id":"h3","name":"a single shared letter in the middle","args":["ace","cbd"],"expect":1},
+{"id":"h4","name":"only the last letter is shared","args":["ace","def"],"expect":1},
+{"id":"h5","name":"the first match is a trap","args":["zabcd","abcdz"],"expect":4},
+{"id":"h6","name":"reversed","args":["abcd","dcba"],"expect":1},
+{"id":"h7","name":"repeated letters","args":["aaaa","aa"],"expect":2},
+{"id":"h8","name":"few matches","args":["bsbininm","jmjkbkjkv"],"expect":1},
+{"id":"h9","name":"almost contained","args":["abcba","abcbcba"],"expect":5},
+{"id":"h10","name":"scattered matches","args":["oxcpqrsvwf","shmtulqrypy"],"expect":2},
+{"id":"h11","name":"one long, one short","args":["thequickbrownfoxjumpsoverthelazydog","fox"],"expect":3},
+{"id":"h12","name":"300 x 300 random letters","args":["dccbbacdacadbddbbbaabadacbbdacbdccabadaddbabdaaabbcaabaadbdadbabbaacbcaadbbacacacdbdbadcadabbdccaccaaadddcbadbadccbcbcaabcbabaaadbdcaccbdcbacaaddbdbcdcaacbbabbabbdddabdcaadcacabbaaddadaacbdbcdbaaaddaababaaacddaacacaddbddbacbdbbbaaaaaacaadbcabacbadcaadacdcbacbcabcdacaacdbdcdcddbaccdddddbcdacabcabbcba","ddbbbbbacdadbdbcdbbdbcaadcdacadbcadbdacbbbdbbaaabddadabcadcbdbabdcdbcdabbdaaabcbbdbbcdbcacbacaacbddcdddcabacddbcbcacbbdcdaddcaccdbcdcdbcddbdcbcaccbbcdbdcdaabacbdbcddcbaacaaadcccbaddbcdcbbdddbccbcddbddbabdaacdacacacdcbbadaacbcbdadbbadbcccabbcaabbbaadbcbbcacdbcbabdabdabdabbdcccadacbbacccaddaacbcccadcb"],"expect":195,"limit_ms":500},
+{"id":"h13","name":"300 x 300, nothing in common","args":["abababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababab","cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd"],"expect":0,"limit_ms":500}
+]
+}

@@ -1,4 +1,4 @@
-"""SQLite persistence: coding and system design sessions, pauses and submissions."""
+"""SQLite persistence: coding, system design and algorithm sessions, pauses and submissions."""
 
 from __future__ import annotations
 
@@ -82,6 +82,45 @@ CREATE TABLE IF NOT EXISTS design_pauses (
     ended_at REAL,
     start_elapsed REAL NOT NULL
 );
+
+-- Algorithm sessions: one problem, timed by difficulty. Same timer columns again.
+CREATE TABLE IF NOT EXISTS algo_sessions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    problem_id TEXT NOT NULL,
+    mode TEXT NOT NULL CHECK (mode IN ('strict', 'pausable')),
+    status TEXT NOT NULL CHECK (status IN ('active', 'finished')),
+    started_at REAL NOT NULL,
+    time_limit INTEGER NOT NULL,
+    paused_at REAL,
+    total_paused REAL NOT NULL DEFAULT 0,
+    code TEXT NOT NULL,
+    scratch TEXT NOT NULL DEFAULT '',
+    solved_at REAL,                         -- elapsed seconds at the first all-pass submit
+    finished_at REAL,
+    final_elapsed REAL
+);
+CREATE TABLE IF NOT EXISTS algo_pauses (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id INTEGER NOT NULL REFERENCES algo_sessions(id),
+    started_at REAL NOT NULL,
+    ended_at REAL,
+    start_elapsed REAL NOT NULL
+);
+CREATE TABLE IF NOT EXISTS algo_submissions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id INTEGER NOT NULL REFERENCES algo_sessions(id),
+    kind TEXT NOT NULL CHECK (kind IN ('run', 'submit')),
+    elapsed REAL NOT NULL,
+    at REAL NOT NULL,
+    all_passed INTEGER NOT NULL,
+    shown_passed INTEGER NOT NULL,
+    shown_total INTEGER NOT NULL,
+    hidden_passed INTEGER NOT NULL DEFAULT 0,
+    hidden_total INTEGER NOT NULL DEFAULT 0,
+    too_slow INTEGER NOT NULL DEFAULT 0,    -- tests that failed only on their time limit
+    lint_count INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_algo_submissions_session ON algo_submissions(session_id);
 """
 
 

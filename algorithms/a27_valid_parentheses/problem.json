@@ -1,0 +1,13 @@
+{
+  "id": "a27_valid_parentheses",
+  "number": 27,
+  "title": "Valid Parentheses",
+  "difficulty": "Easy",
+  "patterns": ["Stacks"],
+  "signature": "def isValid(self, s: str) -> bool:",
+  "foundations": [
+    "data-structures/stacks-and-queues",
+    "patterns/stacks-and-monotonic-stacks",
+    "approach/test-it"
+  ]
+}

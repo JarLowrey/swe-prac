@@ -1,10 +1,12 @@
-"""Check the study content: the system design foundations pages and questions.
+"""Check the study content: foundations pages, design questions and algorithm problems.
 
-    python tools/check_content.py
+    python tools/check_content.py          # everything
+    python tools/check_content.py designs  # one track: designs | algorithms
 
 It renders every markdown file the app shows and reports:
 - data-structure diagram blocks that fail to render (```array, ```tree, ...),
-- internal links (#/design/learn/<page>/<section>) whose target doesn't exist,
+- internal links (#/design/learn/<page>/<section>, #/algo/learn/..., #/algo/problem/...) whose
+  target doesn't exist,
 - design questions whose `foundations` references don't resolve,
 - foundations pages without a summary paragraph or with duplicate section titles,
 - mermaid labels that start like a markdown list ("1. step"), which mermaid draws as
@@ -27,7 +29,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from swe_prac import config, pages  # noqa: E402
+from swe_prac import config, pages, problems  # noqa: E402
 
 LINK = re.compile(r'href="(#/[^"]*)"')
 
@@ -107,9 +109,16 @@ def _sections(folder: Path) -> dict[str, set[str]]:
     return out
 
 
+def _algo_ids() -> set[str]:
+    folder = config.ALGO_DIR if hasattr(config, "ALGO_DIR") else ROOT / "algorithms"
+    if not folder.exists():
+        return set()
+    return {p.name for p in folder.iterdir() if (p / "problem.json").exists()}
+
+
 def check_links(html: str, where: str, targets: dict, errors: list[str]) -> None:
     for href in LINK.findall(html):
-        m = re.fullmatch(r"#/(design)/learn(?:/([\w-]+))?(?:/([\w-]+))?", href)
+        m = re.fullmatch(r"#/(design|algo)/learn(?:/([\w-]+))?(?:/([\w-]+))?", href)
         if m:
             track, slug, section = m.groups()
             sections = targets[track]
@@ -117,6 +126,10 @@ def check_links(html: str, where: str, targets: dict, errors: list[str]) -> None
                 errors.append(f"{where}: link to unknown page {href}")
             elif section and section not in sections[slug]:
                 errors.append(f"{where}: link to unknown section {href}")
+            continue
+        m = re.fullmatch(r"#/algo/problem/([\w-]+)(?:/[\w-]+)?", href)
+        if m and m.group(1) not in targets["algo_problems"]:
+            errors.append(f"{where}: link to unknown problem {href}")
 
 
 def check_html(html: str, where: str, targets: dict, errors: list[str]) -> None:
@@ -142,10 +155,15 @@ def check_pages(folder: Path, label: str, targets: dict, errors: list[str]) -> i
 
 
 def main(argv: list[str]) -> int:
-    which = set(argv) or {"designs"}
+    which = set(argv) or {"designs", "algorithms"}
     errors: list[str] = []
     design_dir = config.DESIGNS_DIR / "foundations"
-    targets = {"design": _sections(design_dir)}
+    algo_root = getattr(config, "ALGO_DIR", ROOT / "algorithms")
+    targets = {
+        "design": _sections(design_dir),
+        "algo": _sections(algo_root / "foundations"),
+        "algo_problems": _algo_ids(),
+    }
     summary = []
     if "designs" in which:
         n = check_pages(design_dir, "designs/foundations", targets, errors)
@@ -164,6 +182,19 @@ def main(argv: list[str]) -> int:
                 if known is None or (section and section not in known):
                     errors.append(f"{where}/design.json: foundations link {ref!r} doesn't resolve")
         summary.append(f"{n} design foundations pages")
+    if "algorithms" in which and (algo_root / "foundations").exists():
+        n = check_pages(algo_root / "foundations", "algorithms/foundations", targets, errors)
+        summary.append(f"{n} algorithm foundations pages")
+        for pid in sorted(targets["algo_problems"]):
+            for name in ("statement.md", "hints.md", "explanation.md"):
+                path = algo_root / pid / name
+                if path.exists():
+                    text = path.read_text(encoding="utf-8")
+                    check_source(text, f"algorithms/{pid}/{name}", errors)
+                    check_html(
+                        problems.render_markdown(text), f"algorithms/{pid}/{name}", targets, errors
+                    )
+        summary.append(f"{len(targets['algo_problems'])} algorithm problems")
     for e in errors:
         print("ERROR", e)
     print(("FAILED: " if errors else "OK: ") + ", ".join(summary) + f" ({len(errors)} problems)")

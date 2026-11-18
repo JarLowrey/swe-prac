@@ -1,0 +1,9 @@
+{
+  "id": "x01_pair_sum",
+  "number": 1,
+  "title": "Pair Sum (test fixture)",
+  "difficulty": "Easy",
+  "patterns": ["Hashing"],
+  "signature": "def pairSum(self, nums: list[int], target: int) -> list[int]:",
+  "foundations": ["basics/hashing", "basics"]
+}

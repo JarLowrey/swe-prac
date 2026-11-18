@@ -1,0 +1,15 @@
+{
+  "id": "a29_group_anagrams",
+  "number": 29,
+  "title": "Group Anagrams",
+  "difficulty": "Medium",
+  "patterns": ["Hashing", "Counting"],
+  "signature": "def groupAnagrams(self, strs: list[str]) -> list[list[str]]:",
+  "compare": "unordered_nested",
+  "foundations": [
+    "patterns/hashing",
+    "data-structures/hash-maps-and-sets",
+    "data-structures/arrays-and-strings",
+    "complexity/common-complexities"
+  ]
+}

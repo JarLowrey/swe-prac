@@ -1,0 +1,14 @@
+{
+  "id": "a42_merge_k_sorted_lists",
+  "number": 42,
+  "title": "Merge k Sorted Lists",
+  "difficulty": "Hard",
+  "patterns": ["Heaps", "Linked lists", "K-way merge"],
+  "signature": "def mergeKLists(self, lists: list[ListNode | None]) -> ListNode | None:",
+  "adapters": {"args": ["listnodes"], "result": "listnode"},
+  "foundations": [
+    "patterns/heaps-and-top-k",
+    "data-structures/heaps",
+    "patterns/linked-list-techniques"
+  ]
+}

@@ -1,4 +1,4 @@
-// Foundations: the long-form study pages of a track (system design). Each page has a
+// Foundations: the long-form study pages of a track (system design, algorithms). Each page has a
 // table of contents; every section has a route of its own (#/design/learn/<page>/<section>) so
 // hints, explanations and other pages can link straight to it.
 
@@ -8,6 +8,10 @@ const TRACKS = {
   design: {
     api: "/api/design/foundations", base: "#/design/learn", nav: "design", home: "#/design",
     label: "System design",
+  },
+  algo: {
+    api: "/api/algo/foundations", base: "#/algo/learn", nav: "algo", home: "#/algo",
+    label: "Algorithms",
   },
 };
 

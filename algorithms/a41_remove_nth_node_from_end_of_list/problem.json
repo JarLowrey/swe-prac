@@ -1,0 +1,14 @@
+{
+  "id": "a41_remove_nth_node_from_end_of_list",
+  "number": 41,
+  "title": "Remove Nth Node From End of List",
+  "difficulty": "Medium",
+  "patterns": ["Linked lists", "Two pointers"],
+  "signature": "def removeNthFromEnd(self, head: ListNode | None, n: int) -> ListNode | None:",
+  "adapters": {"args": ["listnode", null], "result": "listnode"},
+  "foundations": [
+    "patterns/linked-list-techniques",
+    "data-structures/linked-lists",
+    "patterns/two-pointers"
+  ]
+}

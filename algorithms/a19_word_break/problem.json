@@ -1,0 +1,14 @@
+{
+  "id": "a19_word_break",
+  "number": 19,
+  "title": "Word Break",
+  "difficulty": "Medium",
+  "patterns": ["Dynamic programming"],
+  "signature": "def wordBreak(self, s: str, wordDict: list[str]) -> bool:",
+  "foundations": [
+    "dynamic-programming/top-down-helper-plus-memo",
+    "dynamic-programming/one-dimensional-dp",
+    "data-structures/hash-maps-and-sets",
+    "data-structures/tries"
+  ]
+}

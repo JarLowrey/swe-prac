@@ -11,7 +11,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from . import config, db, design_api, execution, problems, sessions
+from . import algo_api, config, db, design_api, execution, problems, sessions
 from .sessions import SessionError
 
 
@@ -30,6 +30,7 @@ def _session_error(_: Request, exc: SessionError) -> JSONResponse:
 
 
 app.include_router(design_api.router)  # system design practice: /api/design/...
+app.include_router(algo_api.router)  # algorithm practice: /api/algo/...
 
 
 # -- request bodies ----------------------------------------------------------------------

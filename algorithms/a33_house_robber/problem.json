@@ -1,0 +1,13 @@
+{
+  "id": "a33_house_robber",
+  "number": 33,
+  "title": "House Robber",
+  "difficulty": "Medium",
+  "patterns": ["Dynamic programming"],
+  "signature": "def rob(self, nums: list[int]) -> int:",
+  "foundations": [
+    "dynamic-programming/one-dimensional-dp",
+    "dynamic-programming/greedy-or-dp",
+    "dynamic-programming/top-down-helper-plus-memo"
+  ]
+}

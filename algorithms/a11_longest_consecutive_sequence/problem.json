@@ -1,0 +1,14 @@
+{
+  "id": "a11_longest_consecutive_sequence",
+  "number": 11,
+  "title": "Longest Consecutive Sequence",
+  "difficulty": "Medium",
+  "patterns": ["Hashing"],
+  "signature": "def longestConsecutive(self, nums: list[int]) -> int:",
+  "foundations": [
+    "patterns/hashing",
+    "data-structures/hash-maps-and-sets",
+    "complexity/amortized-analysis",
+    "data-structures/sorting-and-searching"
+  ]
+}

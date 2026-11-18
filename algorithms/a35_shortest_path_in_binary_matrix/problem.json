@@ -1,0 +1,13 @@
+{
+  "id": "a35_shortest_path_in_binary_matrix",
+  "number": 35,
+  "title": "Shortest Path in Binary Matrix",
+  "difficulty": "Medium",
+  "patterns": ["BFS", "Grids"],
+  "signature": "def shortestPathBinaryMatrix(self, grid: list[list[int]]) -> int:",
+  "foundations": [
+    "patterns/bfs-by-levels-and-shortest-paths",
+    "patterns/graph-traversal",
+    "data-structures/stacks-and-queues"
+  ]
+}

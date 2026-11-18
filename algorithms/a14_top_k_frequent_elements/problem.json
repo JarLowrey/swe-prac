@@ -1,0 +1,15 @@
+{
+  "id": "a14_top_k_frequent_elements",
+  "number": 14,
+  "title": "Top K Frequent Elements",
+  "difficulty": "Medium",
+  "patterns": ["Hashing", "Heaps", "Bucket sort"],
+  "signature": "def topKFrequent(self, nums: list[int], k: int) -> list[int]:",
+  "compare": "unordered",
+  "foundations": [
+    "patterns/heaps-and-top-k",
+    "data-structures/heaps",
+    "patterns/hashing",
+    "data-structures/sorting-and-searching"
+  ]
+}

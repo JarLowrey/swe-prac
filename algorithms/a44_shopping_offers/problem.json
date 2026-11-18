@@ -1,0 +1,14 @@
+{
+  "id": "a44_shopping_offers",
+  "number": 44,
+  "title": "Shopping Offers",
+  "difficulty": "Medium",
+  "patterns": ["Dynamic programming", "Memoization"],
+  "signature": "def shoppingOffers(self, price: list[int], special: list[list[int]], needs: list[int]) -> int:",
+  "foundations": [
+    "dynamic-programming/top-down-helper-plus-memo",
+    "dynamic-programming/choosing-the-memo-key",
+    "dynamic-programming/knapsack-and-coin-problems",
+    "patterns/backtracking"
+  ]
+}

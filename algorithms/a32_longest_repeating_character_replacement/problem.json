@@ -1,0 +1,13 @@
+{
+  "id": "a32_longest_repeating_character_replacement",
+  "number": 32,
+  "title": "Longest Repeating Character Replacement",
+  "difficulty": "Medium",
+  "patterns": ["Sliding window", "Counting"],
+  "signature": "def characterReplacement(self, s: str, k: int) -> int:",
+  "foundations": [
+    "patterns/sliding-window",
+    "patterns/running-state-in-one-pass",
+    "data-structures/hash-maps-and-sets"
+  ]
+}

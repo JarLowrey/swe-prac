@@ -1,0 +1,13 @@
+{
+  "id": "a06_longest_increasing_subsequence",
+  "number": 6,
+  "title": "Longest Increasing Subsequence",
+  "difficulty": "Medium",
+  "patterns": ["Dynamic programming", "Binary search"],
+  "signature": "def lengthOfLIS(self, nums: list[int]) -> int:",
+  "foundations": [
+    "dynamic-programming/one-dimensional-dp",
+    "dynamic-programming/choosing-the-memo-key",
+    "patterns/binary-search"
+  ]
+}

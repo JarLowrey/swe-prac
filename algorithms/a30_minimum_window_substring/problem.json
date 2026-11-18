@@ -1,0 +1,13 @@
+{
+  "id": "a30_minimum_window_substring",
+  "number": 30,
+  "title": "Minimum Window Substring",
+  "difficulty": "Hard",
+  "patterns": ["Sliding window", "Hashing"],
+  "signature": "def minWindow(self, s: str, t: str) -> str:",
+  "foundations": [
+    "patterns/sliding-window",
+    "patterns/hashing",
+    "complexity/amortized-analysis"
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "id": "a36_k_common_in_sorted_streams",
+  "number": 36,
+  "title": "Values in K Sorted Streams",
+  "difficulty": "Hard",
+  "patterns": ["Heaps", "K-way merge"],
+  "signature": "def kCommon(self, streams: list[list[int]], k: int) -> list[int]:",
+  "foundations": [
+    "patterns/heaps-and-top-k",
+    "data-structures/heaps",
+    "complexity/space-complexity",
+    "data-structures/hash-maps-and-sets"
+  ]
+}

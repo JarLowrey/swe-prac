@@ -1,0 +1,14 @@
+{
+  "id": "a05_coin_change",
+  "number": 5,
+  "title": "Coin Change",
+  "difficulty": "Medium",
+  "patterns": ["Dynamic programming"],
+  "signature": "def coinChange(self, coins: list[int], amount: int) -> int:",
+  "foundations": [
+    "dynamic-programming/knapsack-and-coin-problems",
+    "dynamic-programming/greedy-or-dp",
+    "dynamic-programming/choosing-the-memo-key",
+    "dynamic-programming/bottom-up-tables"
+  ]
+}

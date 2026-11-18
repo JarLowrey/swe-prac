@@ -1,0 +1,14 @@
+{
+  "id": "a12_course_schedule",
+  "number": 12,
+  "title": "Course Schedule",
+  "difficulty": "Medium",
+  "patterns": ["Graphs", "Topological sort"],
+  "signature": "def canFinish(self, numCourses: int, prerequisites: list[list[int]]) -> bool:",
+  "foundations": [
+    "patterns/topological-sort-and-cycles",
+    "patterns/graph-traversal",
+    "data-structures/graphs",
+    "complexity/recursion"
+  ]
+}

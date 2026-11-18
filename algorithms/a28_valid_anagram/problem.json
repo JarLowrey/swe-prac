@@ -1,0 +1,13 @@
+{
+  "id": "a28_valid_anagram",
+  "number": 28,
+  "title": "Valid Anagram",
+  "difficulty": "Easy",
+  "patterns": ["Hashing", "Counting"],
+  "signature": "def isAnagram(self, s: str, t: str) -> bool:",
+  "foundations": [
+    "patterns/hashing",
+    "data-structures/hash-maps-and-sets",
+    "data-structures/arrays-and-strings"
+  ]
+}

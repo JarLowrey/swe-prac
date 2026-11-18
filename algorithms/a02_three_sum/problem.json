@@ -1,0 +1,15 @@
+{
+  "id": "a02_three_sum",
+  "number": 2,
+  "title": "3Sum",
+  "difficulty": "Medium",
+  "patterns": ["Two pointers", "Sorting"],
+  "signature": "def threeSum(self, nums: list[int]) -> list[list[int]]:",
+  "compare": "unordered_nested",
+  "foundations": [
+    "patterns/two-pointers",
+    "data-structures/sorting-and-searching",
+    "patterns/hashing",
+    "approach/optimize"
+  ]
+}

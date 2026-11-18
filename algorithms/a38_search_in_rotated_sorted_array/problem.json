@@ -1,0 +1,13 @@
+{
+  "id": "a38_search_in_rotated_sorted_array",
+  "number": 38,
+  "title": "Search in Rotated Sorted Array",
+  "difficulty": "Medium",
+  "patterns": ["Binary search"],
+  "signature": "def search(self, nums: list[int], target: int) -> int:",
+  "foundations": [
+    "patterns/binary-search",
+    "data-structures/sorting-and-searching",
+    "approach/test-it"
+  ]
+}

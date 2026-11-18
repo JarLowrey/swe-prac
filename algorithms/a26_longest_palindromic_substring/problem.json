@@ -1,0 +1,14 @@
+{
+  "id": "a26_longest_palindromic_substring",
+  "number": 26,
+  "title": "Longest Palindromic Substring",
+  "difficulty": "Medium",
+  "patterns": ["Strings", "Expand around center", "Two pointers"],
+  "signature": "def longestPalindrome(self, s: str) -> str:",
+  "compare": "validator",
+  "foundations": [
+    "patterns/two-pointers",
+    "dynamic-programming/bottom-up-tables",
+    "data-structures/arrays-and-strings"
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "id": "a23_same_tree",
+  "number": 23,
+  "title": "Same Tree",
+  "difficulty": "Easy",
+  "patterns": ["Trees", "DFS"],
+  "signature": "def isSameTree(self, p: TreeNode | None, q: TreeNode | None) -> bool:",
+  "adapters": {"args": ["tree", "tree"]},
+  "foundations": [
+    "data-structures/trees",
+    "data-structures/tree-traversals",
+    "complexity/recursion"
+  ]
+}

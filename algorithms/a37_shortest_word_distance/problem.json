@@ -1,0 +1,13 @@
+{
+  "id": "a37_shortest_word_distance",
+  "number": 37,
+  "title": "Shortest Word Distance",
+  "difficulty": "Easy",
+  "patterns": ["Running state", "Arrays"],
+  "signature": "def shortestDistance(self, wordsDict: list[str], word1: str, word2: str) -> int:",
+  "foundations": [
+    "patterns/running-state-in-one-pass",
+    "patterns/two-pointers",
+    "approach/clarify-and-work-examples"
+  ]
+}

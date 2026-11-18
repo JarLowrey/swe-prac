@@ -66,7 +66,8 @@ class TempDirCase(unittest.TestCase):
 
 
 class EnvCase(TempDirCase):
-    """Isolated data dir, the fixture problem and design sets and a fake clock (`self.clock`)."""
+    """Isolated data dir, the fixture problem, design and algorithm sets and a fake clock
+    (`self.clock`)."""
 
     def setUp(self) -> None:
         super().setUp()
@@ -76,6 +77,11 @@ class EnvCase(TempDirCase):
         designs_dir = self.tmp_path / "designs"
         shutil.copytree(FIXTURES / "designs", designs_dir)
         self.patch(config, "DESIGNS_DIR", designs_dir)
+        algo_dir = self.tmp_path / "algorithms"
+        shutil.copytree(
+            FIXTURES / "algorithms", algo_dir, ignore=shutil.ignore_patterns("__pycache__")
+        )
+        self.patch(config, "ALGO_DIR", algo_dir)
         self.patch(config, "REFERENCE_DIR", self.tmp_path / "reference")
         self.patch(config, "DATA_DIR", self.tmp_path / "data")
         problems.conventions_html.cache_clear()

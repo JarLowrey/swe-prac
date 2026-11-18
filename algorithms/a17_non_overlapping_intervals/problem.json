@@ -1,0 +1,13 @@
+{
+  "id": "a17_non_overlapping_intervals",
+  "number": 17,
+  "title": "Non-overlapping Intervals",
+  "difficulty": "Medium",
+  "patterns": ["Intervals", "Greedy"],
+  "signature": "def eraseOverlapIntervals(self, intervals: list[list[int]]) -> int:",
+  "foundations": [
+    "patterns/intervals",
+    "patterns/greedy",
+    "dynamic-programming/greedy-or-dp"
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "id": "x02_reverse_list",
+  "number": 2,
+  "title": "Reverse List (test fixture)",
+  "difficulty": "Medium",
+  "patterns": ["Linked lists", "Two pointers"],
+  "signature": "def reverseList(self, head: Optional[ListNode]) -> Optional[ListNode]:",
+  "adapters": {"args": ["listnode"], "result": "listnode"},
+  "foundations": ["basics/two-pointers"]
+}

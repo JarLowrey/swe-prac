@@ -1,0 +1,13 @@
+{
+  "id": "a08_product_of_array_except_self",
+  "number": 8,
+  "title": "Product of Array Except Self",
+  "difficulty": "Medium",
+  "patterns": ["Prefix products"],
+  "signature": "def productExceptSelf(self, nums: list[int]) -> list[int]:",
+  "foundations": [
+    "patterns/prefix-sums-and-products",
+    "patterns/running-state-in-one-pass",
+    "complexity/space-complexity"
+  ]
+}

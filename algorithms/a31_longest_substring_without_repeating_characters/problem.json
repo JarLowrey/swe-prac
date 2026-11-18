@@ -1,0 +1,13 @@
+{
+  "id": "a31_longest_substring_without_repeating_characters",
+  "number": 31,
+  "title": "Longest Substring Without Repeating Characters",
+  "difficulty": "Medium",
+  "patterns": ["Sliding window", "Hashing"],
+  "signature": "def lengthOfLongestSubstring(self, s: str) -> int:",
+  "foundations": [
+    "patterns/sliding-window",
+    "patterns/hashing",
+    "data-structures/hash-maps-and-sets"
+  ]
+}

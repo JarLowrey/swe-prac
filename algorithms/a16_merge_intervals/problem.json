@@ -1,0 +1,14 @@
+{
+  "id": "a16_merge_intervals",
+  "number": 16,
+  "title": "Merge Intervals",
+  "difficulty": "Medium",
+  "patterns": ["Intervals", "Sorting"],
+  "signature": "def merge(self, intervals: list[list[int]]) -> list[list[int]]:",
+  "compare": "unordered",
+  "foundations": [
+    "patterns/intervals",
+    "data-structures/sorting-and-searching",
+    "approach/clarify-and-work-examples"
+  ]
+}

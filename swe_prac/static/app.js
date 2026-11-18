@@ -1,6 +1,6 @@
 // SWE Practice frontend: hash-routed single page. The home page picks a track; this file holds the
-// router and the coding pages (problems, session, review, study, history). System design lives in
-// design.js, the foundations pages in learn.js, shared helpers in common.js.
+// router and the coding pages (problems, session, review, study, history). Algorithms live in
+// algo.js, system design in design.js, the foundations pages in learn.js, shared helpers in common.js.
 
 import {
   $app, $modalRoot, STATIC, NEEDS_SERVER_NOTE, api, esc, fmtClock, fmtDelta, plural, fmtDate,
@@ -11,6 +11,10 @@ import {
   renderDesignHome, renderDesignSession, renderDesignReview, renderDesignStudy, renderFramework,
   designHistoryTable, designTrackCard,
 } from "./design.js";
+import {
+  renderAlgoHome, renderAlgoSession, renderAlgoReview, renderAlgoProblem, algoHistoryTable,
+  algoTrackCard,
+} from "./algo.js";
 import { renderLearn } from "./learn.js";
 
 // ---------------------------------------------------------------- router
@@ -30,6 +34,11 @@ const ROUTES = [
   [/^#\/design\/review\/(\d+)$/, (id) => renderDesignReview(Number(id))],
   [/^#\/design\/question\/([\w-]+)\/(hints|reference)$/, renderDesignStudy],
   [/^#\/design\/learn(?:\/([\w-]+))?(?:\/([\w-]+))?$/, (slug, section) => renderLearn("design", slug, section)],
+  [/^#\/algo$/, renderAlgoHome],
+  [/^#\/algo\/session\/(\d+)$/, (id) => renderAlgoSession(Number(id))],
+  [/^#\/algo\/review\/(\d+)$/, (id) => renderAlgoReview(Number(id))],
+  [/^#\/algo\/problem\/([\w-]+)(?:\/(question|hints|solution))?$/, renderAlgoProblem],
+  [/^#\/algo\/learn(?:\/([\w-]+))?(?:\/([\w-]+))?$/, (slug, section) => renderLearn("algo", slug, section)],
 ];
 
 async function route() {
@@ -54,8 +63,8 @@ window.addEventListener("hashchange", route);
 
 // ---------------------------------------------------------------- home: pick a track
 async function renderHome() {
-  const [coding, codingActive, designCard] = await Promise.all([
-    api("GET", "/api/problems"), api("GET", "/api/active"), designTrackCard(),
+  const [coding, codingActive, algoCard, designCard] = await Promise.all([
+    api("GET", "/api/problems"), api("GET", "/api/active"), algoTrackCard(), designTrackCard(),
   ]);
   const active = codingActive.session;
   const attempts = coding.problems.reduce((sum, p) => sum + p.attempts, 0);
@@ -66,7 +75,7 @@ async function renderHome() {
 
   $app.innerHTML = `${topnav("home")}<main class="page">
     <h1>Interview practice</h1>
-    <p class="lead">Two kinds of timed practice, run the way the real rounds are. Pick one.</p>
+    <p class="lead">Three kinds of timed practice, run the way the real rounds are. Pick one.</p>
     <div class="track-grid">
       <a class="track-card" href="#/coding">
         <div class="track-head"><span class="track-mark">&lt;/&gt;</span><h2>Coding assessment</h2></div>
@@ -76,6 +85,7 @@ async function renderHome() {
         ${STATIC ? '<p class="faint track-note">Code can\'t run on this static copy, so levels can\'t be passed here.</p>' : ""}
         <div class="track-foot">${status}<span class="track-cta">Open →</span></div>
       </a>
+      ${algoCard}
       ${designCard}
     </div>
   </main>`;
@@ -909,10 +919,10 @@ function renderTimeline(data) {
     ${events.map((e) => `<tr><td class="mono">${fmtClock(e.t)}</td>${e.html}</tr>`).join("")}</table>`;
 }
 
-// ---------------------------------------------------------------- history (both tracks)
+// ---------------------------------------------------------------- history (every track)
 async function renderHistory() {
-  const [{ sessions }, designTable] = await Promise.all([
-    api("GET", "/api/history"), designHistoryTable(),
+  const [{ sessions }, algoTable, designTable] = await Promise.all([
+    api("GET", "/api/history"), algoHistoryTable(), designHistoryTable(),
   ]);
   const rows = sessions.map((s) => `<tr class="clickable" data-href="${s.status === "active" ? `#/session/${s.id}` : `#/review/${s.id}`}">
       <td>${fmtDate(s.started_at)}</td>
@@ -929,6 +939,8 @@ async function renderHistory() {
     <h2 class="section-title">Coding</h2>
     ${sessions.length ? `<table class="table"><tr><th>Date</th><th>Problem</th><th>Mode</th><th>Timed levels</th><th>Incl. overtime</th><th>Time</th><th>Pauses</th></tr>${rows}</table>`
       : '<p class="dim">No coding attempts yet. <a href="#/coding">Start one</a>.</p>'}
+    <h2 class="section-title">Algorithms</h2>
+    ${algoTable}
     <h2 class="section-title">System design</h2>
     ${designTable}
   </main>`;

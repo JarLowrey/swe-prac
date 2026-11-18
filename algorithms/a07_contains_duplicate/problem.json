@@ -1,0 +1,14 @@
+{
+  "id": "a07_contains_duplicate",
+  "number": 7,
+  "title": "Contains Duplicate",
+  "difficulty": "Easy",
+  "patterns": ["Hashing"],
+  "signature": "def containsDuplicate(self, nums: list[int]) -> bool:",
+  "foundations": [
+    "patterns/hashing",
+    "data-structures/hash-maps-and-sets",
+    "data-structures/sorting-and-searching",
+    "complexity/space-complexity"
+  ]
+}

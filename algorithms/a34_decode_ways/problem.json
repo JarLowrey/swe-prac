@@ -1,0 +1,13 @@
+{
+  "id": "a34_decode_ways",
+  "number": 34,
+  "title": "Decode Ways",
+  "difficulty": "Medium",
+  "patterns": ["Dynamic programming"],
+  "signature": "def numDecodings(self, s: str) -> int:",
+  "foundations": [
+    "dynamic-programming/one-dimensional-dp",
+    "dynamic-programming/top-down-helper-plus-memo",
+    "dynamic-programming/bottom-up-tables"
+  ]
+}

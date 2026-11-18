@@ -1,0 +1,14 @@
+{
+  "id": "a13_course_schedule_iii",
+  "number": 13,
+  "title": "Course Schedule III",
+  "difficulty": "Hard",
+  "patterns": ["Greedy", "Heaps", "Sorting"],
+  "signature": "def scheduleCourse(self, courses: list[list[int]]) -> int:",
+  "foundations": [
+    "patterns/greedy",
+    "patterns/heaps-and-top-k",
+    "data-structures/heaps",
+    "dynamic-programming/greedy-or-dp"
+  ]
+}

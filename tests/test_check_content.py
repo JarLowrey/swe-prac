@@ -77,7 +77,22 @@ class FixtureContentTests(EnvCase):
     def test_the_fixture_content_passes(self):
         code, out = run_main()
         self.assertEqual(code, 0, out)
-        self.assertIn("0 design foundations pages", out)
+        self.assertIn("1 algorithm foundations pages, 2 algorithm problems", out)
+
+    def test_broken_links_diagrams_and_labels_are_reported(self):
+        explanation = config.ALGO_DIR / "x01_pair_sum" / "explanation.md"
+        explanation.write_text(
+            "See [this](#/algo/learn/basics/nope) and [that](#/algo/problem/x99_missing).\n\n"
+            "```array\npointers: i=0\n```\n\n"
+            '```mermaid\nflowchart LR\n  A["1. scan"] --> B\n```\n',
+            encoding="utf-8",
+        )
+        code, out = run_main("algorithms")
+        self.assertEqual(code, 1)
+        self.assertIn("link to unknown section #/algo/learn/basics/nope", out)
+        self.assertIn("link to unknown problem #/algo/problem/x99_missing", out)
+        self.assertIn("array needs", out)
+        self.assertIn("Unsupported markdown: list", out)
 
     def test_design_foundations_references_must_resolve(self):
         path = config.DESIGNS_DIR / "d00_pastebin" / "design.json"
