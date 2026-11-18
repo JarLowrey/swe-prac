@@ -20,6 +20,7 @@
   "foundations": [
     "networking/pagination-offset-vs-cursor",
     "data/secondary-indexes-on-sharded-data",
+    "building-blocks/estimation-and-benchmarks",
     "building-blocks/geohash",
     "building-blocks/quadtrees",
     "building-blocks/geospatial-indexes-compared",

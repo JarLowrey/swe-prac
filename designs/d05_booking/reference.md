@@ -2,7 +2,7 @@ This is the classic reservation question ("design a reservation system"), with e
 
 **Requirements.** Functional: search availability for dates; view a property with a calendar; reserve (hold) while paying; confirm; cancel; hosts manage calendars and prices. Non-functional: **[never double-book](#/design/learn/reliability/concurrency-control-and-double-booking)**; search is fast and may be slightly stale; [booking is strongly consistent](#/design/learn/data/picking-a-guarantee-per-operation); handles flash demand for popular listings or events. Clarify: unique listings (a vacation home, one seat) or fungible inventory ("any of 40 standard rooms")? Both are covered below.
 
-**Estimates.** 10M listings, 500K bookings/day ≈ 6/s average, 50/s peak: tiny for writes. Searches: 100M/day ≈ 1,200/s average, 5,000+/s peak, so the read/search side is the scale problem, while booking is a correctness problem. Calendar storage: 10M listings × 365 nights × ~20 bytes = 73 GB; fits one sharded relational database.
+**Estimates.** 10M listings, 500K bookings/day ≈ 6/s average, 50/s peak: tiny next to [the few thousand writes/s one relational primary takes](#/design/learn/building-blocks/estimation-and-benchmarks). Searches: 100M/day ≈ 1,200/s average, 5,000+/s peak, so the read/search side is the scale problem, while booking is a correctness problem. Calendar storage: 10M listings × 365 nights × ~20 bytes = 73 GB, which fits on one relational primary (a few TB is comfortable), so neither size nor writes force sharding.
 
 **API.**
 

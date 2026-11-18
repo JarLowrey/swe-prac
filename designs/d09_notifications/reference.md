@@ -1,6 +1,6 @@
 **Requirements.** Functional: other services send notifications (push, SMS, email, in-app) to users; users set preferences per channel and category; templates and localization; scheduled and bulk sends (a campaign to 10M users); delivery tracking. Non-functional: reliable (a password reset or payment alert must arrive); no duplicates; low latency for transactional messages (seconds), higher tolerance for marketing; scales to bursts; respects provider limits and user quiet hours.
 
-**Estimates.** 1B notifications/day ≈ 12,000/s average, but bursty: a campaign or breaking-news alert can send 10M in a few minutes (≈ 50,000+/s). Channels differ: push and in-app are cheap; SMS costs money per message; email has deliverability and reputation constraints.
+**Estimates.** 1B notifications/day ≈ 12,000/s average, but bursty: a campaign or breaking-news alert can send 10M in a few minutes (≈ 50,000+/s). A queue absorbs that burst easily ([a few dozen partitions at thousands of messages/s each](#/design/learn/building-blocks/estimation-and-benchmarks)); the real limits are provider send rates and cost. Channels differ: push and in-app are cheap; SMS costs money per message; email has deliverability and reputation constraints.
 
 **API.**
 

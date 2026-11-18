@@ -22,6 +22,7 @@
     "networking/api-gateway",
     "data/atomic-updates-and-counters",
     "data/hot-keys",
+    "building-blocks/estimation-and-benchmarks",
     "building-blocks/rate-limiting-algorithms-compared",
     "building-blocks/token-bucket",
     "building-blocks/sliding-window-counter",

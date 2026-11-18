@@ -1,6 +1,6 @@
 **Requirements.** Functional: users post (text, images); follow others; see a feed of followed users' posts, newest or ranked first, with pagination. Out of scope for v1: ads, deep ranking ML, comments (mention). Non-functional: feed loads under 200 ms; new posts appear within a few seconds (eventual consistency is fine); highly available; handles celebrity accounts with tens of millions of followers.
 
-**Estimates.** 300M daily active users, each opens the feed 10 times a day = 3B feed reads/day ≈ 35,000/s average, 100,000+/s peak. Posts: 100M/day ≈ 1,200/s. Average user follows 200 accounts; a few have 50M followers. Read:write is about 30:1, so optimize reads. Storing a feed of 500 post IDs per user (8 bytes each) = 4 KB × 300M ≈ 1.2 TB, which is cache-sized across a cluster.
+**Estimates.** 300M daily active users, each opens the feed 10 times a day = 3B feed reads/day ≈ 35,000/s average, 100,000+/s peak. Posts: 100M/day ≈ 1,200/s. Average user follows 200 accounts; a few have 50M followers. Read:write is about 30:1, so optimize reads. Fan-out on write costs 1,200 posts/s × 200 followers = 240,000 feed inserts/s, [a few Redis shards at about 100K operations/s each](#/design/learn/building-blocks/estimation-and-benchmarks). Storing a feed of 500 post IDs per user (8 bytes each) = 4 KB × 300M ≈ 1.2 TB raw, a few TB with Redis's per-entry overhead, which is cache-sized across a cluster of tens to a hundred shards.
 
 **API.**
 

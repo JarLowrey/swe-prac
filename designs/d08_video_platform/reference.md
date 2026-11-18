@@ -2,7 +2,7 @@ Two related questions: **video platform** (upload, process, stream globally) and
 
 **Requirements.** Functional: upload videos (up to several GB); process into streamable formats; watch with adaptive quality on any device; metadata, search and recommendations are out of scope except a metadata API. Non-functional: uploads survive flaky networks; playback starts in under 2 seconds with little rebuffering; global; very high availability for playback; processing can take minutes.
 
-**Estimates.** 5M uploads/day (≈ 60/s), average 300 MB raw = 1.5 PB/day raw; after transcoding to ~6 renditions maybe 3x that in storage. Playback: 1B views/day ≈ 12,000 starts/s, average 5 Mbps stream → peak tens of Tbps of egress. Conclusion: bandwidth and storage dominate cost, so the CDN carries nearly all playback and [uploads must bypass application servers](#/design/learn/building-blocks/presigned-url-uploads).
+**Estimates.** 5M uploads/day (≈ 60/s), average 300 MB raw = 1.5 PB/day raw. Keeping the original plus ~6 renditions (the full ladder is about twice the top rendition) brings that to roughly 3x, about 4.5 PB/day. Playback: 1B views/day ≈ 12,000 starts/s; at ~10 minutes watched per view that is about 7M streams at once, × 5 Mbps average ≈ 35 Tbps, more at peak: [thousands of servers' worth of 10–25 Gbps network cards](#/design/learn/building-blocks/estimation-and-benchmarks). Conclusion: bandwidth and storage dominate cost, so the CDN carries nearly all playback and [uploads must bypass application servers](#/design/learn/building-blocks/presigned-url-uploads).
 
 **API.**
 

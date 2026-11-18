@@ -24,6 +24,7 @@
     "data/atomic-updates-and-counters",
     "data/pessimistic-locking-and-deadlocks",
     "data/holds-that-expire",
+    "building-blocks/estimation-and-benchmarks",
     "reliability/concurrency-control-and-double-booking",
     "reliability/hot-rows-and-flash-sales",
     "reliability/sagas-and-compensation",

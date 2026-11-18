@@ -20,6 +20,7 @@
   "foundations": [
     "networking/async-request-reply",
     "data/metadata-and-blobs",
+    "building-blocks/estimation-and-benchmarks",
     "building-blocks/presigned-url-uploads",
     "building-blocks/multipart-and-resumable-uploads",
     "building-blocks/upload-states-and-cleanup",

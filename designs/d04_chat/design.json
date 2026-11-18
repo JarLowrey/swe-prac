@@ -24,6 +24,7 @@
     "data/wide-column-tables",
     "data/choosing-a-partition-key",
     "data/ordering-per-key",
+    "building-blocks/estimation-and-benchmarks",
     "building-blocks/long-lived-connections-and-websockets",
     "reliability/delivery-guarantees",
     "reliability/deduplicating-consumers",

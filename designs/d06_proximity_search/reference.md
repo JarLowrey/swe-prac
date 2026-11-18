@@ -2,7 +2,7 @@ Two flavors share a core: **static places** (listings, restaurants: search by ma
 
 **Requirements.** Functional: search listings by location (a city or map viewport), dates, guests, price and amenities; ranked results with pagination; listings added and edited by hosts. Non-functional: results under 300 ms; search may lag the source of truth by seconds; handles dense cities and sparse regions; high availability.
 
-**Estimates.** 10M listings × ~2 KB of searchable fields = 20 GB of core search data, small enough to be replicated; the load is the issue. 100M searches/day ≈ 1,200/s average, 5,000/s peak. Index updates: price/availability changes and edits maybe 100/s. So: read-heavy, small data, many filters.
+**Estimates.** 10M listings × ~2 KB of searchable fields = 20 GB of core search data, [small enough to hold in memory on every search node](#/design/learn/building-blocks/estimation-and-benchmarks), so it can be replicated; the load is the issue. 100M searches/day ≈ 1,200/s average, 5,000/s peak, which at hundreds to a few thousand queries/s per search node means several replicas. Index updates: price/availability changes and edits maybe 100/s. So: read-heavy, small data, many filters.
 
 **API.** `GET /search?bbox=...&check_in&check_out&guests&price_max&amenities&sort&cursor` → `{listings[], next_cursor}`. Use [cursor pagination](#/design/learn/networking/pagination-offset-vs-cursor); keep a search session token so results stay stable while paging.
 
@@ -48,7 +48,7 @@ flowchart TD
   IW -.->|"index lag"| AL[Freshness alert]:::good
 ```
 
-**Variant: nearest drivers (ride-hailing).** Locations change every few seconds, so a disk-backed index is the wrong tool. [Keep driver positions in memory](#/design/learn/building-blocks/moving-objects) (Redis geo, or a service holding an in-memory grid) partitioned by cell. Each driver app sends a location update every 4–5 seconds (about 1M drivers → 200K writes/s), which overwrites the previous entry and expires with a TTL. A ride request queries the rider's cell and neighbors, filters by distance and availability, and hands candidates to a matching service. Use the same cell grid to shard the service so most queries touch one or two partitions.
+**Variant: nearest drivers (ride-hailing).** Locations change every few seconds, so a disk-backed index is the wrong tool. [Keep driver positions in memory](#/design/learn/building-blocks/moving-objects) (Redis geo, or a service holding an in-memory grid) partitioned by cell. Each driver app sends a location update every 4–5 seconds (about 1M drivers → 200,000–250,000 writes/s, a few in-memory shards at ~100K writes/s each), which overwrites the previous entry and expires with a TTL. A ride request queries the rider's cell and neighbors, filters by distance and availability, and hands candidates to a matching service. Use the same cell grid to shard the service so most queries touch one or two partitions.
 
 ```mermaid
 flowchart TD

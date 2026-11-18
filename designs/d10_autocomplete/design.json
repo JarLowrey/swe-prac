@@ -20,6 +20,7 @@
   "foundations": [
     "networking/round-trips-and-latency-budgets",
     "networking/http-caching",
+    "building-blocks/estimation-and-benchmarks",
     "building-blocks/autocomplete-and-typeahead",
     "building-blocks/top-k-heavy-hitters",
     "building-blocks/count-min-sketch",

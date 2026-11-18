@@ -1,6 +1,6 @@
 **Requirements.** Functional: create a short URL for a long one (optionally a custom alias and expiry); redirect short to long. Out of scope for v1: analytics dashboards, user accounts (mention as extensions). Non-functional: redirects are very fast (p99 under 100 ms) and highly available; creation can be slightly slower; short codes must be unique and hard to enumerate; links should never silently change.
 
-**Estimates.** 100M new URLs per month ≈ 40 writes/s average (say 100/s peak). Read:write of 100:1 gives 4,000 reads/s average, 10,000+/s peak. Storage: 100M × 12 months × 5 years = 6B links × ~500 bytes ≈ 3 TB: fits a sharded store easily. A 7-character [base62](#/design/learn/building-blocks/short-codes-and-base62) code gives 62⁷ ≈ 3.5 trillion values, plenty for 6B links.
+**Estimates.** 100M new URLs per month ≈ 40 writes/s average (say 100/s peak). Read:write of 100:1 gives 4,000 reads/s average, 10,000+/s peak, a tenth of what [one cache node handles (about 100K operations/s)](#/design/learn/building-blocks/estimation-and-benchmarks), so a cache in front of the database takes the reads. Storage: 100M × 12 months × 5 years = 6B links × ~500 bytes ≈ 3 TB (9 TB with three replicas), a few nodes at a few TB each: a small sharded store holds it easily. A 7-character [base62](#/design/learn/building-blocks/short-codes-and-base62) code gives 62⁷ ≈ 3.5 trillion values, plenty for 6B links.
 
 **API.**
 

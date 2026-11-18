@@ -23,6 +23,7 @@
     "networking/webhooks",
     "data/unique-constraints",
     "data/transactions-across-partitions-and-services",
+    "building-blocks/estimation-and-benchmarks",
     "reliability/charging-a-card-exactly-once",
     "reliability/atomic-conditional-updates",
     "reliability/the-outbox-pattern",

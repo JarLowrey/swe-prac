@@ -58,7 +58,8 @@ End the step by reading the list back and asking: "Does this match what you had 
 
 Use napkin math, but only as far as it changes a decision. "About 1,000 bookings per second at
 peak, so one database can handle writes" is useful. Calculating storage to three digits is not. If
-the numbers don't change anything, say so and move on.
+the numbers don't change anything, say so and move on. Where the numbers come from, and the
+per-machine benchmarks to divide by, are in [Estimation and benchmarks](#/design/learn/building-blocks/estimation-and-benchmarks).
 
 ### 3. API (5 minutes)
 

@@ -1843,6 +1843,142 @@ Notice that there are no dual writes: every consumer follows the same ordered st
 changes, so none can miss a write the database accepted. The consumers are eventually consistent,
 and they must cope with schema changes and with the order of events across partitions.
 
+## Estimation and benchmarks
+
+An estimate is a few lines of arithmetic built from four kinds of number: inputs you assume about
+the product, sizes you read off the data model, benchmarks you remember for one machine, and the
+division that turns them into a number of machines. Only the benchmarks need memorizing; you work
+out the rest on the spot. The goal is to find the resource that runs out first (memory, disk,
+throughput, connections or bandwidth), because that resource shapes the design.
+
+```mermaid
+flowchart LR
+  A["Assumed inputs<br/>users, actions, peak"] --> L["Load<br/>per second, bytes"]
+  M["Data model<br/>bytes per item"] --> L
+  L --> N["Machines needed<br/>load ÷ one node"]
+  B["Benchmarks<br/>what one node handles"]:::accent --> N
+  N --> D{"Does it change<br/>the design?"}
+```
+
+Notice that the benchmark is the one input you can neither assume nor derive: it is what a real
+machine does, so the tables below are worth learning.
+
+### Where the numbers come from
+
+| Kind | Example | Source |
+|---|---|---|
+| Assumed input | 300M daily users who open the feed 10 times a day | The interviewer gives it, or you propose it and say it out loud. In real life, product analytics |
+| Load | 3B feed reads a day ≈ 35,000 a second | Arithmetic on the inputs, using the conversions below |
+| Size | A token bucket is 16 bytes: a count and a timestamp | The fields in your data model, rounded up for overhead |
+| Benchmark | One Redis node does about 100K operations a second | Rules of thumb for one machine, from the tables below |
+| Conclusion | 1M checks a second ÷ 100K = 10 shards, so shard by key | Load ÷ one node's capacity, plus headroom |
+
+> **Interview tip.** Say each assumption as you make it: "I'll assume 50 million active keys." If
+> the interviewer changes it, only the arithmetic changes. Within 2 to 3 times is close enough;
+> nobody checks the third digit, and the conclusion rarely moves.
+
+### Rates and peaks
+
+A day has 86,400 seconds. Round it to 100,000 for quick division, then nudge the answer up a
+little: 1 million a day is about 12 a second.
+
+| Per day | Average per second |
+|---|---|
+| 1 million | About 12 |
+| 10 million | About 120 |
+| 100 million | About 1,200 |
+| 1 billion | About 12,000 |
+| 10 billion | About 115,000 |
+
+A month is about 2.6 million seconds, so 100 million a month is about 40 a second.
+
+- **Peak.** Design for the peak, not the average. Steady consumer traffic peaks at 2 to 3 times the
+  average. Spiky traffic (ticket sales, payments on a sale day, campaigns, breaking news) peaks at
+  5 to 10 times or more.
+- **Read:write ratio.** Reads a second ÷ writes a second. A high ratio (100:1 for a URL shortener)
+  says cache and replicate; a low one says the write path is the problem.
+- **Things at once.** Open connections, active streams and requests in flight = arrival rate × how
+  long each one lasts ([Little's law](#/design/learn/reliability/backpressure-and-concurrency-limits)).
+  12,000 video starts a second, each watched for 10 minutes, is about 7 million streams at once.
+
+### Sizes
+
+| Item | Size |
+|---|---|
+| Integer, timestamp or Snowflake ID | 8 bytes |
+| UUID | 16 bytes |
+| Name, code or tag | Tens of bytes |
+| Chat message or short post | 100 to 300 bytes |
+| Database row with a URL or a few text fields | A few hundred bytes to 1 KB |
+| Search document | 1 to 5 KB |
+| Photo | 100 KB to a few MB |
+| One minute of 1080p video | About 45 MB, at 6 Mbps |
+
+Multiply with powers of ten: 1 KB × 1 million = 1 GB, 1 KB × 1 billion = 1 TB, and 1 MB × 1 billion
+= 1 PB. Then adjust for three things:
+
+- **Overhead.** Stores add bytes beyond your fields. A small Redis key costs about 50 to 100 bytes
+  more than its value (the key itself, a hash-table entry and object headers), so a token bucket's
+  16 bytes becomes about 100. Collections such as sorted sets cost more per item than the item's
+  raw size, and indexes can double a database table.
+- **Copies.** Most stores keep three replicas, so multiply disk by 3.
+- **Retention.** Storage = items a day × size × days kept.
+
+### Latency
+
+| Operation | Time |
+|---|---|
+| Memory access | About 100 ns |
+| SSD random read | About 100 µs |
+| Seek on a spinning disk | About 10 ms |
+| Round trip within one data center | About 0.5 ms |
+| Redis or Memcached call in the same data center | About 0.5 to 1 ms |
+| Indexed database read | About 1 to 10 ms |
+| Round trip between zones of one region | 1 to 2 ms |
+| Round trip across a continent | 40 to 80 ms |
+| Round trip between regions | 50 to 150 ms |
+
+Memory is thousands of times faster than a network call, so a lookup in local memory takes
+microseconds and a request's time goes on its hops. Each call in a chain adds at least one round
+trip; [latency budgets](#/design/learn/networking/round-trips-and-latency-budgets) shows how to
+split a target such as 100 ms across them.
+
+### Throughput and capacity of one node
+
+| Component | One node handles | Notes |
+|---|---|---|
+| Stateless API server | About 1,000 to 10,000 requests a second | Fewer when each request does heavy work. Add servers behind the load balancer |
+| Redis or Memcached | About 100K simple operations a second | Pipelining raises it. Keep a Redis shard to tens of GB so failover and resharding stay quick |
+| Relational primary (PostgreSQL, MySQL) | A few thousand writes and tens of thousands of indexed reads a second | A few TB of data is comfortable. Each [read replica](#/design/learn/data/read-replicas-and-replication-lag) adds about a primary's worth of reads |
+| One hot row | A few hundred to a few thousand updates a second | Updates queue on the row's lock; see [hot rows](#/design/learn/reliability/hot-rows-and-flash-sales) |
+| Wide-column node (Cassandra) | Tens of thousands of writes a second | A few TB of data per node |
+| Kafka partition | A few MB/s to a few tens of MB/s | Thousands to tens of thousands of small messages a second; a cluster does millions. See [partitions](#/design/learn/building-blocks/partitions-and-consumer-groups) |
+| Search engine node (Elasticsearch) | Hundreds to a few thousand queries a second | Depends heavily on the query. Add replicas for more |
+| WebSocket or other connection server | About 100K open connections | A tuned server holds tens of thousands to hundreds of thousands; memory and messages a second are the limit ([scaling WebSockets](#/design/learn/networking/scaling-websockets)) |
+| Object storage | Thousands of requests a second per key prefix | No practical total limit; tens of ms to the first byte |
+| Network card | 10 to 25 Gbps | About 1 to 3 GB/s, so one server streams a few thousand 5 Mbps videos |
+| Memory | 64 to 512 GB per server | A data set of a few GB to tens of GB can be copied to every node |
+| SSD | 1 to 3 GB/s, and 100K or more random reads a second | A spinning disk does about 200 MB/s and 100 random reads a second |
+
+> **Rule of thumb.** Machines needed = peak load ÷ one node's capacity, plus 50 to 100% for
+> headroom, uneven keys and failover. Do the same for data: total size × replicas ÷ what one node
+> holds.
+
+### Worked example: sizing a rate limiter
+
+1. **Assume the inputs.** 1 million requests a second at peak, from 50 million active keys (users,
+   API keys and IPs).
+2. **Size the state.** A [token bucket](#/design/learn/building-blocks/token-bucket) stores a count
+   and a timestamp, 8 bytes each, so 16 bytes. With Redis's per-key overhead, call it 100 bytes:
+   50 million × 100 bytes = 5 GB.
+3. **Recall the benchmarks.** A Redis shard holds tens of GB and does about 100K operations a
+   second.
+4. **Divide.** Memory: 5 GB fits on one shard, so memory is not the limit. Throughput: 1 million ÷
+   100K = 10 shards, or 10 to 20 with headroom.
+5. **Conclude.** Throughput sets the size, so [shard Redis by
+   key](#/design/learn/building-blocks/distributed-rate-limiting-with-redis) and keep each check to
+   one round trip (about 1 ms). More precision on the memory figure would change nothing.
+
 ## Cheat sheet
 
 ### Which block for which problem
@@ -1870,6 +2006,9 @@ and they must cope with schema changes and with the order of events across parti
 
 ### Numbers worth remembering
 
+The short list. The full tables, and how to use them, are in [Estimation and
+benchmarks](#/design/learn/building-blocks/estimation-and-benchmarks).
+
 | Thing | Number |
 |---|---|
 | Memory access | About 100 ns |
@@ -1878,6 +2017,8 @@ and they must cope with schema changes and with the order of events across parti
 | Cross-region round trip | 50 to 150 ms |
 | One Redis node | Roughly 100K simple operations per second |
 | One relational database | A few thousand to tens of thousands of queries per second, depending on the query |
+| One stateless API server | About 1,000 to 10,000 requests per second |
+| One WebSocket server | About 100K open connections |
 | A Kafka cluster | Millions of messages per second; consumer parallelism is capped by partitions |
 | Snowflake ID | 4,096 per millisecond per generator; 69 years of timestamps |
 | Base62 codes | 62^7, about 3.5 trillion |

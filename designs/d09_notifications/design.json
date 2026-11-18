@@ -21,6 +21,7 @@
     "networking/async-request-reply",
     "networking/webhooks",
     "networking/idempotency-keys",
+    "building-blocks/estimation-and-benchmarks",
     "building-blocks/message-queues-and-streams",
     "building-blocks/token-bucket",
     "building-blocks/backpressure-and-consumer-lag",

@@ -30,7 +30,7 @@ Blue is the usual source of truth. The green stores serve one access pattern ver
 | Time-series | Append-heavy metrics, downsampling, retention | General records | Prometheus, InfluxDB | Monitoring, sensor data |
 | Object storage | Large files: cheap and very durable | No queries; tens of ms to the first byte | S3-style object stores | Images, video, exports, backups |
 
-Rough numbers for one node, to anchor your estimates: Redis does about 100,000 simple operations a second at under a millisecond each. A PostgreSQL or MySQL primary does a few thousand writes and tens of thousands of indexed reads a second over a few terabytes. A Cassandra node takes tens of thousands of writes a second.
+Rough numbers for one node, to anchor your estimates: Redis does about 100,000 simple operations a second at under a millisecond each. A PostgreSQL or MySQL primary does a few thousand writes and tens of thousands of indexed reads a second over a few terabytes. A Cassandra node takes tens of thousands of writes a second. The full tables, and how to turn them into a number of machines, are in [Estimation and benchmarks](#/design/learn/building-blocks/estimation-and-benchmarks).
 
 > **Interview tip.** The safe default is a relational database as the source of truth, plus a specialized store for each access pattern it serves badly: a cache, a search index, a warehouse for analytics. Present every extra store as a copy that must be kept in sync, and say how.
 

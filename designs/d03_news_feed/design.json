@@ -21,6 +21,7 @@
     "networking/pagination-offset-vs-cursor",
     "data/fan-out-on-write-vs-fan-out-on-read",
     "data/read-replicas-and-replication-lag",
+    "building-blocks/estimation-and-benchmarks",
     "building-blocks/snowflake-ids",
     "building-blocks/cache-aside",
     "building-blocks/hot-keys",

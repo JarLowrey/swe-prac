@@ -1,6 +1,6 @@
 **Requirements.** Functional: a merchant or app charges a customer's payment method; refunds; payment status; [webhooks to merchants](#/design/learn/networking/webhooks); a ledger and reporting. We integrate with external processors/card networks rather than building them. Non-functional: money is never lost, created or double-charged; every operation is auditable; idempotent under retries; secure (PCI scope kept minimal); high availability for charging, strong consistency for balances.
 
-**Estimates.** 10M payments/day ≈ 120/s average, 1,000/s peak. This is low volume with extreme correctness requirements, so the design optimizes for correctness and auditability, not raw throughput. Each payment produces several ledger entries and state transitions (maybe 10 rows), so 100M rows/day, still modest for a sharded relational database.
+**Estimates.** 10M payments/day ≈ 120/s average, 1,000/s peak. This is low volume with extreme correctness requirements, so the design optimizes for correctness and auditability, not raw throughput. Each payment produces several ledger entries and state transitions (maybe 10 rows), so 100M rows/day, about 10,000 row writes/s at peak: still modest for a relational database [sharded a few ways, at a few thousand writes/s per primary](#/design/learn/building-blocks/estimation-and-benchmarks).
 
 **API.**
 
