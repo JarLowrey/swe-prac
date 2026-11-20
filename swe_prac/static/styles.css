@@ -624,4 +624,8 @@ svg.ds { display: block; max-width: 100%; height: auto; overflow: visible; }
 @media (max-width: 760px) {
   .page { padding: 20px 16px 48px; }
   .topnav { padding: 0 16px; gap: 12px; }
+  /* The links scroll sideways inside the bar rather than widening the page. */
+  .brand { flex: none; }
+  .topnav nav { min-width: 0; overflow-x: auto; scrollbar-width: none; }
+  .topnav nav a { white-space: nowrap; padding: 6px 8px; }
 }
