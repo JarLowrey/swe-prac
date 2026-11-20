@@ -6,7 +6,8 @@ Live site: https://jarlowrey.github.io/swe-prac/ (a static copy: code can't run 
 Local practice for three kinds of software engineering interview: 90-minute, four-level coding
 assessments in Python, classic algorithm problems against a 20 to 40-minute clock, and 45-minute
 system design rounds. The home page lets you pick one. The algorithms and system design sections
-also have foundations pages to study from, with diagrams.
+also have foundations pages to study from, with diagrams. A fourth section, tech investigations,
+studies one technology at a time through a small project you can run.
 
 ## Overview
 
@@ -92,6 +93,29 @@ design:
 A framework guide (System design > Read the framework guide) explains what each step should
 produce, what interviewers grade and the common mistakes, with a worked example.
 
+### Tech investigations
+
+Each tech investigation (Tech in the top bar) studies one technology through a small, complete
+project in `tech/`. Its page shows every file of the project with the file's own comments, and
+explains the choices: what is current best practice, what it replaces, the common mistakes, the
+questions an interviewer would ask, and exercises. The code on the page is read from the project
+when the page is shown, so it is always the code that runs. A file browser (the Files tab) has the
+whole finished project as a folder tree, every file in full with line numbers, and links back to
+the sections of the guide that explain it. Nothing is timed or graded.
+
+- **React: fetching data the modern way** (`tech/react-swapi/`): a Star Wars character browser
+  on [SWAPI](https://swapi.dev), with search as you type, pagination and a detail page. It uses
+  React 19 with the React Compiler, TypeScript, TanStack Query, React Router, Zod, and Vitest
+  with Testing Library and MSW. It also has a version of the data fetching written with only
+  `useEffect`, for interviews that don't allow libraries. To run it you need Node 22.22 or newer:
+
+  ```
+  cd tech\react-swapi
+  npm install
+  npm run dev      # http://localhost:5173
+  npm test
+  ```
+
 ## Start
 
 Double-click `start.bat` in Windows, or run:
@@ -110,8 +134,8 @@ A copy of the app is published at https://jarlowrey.github.io/swe-prac/ on every
 Python can't run in a browser tab, so there Run, Submit, Run scratch and Format are disabled: no
 coding level can be passed and no algorithm problem solved. Everything else works: the question,
 hints and solution pages, the explanations, the timer, pausing, the editor, review and history.
-The system design section and the foundations pages need no code execution, so all of them work
-there. Sessions are stored in the browser's localStorage instead of SQLite.
+The system design section, the foundations pages and the tech investigations need no code
+execution, so all of them work there. Sessions are stored in the browser's localStorage instead of SQLite.
 
 ```
 .venv\Scripts\python tools/build_static.py    # writes site/ (gitignored)
@@ -128,7 +152,7 @@ The session screenshots use demo questions that aren't in the practice set ("Par
 coding, "Daily Temperatures" for algorithms, "Pastebin" for system design), so they don't spoil the
 real ones.
 
-**Home:** choose coding, algorithms or system design.
+**Home:** choose coding, algorithms, system design or the tech investigations.
 
 ![Home page with a card for each kind of practice](docs/screenshots/home.png)
 
@@ -185,6 +209,16 @@ on the right. Here you're 21 minutes in, drawing the high-level design.
 beside the reference design, and your diagram.
 
 ![System design review with pacing and self-review score](docs/screenshots/design-review.png)
+
+**Tech investigation:** the React page, at the section on queries. Each file of the project is
+shown under its path, with the explanation around it.
+
+![Tech investigation page showing the queries.ts file of the React project](docs/screenshots/tech.png)
+
+**Tech file browser:** the finished React project as a folder tree, with `swapi.ts` open and a
+link to the section of the guide that explains it.
+
+![File browser showing the React project's folder tree and the swapi.ts file with line numbers](docs/screenshots/tech-files.png)
 
 ## How a coding session works
 
@@ -303,9 +337,13 @@ fresh Python subprocess.
   runner gets each problem's options: adapters that build linked lists, trees and graphs before
   the call, an answer comparison that ignores order or calls the problem's own validator, and a
   per-test time limit that stops a submit at the first test that's too slow.
-- **Study pages are markdown.** Python-Markdown renders the foundations pages (`pages.py`, which
-  also builds their tables of contents and section links), the statements, explanations and
-  reference designs. `diagrams.py` draws the data-structure blocks (arrays, trees, linked lists,
+- **Study pages are markdown.** Python-Markdown renders the foundations pages and the tech
+  investigations (`pages.py`, which also builds their tables of contents and section links), the
+  statements, explanations and reference designs. A tech page's ```` ```include ```` blocks are
+  replaced with the project files they name when the page is served (`tech_api.py` serves
+  `/api/tech/...`, including `/files`, the whole project for the file browser). The browser colours
+  Python, TypeScript, CSS, JSON, HTML and Markdown with Monaco's tokenizers, without loading an
+  editor. `diagrams.py` draws the data-structure blocks (arrays, trees, linked lists,
   grids, intervals, hash rings) as SVG on the server. Mermaid, bundled in `static/vendor/`, draws
   the flowcharts and sequence and state diagrams in the browser, and is only loaded on pages
   that have one.
@@ -332,6 +370,10 @@ designs/<qid>/       system design questions: design.json (prompt, hints, key po
                      reference.md (SPOILER: the reference design)
 designs/foundations/ the system design foundations pages (markdown)
 designs/framework.*  the seven steps, the self-review checklist and the framework guide
+tech/NN_slug.md      a tech investigation's page (markdown, with ```include blocks)
+tech/<slug>/         the project it walks through, named after the page's slug, e.g.
+                     tech/react-swapi/ for 01_react_swapi.md (a Vite + React app; npm install
+                     creates node_modules/ there, which its .gitignore excludes)
 tools/               build_problem.py (compile and verify problems), dsl.py (test format parser),
                      build_algo.py (build and verify algorithm problems), check_content.py
                      (check the study pages' diagrams and links), build_static.py +
@@ -379,8 +421,23 @@ To write or edit a foundations page, an explanation or a reference design, see
 [docs/writing-content.md](docs/writing-content.md): the markdown, section links, Mermaid and the
 data-structure diagram blocks. Then run `tools/check_content.py`.
 
+To add a tech investigation, write the page as `tech/NN_slug.md` (`NN` sets the order, `slug`
+becomes the route `#/tech/<slug>`) and put the project, with its own tests and README, in
+`tech/<slug>/`: a folder with the page's slug is what gives the page its file browser. Show the
+project's files with ```` ```include ```` blocks (see
+[docs/writing-content.md](docs/writing-content.md#tech-investigations)), then run
+`tools/check_content.py tech`, which reports includes and links that don't resolve. The file
+browser lists every file except what the project's `.gitignore` ignores, `node_modules/`, build
+output and `.env` files; the static site publishes the rest. For the React project:
+
+```
+cd tech\react-swapi
+npm run typecheck && npm run lint && npm test && npx prettier --check .
+```
+
 These environment variables point the app at other directories: `SWE_PRAC_DATA` (history),
 `SWE_PRAC_PROBLEMS` (problem set), `SWE_PRAC_REFERENCE` (reference solutions shown on the review
-page), `SWE_PRAC_ALGO` (algorithm problems and their foundations pages) and `SWE_PRAC_DESIGNS`
-(system design questions, foundations pages and framework). The README screenshots were taken
+page), `SWE_PRAC_ALGO` (algorithm problems and their foundations pages), `SWE_PRAC_DESIGNS`
+(system design questions, foundations pages and framework) and `SWE_PRAC_TECH` (tech
+investigations). The README screenshots were taken
 with them set to throwaway demo sets.

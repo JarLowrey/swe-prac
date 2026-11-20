@@ -78,6 +78,41 @@ class FixtureContentTests(EnvCase):
         code, out = run_main()
         self.assertEqual(code, 0, out)
         self.assertIn("1 algorithm foundations pages, 2 algorithm problems", out)
+        self.assertIn("1 tech pages", out)
+
+    def test_broken_tech_includes_and_links_are_reported(self):
+        page = config.TECH_DIR / "01_demo.md"
+        page.write_text(
+            "# Demo\n\nSummary.\n\n## Code\n\n```include\ndemo/gone.ts\n```\n\n"
+            "See [this](#/tech/demo/nope) and [that](#/tech/missing).\n",
+            encoding="utf-8",
+        )
+        code, out = run_main("tech")
+        self.assertEqual(code, 1)
+        self.assertIn("Include error: no file demo/gone.ts", out)
+        self.assertIn("link to unknown section #/tech/demo/nope", out)
+        self.assertIn("link to unknown page #/tech/missing", out)
+
+    def test_links_into_the_file_browser_are_checked(self):
+        page = config.TECH_DIR / "01_demo.md"
+        page.write_text(
+            "# Demo\n\nSummary.\n\n## Code\n\n"
+            "[ok](#/tech/demo/files) [ok](#/tech/demo/files/hello.ts)"
+            " [bad](#/tech/demo/files/gone.ts) [bad](#/tech/missing/files/x.ts)\n",
+            encoding="utf-8",
+        )
+        code, out = run_main("tech")
+        self.assertEqual(code, 1)
+        self.assertIn("link to unknown file #/tech/demo/files/gone.ts", out)
+        self.assertIn("link to unknown page #/tech/missing/files/x.ts", out)
+        self.assertEqual(out.count("ERROR"), 2, out)  # the two good links pass
+
+    def test_a_tech_section_cannot_take_the_file_browser_route(self):
+        page = config.TECH_DIR / "01_demo.md"
+        page.write_text("# Demo\n\nSummary.\n\n## Files\n\nText.\n", encoding="utf-8")
+        code, out = run_main("tech")
+        self.assertEqual(code, 1)
+        self.assertIn("tech page demo: a section can't have the id 'files'", out)
 
     def test_broken_links_diagrams_and_labels_are_reported(self):
         explanation = config.ALGO_DIR / "x01_pair_sum" / "explanation.md"

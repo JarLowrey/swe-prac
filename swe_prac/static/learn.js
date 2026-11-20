@@ -1,19 +1,51 @@
-// Foundations: the long-form study pages of a track (system design, algorithms). Each page has a
-// table of contents; every section has a route of its own (#/design/learn/<page>/<section>) so
-// hints, explanations and other pages can link straight to it.
+// Long-form study pages: the foundations of a track (system design, algorithms) and the tech
+// investigations. Each page has a table of contents; every section has a route of its own
+// (#/design/learn/<page>/<section>, #/tech/<page>/<section>) so hints, explanations and other
+// pages can link straight to it.
 
-import { $app, api, esc, topnav, renderMermaid } from "./common.js";
+import { $app, api, esc, plural, topnav, renderMermaid } from "./common.js";
+import { filesHref, projectTabs } from "./files.js";
 
+const FOUNDATIONS_LEAD = `The concepts the questions build on, with diagrams. Read a page end to end, or jump
+  to a section from a hint or an explanation.`;
+
+// base: the index of the pages. home: the track's own page; the tech pages have no other, so
+// their index is their home and links back from it go to the site's home page.
 const TRACKS = {
   design: {
     api: "/api/design/foundations", base: "#/design/learn", nav: "design", home: "#/design",
-    label: "System design",
+    label: "System design", index: "System design foundations", lead: FOUNDATIONS_LEAD,
   },
   algo: {
     api: "/api/algo/foundations", base: "#/algo/learn", nav: "algo", home: "#/algo",
-    label: "Algorithms",
+    label: "Algorithms", index: "Algorithms foundations", lead: FOUNDATIONS_LEAD,
+  },
+  tech: {
+    api: "/api/tech/pages", base: "#/tech", nav: "tech", home: "#/tech",
+    label: "Tech investigations", index: "Tech investigations",
+    lead: `One technology at a time, through a small, complete project in this repo. Each guide
+      shows the files with their comments and explains the choices behind them: what's current
+      best practice, what it replaces, and the questions it prepares you for. The file browser
+      has the whole finished project. Run it, then change it.`,
   },
 };
+
+// The tech card on the home page.
+export async function techTrackCard() {
+  let pages = [];
+  try {
+    ({ pages } = await api("GET", TRACKS.tech.api));
+  } catch { /* no pages: the card still links to the empty index */ }
+  const titles = pages.map((p) => esc(p.title)).join(" · ");
+  return `<a class="track-card" href="#/tech">
+    <div class="track-head"><span class="track-mark tech">&#9881;</span><h2>Tech investigations</h2></div>
+    <p>Deep dives into one technology at a time, each built around a small project you can run:
+      what every file does, why it's written that way, and the follow-up questions an interviewer
+      would ask about it.</p>
+    <ul class="track-facts"><li>${plural(pages.length, "investigation")}</li><li>runnable code</li><li>untimed</li></ul>
+    <div class="track-foot"><span class="faint">${titles || "None yet"}</span><span class="track-cta">Open →</span></div>
+  </a>`;
+}
 
 // The "Foundations" block on a track's home page: one card per page.
 export async function foundationsSection(track, intro) {
@@ -43,17 +75,21 @@ export async function renderLearn(track, slug, section) {
     ? `<ul>${s.children.map((c) => `<li>${link(c.id, c.title)}</li>`).join("")}</ul>` : ""}</li>`).join("");
   const pager = (p, dir) => (p ? `<a class="learn-nav ${dir}" href="${t.base}/${esc(p.slug)}">
       <span class="faint">${dir === "prev" ? "← Previous" : "Next →"}</span>${esc(p.title)}</a>` : "<span></span>");
+  const crumbs = t.home === t.base
+    ? `<a href="${t.base}">← ${t.index}</a>`
+    : `<a href="${t.home}">← ${t.label}</a> · <a href="${t.base}">Foundations</a>`;
 
   $app.innerHTML = `${topnav(t.nav)}<main class="page learn-page">
     <div class="learn-layout">
       <aside class="learn-toc">
-        <a class="faint" href="${t.base}">${t.label} foundations</a>
+        <a class="faint" href="${t.base}">${t.index}</a>
         <h4>${esc(page.title)}</h4>
         <ul>${toc}</ul>
       </aside>
       <article class="learn-article">
-        <p class="faint crumbs"><a href="${t.home}">← ${t.label}</a> · <a href="${t.base}">Foundations</a></p>
+        <p class="faint crumbs">${crumbs}</p>
         <h1>${esc(page.title)}</h1>
+        ${projectTabs(page.slug, page.project, "guide")}
         <div class="md learn-body">${page.html}</div>
         <div class="learn-pager">${pager(page.prev, "prev")}${pager(page.next, "next")}</div>
       </article>
@@ -62,6 +98,16 @@ export async function renderLearn(track, slug, section) {
 
   const main = $app.querySelector(".learn-page");
   const article = main.querySelector(".learn-article");
+  // A tech page's code captions (its ```include blocks) open the file in the file browser.
+  if (page.project) {
+    const folder = `${page.project.folder}/`;
+    article.querySelectorAll(".code-file").forEach((el) => {
+      const name = el.textContent;
+      if (!name.startsWith(folder)) return;
+      el.innerHTML = `<a href="${filesHref(page.slug, name.slice(folder.length))}"
+        title="Open in the file browser">${esc(name)}</a>`;
+    });
+  }
   const sidebar = main.querySelector(".learn-toc");
   const tocLinks = [...sidebar.querySelectorAll("[data-sec]")];
   const mark = (id) => {
@@ -84,10 +130,11 @@ export async function renderLearn(track, slug, section) {
   main.addEventListener("click", (e) => {
     const a = e.target.closest("a[href]");
     const href = a?.getAttribute("href") ?? "";
-    if (!href.startsWith(prefix)) return;
+    const id = href.slice(prefix.length);
+    if (!href.startsWith(prefix) || id === "files" || id.startsWith("files/")) return;
     e.preventDefault();
     history.pushState(null, "", href);
-    goto(href.slice(prefix.length), true);
+    goto(id, true);
   });
 
   // Highlight the section being read.
@@ -113,15 +160,17 @@ async function renderIndex(t) {
   const items = pages.map((p, i) => `<section class="learn-index-item">
       <h2><span class="num">${i + 1}</span><a href="${t.base}/${esc(p.slug)}">${esc(p.title)}</a></h2>
       <p class="dim">${esc(p.summary)}</p>
+      ${p.project ? `<p class="learn-files"><a href="${filesHref(p.slug)}">Browse the finished code</a>
+        <span class="faint">· ${plural(p.project.files, "file")} in tech/${esc(p.project.folder)}/</span></p>` : ""}
       <ul class="learn-sections">${p.sections.map((s) =>
         `<li><a href="${t.base}/${esc(p.slug)}/${esc(s.id)}">${esc(s.title)}</a></li>`).join("")}</ul>
     </section>`).join("");
+  const [backHref, backLabel] = t.home === t.base ? ["#/", "Home"] : [t.home, t.label];
   $app.innerHTML = `${topnav(t.nav)}<main class="page">
-    <p class="faint" style="margin:0 0 4px"><a href="${t.home}">← ${t.label}</a></p>
-    <h1>${t.label} foundations</h1>
-    <p class="lead">The concepts the questions build on, with diagrams. Read a page end to end, or jump
-      to a section from a hint or an explanation.</p>
-    ${items || '<p class="dim">No foundations pages yet.</p>'}
+    <p class="faint" style="margin:0 0 4px"><a href="${backHref}">← ${backLabel}</a></p>
+    <h1>${t.index}</h1>
+    <p class="lead">${t.lead}</p>
+    ${items || '<p class="dim">No pages yet.</p>'}
   </main>`;
   window.scrollTo(0, 0);
   return undefined;

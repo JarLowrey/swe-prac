@@ -1,6 +1,7 @@
 // SWE Practice frontend: hash-routed single page. The home page picks a track; this file holds the
 // router and the coding pages (problems, session, review, study, history). Algorithms live in
-// algo.js, system design in design.js, the foundations pages in learn.js, shared helpers in common.js.
+// algo.js, system design in design.js, the foundations and tech pages in learn.js, the tech
+// projects' file browser in files.js, shared helpers in common.js.
 
 import {
   $app, $modalRoot, STATIC, NEEDS_SERVER_NOTE, api, esc, fmtClock, fmtDelta, plural, fmtDate,
@@ -15,7 +16,8 @@ import {
   renderAlgoHome, renderAlgoSession, renderAlgoReview, renderAlgoProblem, algoHistoryTable,
   algoTrackCard,
 } from "./algo.js";
-import { renderLearn } from "./learn.js";
+import { renderLearn, techTrackCard } from "./learn.js";
+import { renderFiles } from "./files.js";
 
 // ---------------------------------------------------------------- router
 let cleanup = null;
@@ -39,6 +41,9 @@ const ROUTES = [
   [/^#\/algo\/review\/(\d+)$/, (id) => renderAlgoReview(Number(id))],
   [/^#\/algo\/problem\/([\w-]+)(?:\/(question|hints|solution))?$/, renderAlgoProblem],
   [/^#\/algo\/learn(?:\/([\w-]+))?(?:\/([\w-]+))?$/, (slug, section) => renderLearn("algo", slug, section)],
+  // Before the next route, which would take "files" for a section id.
+  [/^#\/tech\/([\w-]+)\/files(?:\/(.+))?$/, renderFiles],
+  [/^#\/tech(?:\/([\w-]+))?(?:\/([\w-]+))?$/, (slug, section) => renderLearn("tech", slug, section)],
 ];
 
 async function route() {
@@ -63,8 +68,9 @@ window.addEventListener("hashchange", route);
 
 // ---------------------------------------------------------------- home: pick a track
 async function renderHome() {
-  const [coding, codingActive, algoCard, designCard] = await Promise.all([
+  const [coding, codingActive, algoCard, designCard, techCard] = await Promise.all([
     api("GET", "/api/problems"), api("GET", "/api/active"), algoTrackCard(), designTrackCard(),
+    techTrackCard(),
   ]);
   const active = codingActive.session;
   const attempts = coding.problems.reduce((sum, p) => sum + p.attempts, 0);
@@ -75,7 +81,8 @@ async function renderHome() {
 
   $app.innerHTML = `${topnav("home")}<main class="page">
     <h1>Interview practice</h1>
-    <p class="lead">Three kinds of timed practice, run the way the real rounds are. Pick one.</p>
+    <p class="lead">Three kinds of timed practice, run the way the real rounds are, and deep dives into
+      specific technologies. Pick one.</p>
     <div class="track-grid">
       <a class="track-card" href="#/coding">
         <div class="track-head"><span class="track-mark">&lt;/&gt;</span><h2>Coding assessment</h2></div>
@@ -87,6 +94,7 @@ async function renderHome() {
       </a>
       ${algoCard}
       ${designCard}
+      ${techCard}
     </div>
   </main>`;
 }

@@ -2,8 +2,9 @@
 
 Code can't run on a static host, so Run, Submit, Run scratch, Format and lint are disabled there
 (app.js and algo.js check `window.SWE_STATIC`). Everything else (sessions, the timer, pausing,
-review, history, the study pages of the coding and algorithms tracks, the foundations pages, and
-the whole system design section) runs in the browser, with sessions kept in localStorage.
+review, history, the study pages of the coding and algorithms tracks, the foundations pages, the
+tech investigations, and the whole system design section) runs in the browser, with sessions
+kept in localStorage.
 
     python tools/build_static.py            # writes site/
     python tools/build_static.py --out dist
@@ -24,7 +25,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from swe_prac import algorithms, config, designs, pages, problems  # noqa: E402
+from swe_prac import algorithms, config, designs, pages, problems, tech_api  # noqa: E402
 
 STATIC_SITE_DIR = Path(__file__).resolve().parent / "static_site"
 
@@ -74,7 +75,8 @@ def algo_bundle() -> dict:
 
 
 def foundations_bundle() -> dict:
-    """The foundations pages of each track: the cards for its home page and every page's payload."""
+    """The study pages of each track (the foundations pages, and the tech investigations): the
+    cards for its index and every page's payload, plus each tech project's files."""
     out = {}
     for track, folder in (
         ("design", designs.foundations_dir()),
@@ -85,6 +87,7 @@ def foundations_bundle() -> dict:
             "cards": [p.card() for p in found],
             "pages": {p.slug: pages.payload(folder, p.slug) for p in found},
         }
+    out["tech"] = tech_api.bundle()
     return out
 
 

@@ -9,6 +9,7 @@ your work. Everything here is plain files: edit them, reload the page, and the a
 | System design questions | `designs/dNN_name/design.json` and `reference.md` |
 | Algorithms foundations pages | `algorithms/foundations/NN_slug.md` |
 | Algorithm problems | `algorithms/<id>/` (see [Algorithm problems](#algorithm-problems)) |
+| Tech investigations | `tech/NN_slug.md`, about a project in `tech/<slug>/` (see [Tech investigations](#tech-investigations)) |
 
 ## Foundations pages
 
@@ -312,16 +313,61 @@ use three participants where you can, and break long messages and notes with `<b
 Each problem is a folder `algorithms/<id>/`. The format is described in
 [algorithms/README.md](../algorithms/README.md).
 
+## Tech investigations
+
+A tech investigation is a page, `tech/NN_slug.md`, about a small project in the folder next to
+it named after the page's slug: `tech/01_react_swapi.md` explains `tech/react-swapi/`. The page
+works like a foundations page (title, one-paragraph summary, `##` sections with ids, Mermaid) and
+its address is `#/tech/<slug>`, so a section is `#/tech/react-swapi/the-api-boundary`.
+
+To show one of the project's files, name it in an `include` block, relative to `tech/`:
+
+````markdown
+```include
+react-swapi/src/api/swapi.ts
+```
+````
+
+When the page is served, the block becomes the file's contents as a code block, under a tab with
+its path, and coloured by its extension (`.ts`, `.tsx`, `.js`, `.css`, `.json`, `.html`, `.md`;
+others stay plain). The path links to the file in the file browser. The page never holds a copy of the code, so it can't drift from what runs, and the code's
+own comments are part of the explanation. Write them for a reader learning the technology: say
+why, not only what. A path that doesn't exist, or that leaves `tech/`, shows a red error box.
+
+A useful order for the page: what the project does and how to run it, the stack and why, then
+one section per part of the code (an include, then the points worth explaining), then best
+practices, common mistakes, interview questions and exercises.
+
+### The file browser
+
+When the project folder exists, the page gets a Files tab: `#/tech/<slug>/files` shows the whole
+project as a folder tree, and `#/tech/<slug>/files/<path>` opens one file, for example
+`#/tech/react-swapi/files/src/App.tsx`. Each file shows the sections whose `include` blocks show
+it, so the page doesn't need to include every file: config files can be left to the browser.
+Link to a file from the page with that route; the checks report links to files that aren't there.
+Because `files` is that route, no section of a tech page can be called "Files".
+
+The browser lists every file in the folder except:
+
+- what the project's `.gitignore` ignores (names and simple patterns like `*.log` or `/dist/`),
+- `node_modules/`, build output (`dist/`, `build/`, `coverage/`) and caches,
+- `.env` and `.env.*` (but not `.env.example`) and `*.local`, so secrets stay out even if the
+  `.gitignore` forgets them. The static site publishes every file the browser lists.
+
+A file over 100 KB (usually a lock file) or one that isn't text is listed without its contents.
+
 ## Checking your work
 
 ```sh
 python tools/check_content.py            # everything
-python tools/check_content.py designs    # or: algorithms
+python tools/check_content.py designs    # or: algorithms, tech
 ```
 
-It renders every page and reports data-structure blocks that don't parse, links to pages,
-sections or problems that don't exist, design questions whose `foundations` don't resolve,
-reference designs without a diagram, and Mermaid labels that start like a list. The test suite runs it too.
+It renders every page and reports data-structure blocks that don't parse, `include` blocks whose
+file doesn't exist, links to pages, sections, problems or project files that don't exist, a tech
+page section called "Files", design questions whose
+`foundations` don't resolve, reference designs without a diagram, and Mermaid labels that start
+like a list. The test suite runs it too.
 
 Otherwise Mermaid is only drawn in the browser: run the app (`python -m swe_prac`) and open the
 page. A broken diagram is a red box with the parser's message.

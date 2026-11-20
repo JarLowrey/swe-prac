@@ -9,7 +9,7 @@
 // Nothing here can run Python, so run / submit / scratch / format are refused and lint reports
 // that it is unavailable. app.js and algo.js disable those buttons, so no level can be passed and
 // no algorithm problem solved on this site. System design needs no code execution, so that whole
-// section works here, and so do the foundations pages of both tracks.
+// section works here, and so do the foundations pages of both tracks and the tech investigations.
 (() => {
   const STORAGE_KEY = "swe-prac-static-v1";
   const NEEDS_SERVER = "Running code needs the local server. It isn't available on the static site.";
@@ -907,7 +907,7 @@
     },
   };
 
-  // ---------------------------------------------------------------- foundations (pages.py)
+  // ---------------------------------------------------------------- foundations and tech (pages.py)
   // Every page is pre-rendered into data.json; the track is the first captured group.
   function foundations(track) {
     return bundle.foundations?.[track] ?? { cards: [], pages: {} };
@@ -919,6 +919,12 @@
       const page = foundations(track).pages[slug];
       if (!page) throw new ApiError(`Unknown page '${slug}'`, 404);
       return page;
+    },
+    // A tech investigation's project, for the file browser (tech_api.project).
+    files(track, slug) {
+      const project = foundations(track).projects?.[slug];
+      if (!project) throw new ApiError(`Page '${slug}' has no project folder`, 404);
+      return project;
     },
   };
 
@@ -973,6 +979,9 @@
     ["POST", /^\/api\/algo\/sessions\/(\d+)\/(run|submit|scratch)$/, E.needsServer],
     ["GET", /^\/api\/(design|algo)\/foundations$/, learn.list],
     ["GET", /^\/api\/(design|algo)\/foundations\/([\w-]+)$/, learn.page],
+    ["GET", /^\/api\/(tech)\/pages$/, learn.list],
+    ["GET", /^\/api\/(tech)\/pages\/([\w-]+)$/, learn.page],
+    ["GET", /^\/api\/(tech)\/pages\/([\w-]+)\/files$/, learn.files],
   ];
   const ID_ROUTES = new Set([
     E.session, E.timer, E.save, E.pause, E.resume, E.end, E.review,

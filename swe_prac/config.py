@@ -13,6 +13,7 @@ PROBLEMS_DIR = Path(os.environ.get("SWE_PRAC_PROBLEMS", ROOT / "problems"))
 REFERENCE_DIR = Path(os.environ.get("SWE_PRAC_REFERENCE", ROOT / "reference"))
 DESIGNS_DIR = Path(os.environ.get("SWE_PRAC_DESIGNS", ROOT / "designs"))
 ALGO_DIR = Path(os.environ.get("SWE_PRAC_ALGO", ROOT / "algorithms"))
+TECH_DIR = Path(os.environ.get("SWE_PRAC_TECH", ROOT / "tech"))
 STATIC_DIR = PACKAGE_DIR / "static"
 RUNNER_PATH = PACKAGE_DIR / "runner.py"
 USER_RUFF_CONFIG = PACKAGE_DIR / "user_ruff.toml"

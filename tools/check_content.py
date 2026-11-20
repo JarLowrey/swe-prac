@@ -1,17 +1,20 @@
-"""Check the study content: foundations pages, design questions and algorithm problems.
+"""Check the study content: foundations pages, design questions, algorithm problems and the
+tech investigations.
 
     python tools/check_content.py          # everything
-    python tools/check_content.py designs  # one track: designs | algorithms
+    python tools/check_content.py designs  # one track: designs | algorithms | tech
 
 It renders every markdown file the app shows and reports:
 - data-structure diagram blocks that fail to render (```array, ```tree, ...),
-- internal links (#/design/learn/<page>/<section>, #/algo/learn/..., #/algo/problem/...) whose
-  target doesn't exist,
+- ```include blocks whose file doesn't exist,
+- internal links (#/design/learn/<page>/<section>, #/algo/learn/..., #/algo/problem/...,
+  #/tech/<page>/<section>, #/tech/<page>/files/<path>) whose target doesn't exist,
 - algorithm explanations without exactly one empty ```solution block (it marks where solution.py
   is shown),
 - design questions whose `foundations` references don't resolve, or whose reference design has
   no Mermaid diagram,
-- foundations pages without a summary paragraph or with duplicate section titles,
+- foundations and tech pages without a summary paragraph or with duplicate section titles,
+- tech page sections with the id "files", which is the route of the page's file browser,
 - mermaid labels that start like a markdown list ("1. step"), which mermaid draws as
   "Unsupported markdown: list",
 - diagram captions over 100 characters (a caption is one line, and a long one makes the figure
@@ -28,11 +31,12 @@ import json
 import re
 import sys
 from pathlib import Path
+from urllib.parse import unquote
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from swe_prac import algorithms, config, pages, problems  # noqa: E402
+from swe_prac import algorithms, config, pages, problems, tech_api  # noqa: E402
 
 LINK = re.compile(r'href="(#/[^"]*)"')
 
@@ -119,9 +123,31 @@ def _algo_ids() -> set[str]:
     return {p.name for p in folder.iterdir() if (p / "problem.json").exists()}
 
 
+def _tech_files() -> dict[str, set[str]]:
+    """The files each tech page's file browser lists, by page slug (pages with a project)."""
+    out = {}
+    for page in pages.list_pages(config.TECH_DIR):
+        info = tech_api.project(page)
+        if info is not None:
+            out[page.slug] = {f["path"] for f in info["files"]}
+    return out
+
+
 def check_links(html: str, where: str, targets: dict, errors: list[str]) -> None:
     for href in LINK.findall(html):
+        m = re.fullmatch(r"#/tech/([\w-]+)/files(?:/(.+))?", href)
+        if m:
+            slug, path = m.group(1), unquote(m.group(2) or "")
+            files = targets["tech_files"].get(slug)
+            if slug not in targets["tech"]:
+                errors.append(f"{where}: link to unknown page {href}")
+            elif files is None:
+                errors.append(f"{where}: link to the files of {slug}, which has no project folder")
+            elif path and path not in files:
+                errors.append(f"{where}: link to unknown file {href}")
+            continue
         m = re.fullmatch(r"#/(design|algo)/learn(?:/([\w-]+))?(?:/([\w-]+))?", href)
+        m = m or re.fullmatch(r"#/(tech)(?:/([\w-]+))?(?:/([\w-]+))?", href)
         if m:
             track, slug, section = m.groups()
             sections = targets[track]
@@ -158,7 +184,7 @@ def check_pages(folder: Path, label: str, targets: dict, errors: list[str]) -> i
 
 
 def main(argv: list[str]) -> int:
-    which = set(argv) or {"designs", "algorithms"}
+    which = set(argv) or {"designs", "algorithms", "tech"}
     errors: list[str] = []
     design_dir = config.DESIGNS_DIR / "foundations"
     algo_root = getattr(config, "ALGO_DIR", ROOT / "algorithms")
@@ -166,6 +192,8 @@ def main(argv: list[str]) -> int:
         "design": _sections(design_dir),
         "algo": _sections(algo_root / "foundations"),
         "algo_problems": _algo_ids(),
+        "tech": _sections(config.TECH_DIR),
+        "tech_files": _tech_files(),
     }
     summary = []
     if "designs" in which:
@@ -205,6 +233,15 @@ def main(argv: list[str]) -> int:
                         text = algorithms.expand_solution(text, solution)
                     check_html(problems.render_markdown(text), where, targets, errors)
         summary.append(f"{len(targets['algo_problems'])} algorithm problems")
+    if "tech" in which:
+        n = check_pages(config.TECH_DIR, "tech", targets, errors)
+        for slug, ids in sorted(targets["tech"].items()):
+            if "files" in ids:
+                errors.append(
+                    f"tech page {slug}: a section can't have the id 'files'"
+                    f" (#/tech/{slug}/files is its file browser); rename the heading"
+                )
+        summary.append(f"{n} tech pages")
     for e in errors:
         print("ERROR", e)
     print(("FAILED: " if errors else "OK: ") + ", ".join(summary) + f" ({len(errors)} problems)")

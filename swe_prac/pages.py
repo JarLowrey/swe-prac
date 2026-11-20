@@ -4,11 +4,17 @@ A track keeps its pages in <track dir>/foundations/NN_slug.md. The file starts w
 and a one-paragraph summary (shown on the page's card). Every `## Section` gets a stable id
 (its slugified title) so other pages, hints and reviews can link to it with a route like
 #/design/learn/<slug>/<section-id>.
+
+A page can show a code file from disk with an ```include block holding the file's path,
+relative to the page's folder. The tech investigations use it to walk through a project
+without keeping a copy of its code that could drift from what runs.
 """
 
 from __future__ import annotations
 
+import html
 import re
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -29,25 +35,48 @@ class Page:
     summary: str
     path: Path
 
-    def sections(self) -> list[dict]:
-        """The ## headings (with ### children), in order, with the ids the HTML will carry."""
-        out: list[dict] = []
+    def _outline(self) -> Iterator[tuple]:
+        """The page's ## and ### headings, with the ids the HTML will carry, and its ```include
+        blocks, in order: ("heading", level, id, title) and ("include", path)."""
         seen: set[str] = set()
         in_code = False
-        for line in self.path.read_text(encoding="utf-8").splitlines():
+        lines = self.path.read_text(encoding="utf-8").splitlines()
+        for i, line in enumerate(lines):
             if line.startswith("```"):
+                if not in_code and re.fullmatch(r"```include[ \t]*", line) and i + 1 < len(lines):
+                    yield ("include", lines[i + 1].strip())
                 in_code = not in_code
             if in_code:
                 continue
             m = re.match(r"^(##|###)\s+(.+?)\s*#*\s*$", line)
-            if not m:
+            if m:
+                title = _plain(m.group(2))
+                yield ("heading", len(m.group(1)), _unique(slugify(title, "-"), seen), title)
+
+    def sections(self) -> list[dict]:
+        """The ## headings (with ### children), in order, with the ids the HTML will carry."""
+        out: list[dict] = []
+        for kind, *rest in self._outline():
+            if kind != "heading":
                 continue
-            title = _plain(m.group(2))
-            entry = {"id": _unique(slugify(title, "-"), seen), "title": title}
-            if m.group(1) == "##":
+            level, id_, title = rest
+            entry = {"id": id_, "title": title}
+            if level == 2:
                 out.append({**entry, "children": []})
             elif out:
                 out[-1]["children"].append(entry)
+        return out
+
+    def includes(self) -> list[tuple[str, dict | None]]:
+        """The files shown with ```include blocks, in order, each with the section it's under
+        ({"id", "title"} of the nearest heading above it, or None above the first one)."""
+        out: list[tuple[str, dict | None]] = []
+        section = None
+        for kind, *rest in self._outline():
+            if kind == "heading":
+                section = {"id": rest[1], "title": rest[2]}
+            else:
+                out.append((rest[0], section))
         return out
 
     def card(self) -> dict:
@@ -113,7 +142,51 @@ def page_html(page: Page) -> str:
     """The page body without its # title (the frontend shows the title in the page header)."""
     text = page.path.read_text(encoding="utf-8")
     body = re.sub(r"\A\s*#\s+.+\n", "", text, count=1)
-    return render(body)
+    return render(expand_includes(body, page.path.parent))
+
+
+# ```include
+# react-swapi/src/App.tsx
+# ```
+INCLUDE_BLOCK = re.compile(r"^```include[ \t]*\r?\n[ \t]*([^\r\n]+?)[ \t]*\r?\n```[ \t]*$", re.M)
+
+# The fence language for each extension: the browser colours these (common.js).
+CODE_LANGUAGES = {
+    ".ts": "ts",
+    ".tsx": "tsx",
+    ".js": "js",
+    ".jsx": "jsx",
+    ".css": "css",
+    ".json": "json",
+    ".html": "html",
+    ".py": "python",
+    ".md": "markdown",
+}
+
+
+def expand_includes(text: str, folder: Path) -> str:
+    """Replace each ```include block with the file it names, as a fenced code block under a
+    caption with its path. A path that doesn't resolve to a file inside `folder` becomes an
+    error box, which tools/check_content.py reports."""
+    root = folder.resolve()
+
+    def block(m: re.Match) -> str:
+        name = m.group(1)
+        path = (root / name).resolve()
+        if not path.is_relative_to(root) or not path.is_file():
+            return (
+                '<div class="diagram-error"><strong>Include error:</strong> '
+                f"no file {html.escape(name)} next to this page</div>"
+            )
+        code = path.read_text(encoding="utf-8").strip("\n")
+        # A fence longer than any run of backticks in the file, so the file can't close it.
+        longest = max((len(run) for run in re.findall(r"`+", code)), default=0)
+        fence = "`" * max(3, longest + 1)
+        lang = CODE_LANGUAGES.get(path.suffix.lower(), "")
+        caption = f'<div class="code-file">{html.escape(name)}</div>'
+        return f"{caption}\n\n{fence}{lang}\n{code}\n{fence}"
+
+    return INCLUDE_BLOCK.sub(block, text)
 
 
 def payload(folder: Path, slug: str) -> dict:

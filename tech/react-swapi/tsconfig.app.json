@@ -1,0 +1,29 @@
+{
+  // The app and its tests. TypeScript only type-checks (noEmit); Vite strips the types itself
+  // when it bundles, which is why it starts so fast.
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
+    "target": "es2023",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "module": "esnext",
+    "types": ["vite/client"],
+    "skipLibCheck": true,
+
+    /* Bundler mode: Vite resolves the imports, TypeScript only checks them */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true, // type-only imports say `import type`, so they vanish cleanly
+    "moduleDetection": "force",
+    "noEmit": true,
+    "jsx": "react-jsx",
+
+    /* Checks */
+    "strict": true, // the default since TypeScript 6; spelled out for readers on older versions
+    "noUncheckedIndexedAccess": true, // array[i] and record[key] may be undefined: handle it
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "erasableSyntaxOnly": true, // no enums or parameter properties: types must be strippable
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": ["src"]
+}

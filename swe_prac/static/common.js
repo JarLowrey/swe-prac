@@ -134,6 +134,7 @@ export function topnav(active) {
       ${link("coding", "#/coding", "Coding")}
       ${link("algo", "#/algo", "Algorithms")}
       ${link("design", "#/design", "System design")}
+      ${link("tech", "#/tech", "Tech")}
       ${link("history", "#/history", "History")}
     </nav>
   </header>`;

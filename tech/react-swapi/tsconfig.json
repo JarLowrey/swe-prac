@@ -1,0 +1,6 @@
+{
+  // Two programs with different environments: the app (browser) and the build config (Node).
+  // `tsc -b` type-checks both.
+  "files": [],
+  "references": [{ "path": "./tsconfig.app.json" }, { "path": "./tsconfig.node.json" }]
+}

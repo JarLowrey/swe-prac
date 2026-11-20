@@ -1,0 +1,193 @@
+/* Plain CSS: two pages don't need a framework. `color-scheme: light dark` opts into both
+   themes, and light-dark() picks the value for the one the user's system is set to. */
+:root {
+  color-scheme: light dark;
+  --bg: light-dark(#f7f7f8, #121418);
+  --surface: light-dark(#ffffff, #1b1e24);
+  --text: light-dark(#1d1f23, #e7e9ee);
+  --muted: light-dark(#5d6470, #9aa2b1);
+  --border: light-dark(#dfe2e7, #2c313a);
+  --accent: light-dark(#9a6d00, #e8b923);
+  --danger: light-dark(#b42318, #ff8a80);
+  font-family: system-ui, sans-serif;
+  line-height: 1.5;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+}
+
+#root {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+a {
+  color: inherit;
+  text-decoration-color: var(--accent);
+  text-underline-offset: 3px;
+}
+a:hover {
+  color: var(--accent);
+}
+/* A visible focus ring for keyboard users, only when the keyboard moved focus. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.site-header {
+  padding: 20px 0;
+  border-bottom: 1px solid var(--border);
+}
+.brand {
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+}
+main {
+  padding: 8px 0 32px;
+}
+.site-footer {
+  padding: 16px 0 32px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.search {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 16px 0 8px;
+}
+.search label {
+  font-size: 14px;
+  font-weight: 600;
+}
+.search input {
+  max-width: 360px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: inherit;
+  font: inherit;
+}
+
+.status {
+  min-height: 1.5em; /* keeps its line even when empty, so nothing below it jumps */
+  margin: 8px 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.people {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  border-spacing: 0;
+  background: var(--surface);
+}
+.people th,
+.people td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+.people thead th {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+.people tbody tr:last-child > * {
+  border-bottom: none;
+}
+.people tbody th {
+  font-weight: 500;
+}
+
+/* The previous results stay on screen while the next ones load, dimmed so it's clear. */
+.stale {
+  opacity: 0.55;
+  transition: opacity 150ms;
+}
+.skeleton {
+  display: block;
+  height: 1em;
+  border-radius: 4px;
+  background: var(--border);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+@keyframes pulse {
+  50% {
+    opacity: 0.4;
+  }
+}
+/* Honour the system's "reduce motion" accessibility setting. */
+@media (prefers-reduced-motion: reduce) {
+  .skeleton,
+  .stale {
+    animation: none;
+    transition: none;
+  }
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 12px 0;
+  font-size: 14px;
+}
+.page-link {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  text-decoration: none;
+}
+.page-link.disabled {
+  color: var(--muted);
+  opacity: 0.6;
+}
+
+.error {
+  padding: 4px 16px 12px;
+  border: 1px solid var(--danger);
+  border-radius: 8px;
+  color: var(--danger);
+}
+.error button {
+  font: inherit;
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 6px 24px;
+  margin: 16px 0;
+}
+.facts dt {
+  color: var(--muted);
+}
+.facts dd {
+  margin: 0;
+}
+.films {
+  padding-left: 20px;
+}
+
+/* Hidden on screen but still read by screen readers. display: none would hide it from them
+   as well. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

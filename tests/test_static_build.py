@@ -80,6 +80,25 @@ class StaticBuildTests(EnvCase):
         self.assertIn('id="hashing"', page["html"])
         self.assertEqual([s["id"] for s in page["toc"]], ["hashing", "two-pointers"])
 
+    def test_bundle_has_the_tech_pages_with_their_code(self):
+        tech = json.loads((self.out / "data.json").read_text(encoding="utf-8"))["foundations"]
+        tech = tech["tech"]
+        self.assertEqual([c["slug"] for c in tech["cards"]], ["demo"])
+        html = tech["pages"]["demo"]["html"]
+        self.assertIn('<div class="code-file">demo/hello.ts</div>', html)
+        self.assertIn("&lt;world&gt;", html)
+        self.assertEqual(tech["pages"]["demo"]["project"], {"folder": "demo", "files": 1})
+        # The file browser's copy of the project.
+        (file,) = tech["projects"]["demo"]["files"]
+        self.assertEqual((file["path"], file["lang"]), ("hello.ts", "ts"))
+        self.assertIn("<world>", file["text"])
+        api = (self.out / "static-api.js").read_text(encoding="utf-8")
+        self.assertIn(r"/^\/api\/(tech)\/pages$/", api)
+        self.assertIn(r"/^\/api\/(tech)\/pages\/([\w-]+)\/files$/", api)
+        for lang in ("typescript", "css", "html", "markdown"):
+            path = self.out / "vendor" / "monaco" / "vs" / "basic-languages" / lang / f"{lang}.js"
+            self.assertTrue(path.exists(), lang)
+
     def test_hidden_tests_are_not_exported(self):
         tests = json.loads(
             (self.tmp_path / "problems" / "p0_counter" / "tests.json").read_text(encoding="utf-8")
