@@ -21,6 +21,7 @@
   "foundations": [
     "networking/redirects-301-vs-302",
     "networking/http-caching",
+    "networking/errors-and-status-codes",
     "data/unique-constraints",
     "data/choosing-a-partition-key",
     "building-blocks/estimation-and-benchmarks",

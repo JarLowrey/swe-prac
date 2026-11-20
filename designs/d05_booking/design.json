@@ -19,6 +19,8 @@
   ],
   "foundations": [
     "networking/idempotency-keys",
+    "networking/resources-and-verbs",
+    "networking/errors-and-status-codes",
     "data/check-then-act-races",
     "data/unique-constraints",
     "data/atomic-updates-and-counters",

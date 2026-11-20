@@ -1,8 +1,37 @@
 **Requirements.** Functional: as the user types a prefix, return the top 5–10 suggested queries, ranked by popularity (and optionally personalization and freshness); support multiple languages; filter offensive or blocked suggestions. Non-functional: very low latency ([under 100 ms end to end](#/design/learn/networking/round-trips-and-latency-budgets), ideally under 50 ms server-side, since it fires on each keystroke); high availability; suggestions may lag real search activity by minutes to hours (eventual consistency is fine).
 
+Amber marks the non-functional requirements, each beside the operation it constrains.
+
+```mermaid
+flowchart LR
+  U((User)) --> T["Type a prefix, get the<br/>top 5 to 10 suggestions"]
+  U --> SR["Search: popularity<br/>feeds the ranking"]
+  MO((Moderator)) --> BL["Block offensive<br/>suggestions"]
+  T -.- N1(["Under 100 ms end to end,<br/>it fires on every keystroke"]):::warn
+  T -.- N2(["Highly available,<br/>many languages"]):::warn
+  SR -.- N3(["May lag by<br/>minutes to hours"]):::warn
+```
+
 **Estimates.** 500M DAU × 5 searches/day × ~4 requests per search (keystroke bursts, debounced) ≈ 10B requests/day ≈ 115,000/s average, 300,000/s peak. Query log: 2.5B searches/day, but only a few hundred million distinct queries matter. The suggestion corpus (top queries worth suggesting) is perhaps 100M strings × ~30 bytes ≈ 3 GB, which [fits in memory on every serving node](#/design/learn/building-blocks/estimation-and-benchmarks). Throughput, not size, sets the node count: at up to 10,000 requests/s per node, 300,000/s peak needs about 30 nodes, fewer once the edge caches short prefixes. So: a read-only, memory-resident lookup, refreshed periodically.
 
-**API.** `GET /suggest?q=new+yo&limit=8&locale=en-US` → `["new york", "new york times", ...]`. Clients debounce (wait ~100 ms after the last keystroke), cancel in-flight requests, and [cache responses locally by prefix](#/design/learn/networking/http-caching).
+**API.** One tiny read, called on nearly every keystroke, so it is designed to be cached:
+
+```text
+GET /v1/suggest?q=new%20yo&limit=8&locale=en-US
+  -> 200 {q: "new yo",
+          suggestions: ["new york",
+                        "new york times",
+                        "new york weather"]}
+```
+
+- **Everything that changes the answer is in the URL** (prefix, locale, limit), not in headers or cookies, so browsers and the CDN can use the URL as the [cache key](#/design/learn/building-blocks/cache-control-headers-and-cache-keys). The global list is sent with `Cache-Control: public, max-age=300`.
+- **Normalize `q`** on the client and again on the server: lower case, trimmed, repeated spaces collapsed, Unicode normalized. Then "New  York" and "new york" share one cache entry and one trie lookup.
+- **The response echoes `q`.** Responses can arrive out of order (the one for "ne" after the one for "new"), so the client shows a response only if its `q` still matches the text box.
+- **Clients** wait about 100 ms after the last keystroke, cancel the request in flight when a new one starts, and [cache responses locally by prefix](#/design/learn/networking/http-caching).
+- **Personal suggestions** (the user's own recent searches, deep dive 1) make a response `private`, so it skips the CDN. Keep that path cheap: the app can merge the user's recent searches on the device and leave the server's list global and cacheable.
+- **Limits.** `limit` is capped at 10 and `q` at about 100 characters. An empty `q` returns trending searches or nothing, a product choice.
+- **Failure is silent.** An error, a timeout or a `429` just hides the dropdown; the search box never waits for suggestions ([graceful degradation](#/design/learn/reliability/graceful-degradation)).
+- **No feedback endpoint.** The search request records how it started (`?source=suggest&pos=2`), which gives the acceptance-rate metric without an extra call.
 
 **Core data structure.** A **[trie](#/design/learn/building-blocks/autocomplete-and-typeahead)** (prefix tree) where each node represents a prefix. To answer quickly, each node stores its **top-K completions** (K around 10) precomputed, so a lookup is O(length of prefix) with no subtree traversal. Memory trick: store only popular completions per node, compress chains of single-child nodes (a radix tree), and cut the trie at a depth limit and a minimum frequency.
 

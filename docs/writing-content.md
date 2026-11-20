@@ -283,6 +283,18 @@ They show up as "Foundations to review" in the hints box and on the review page.
 `reference.md` draws the design as it grows. It needs at least one Mermaid diagram
 (`tools/check_content.py` reports one without), and the ten questions follow this pattern:
 
+- **Requirements**: a map of the requirements paragraph, as a `flowchart LR` three columns wide.
+  Actors are circles, each with a solid arrow to the operations they perform. Each non-functional
+  requirement is an amber stadium (`(["..."]):::warn`), joined with a plain dotted line (`-.-`)
+  to the operation it constrains. Out-of-scope features are `:::muted` boxes on a dotted arrow
+  from the actor who would want them. The line above it reads "Amber marks the non-functional
+  requirements, each beside the operation it constrains.", with " Grey is out of scope." added
+  when there are grey boxes. The diagram says only what the paragraph says.
+- **Data model**: the tables as an `erDiagram` under the data model text. Use the column names
+  from the text, mark keys with `PK`, `FK` and `UK` (a composite key is several `PK` columns),
+  and keep comments to a few words, since a comment column widens the box. Label each
+  relationship with what it means ("one row per night"). Where a question's data isn't a set of
+  tables, draw the structure instead, as autocomplete's trie does.
 - **High-level design**: the first architecture, as a `flowchart TD` with no colours.
 - The flow the question hinges on, as a `sequenceDiagram` or `stateDiagram-v2`: two requests
   racing, a retry after a timeout, a payment's states.

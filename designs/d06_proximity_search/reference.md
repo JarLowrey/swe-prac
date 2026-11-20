@@ -2,9 +2,73 @@ Two flavors share a core: **static places** (listings, restaurants: search by ma
 
 **Requirements.** Functional: search listings by location (a city or map viewport), dates, guests, price and amenities; ranked results with pagination; listings added and edited by hosts. Non-functional: results under 300 ms; search may lag the source of truth by seconds; handles dense cities and sparse regions; high availability.
 
+Amber marks the non-functional requirements, each beside the operation it constrains.
+
+```mermaid
+flowchart LR
+  G((Guest)) --> S["Search an area by dates,<br/>guests, price, amenities"]
+  G --> R["Page through<br/>ranked results"]
+  H((Host)) --> E["Add and<br/>edit listings"]
+  S -.- N1(["Under 300 ms,<br/>highly available"]):::warn
+  S -.- N2(["Dense cities and<br/>sparse regions"]):::warn
+  E -.- N3(["Shows in search<br/>within seconds"]):::warn
+```
+
 **Estimates.** 10M listings × ~2 KB of searchable fields = 20 GB of core search data, [small enough to hold in memory on every search node](#/design/learn/building-blocks/estimation-and-benchmarks), so it can be replicated; the load is the issue. 100M searches/day ≈ 1,200/s average, 5,000/s peak, which at hundreds to a few thousand queries/s per search node means several replicas. Index updates: price/availability changes and edits maybe 100/s. So: read-heavy, small data, many filters.
 
-**API.** `GET /search?bbox=...&check_in&check_out&guests&price_max&amenities&sort&cursor` → `{listings[], next_cursor}`. Use [cursor pagination](#/design/learn/networking/pagination-offset-vs-cursor); keep a search session token so results stay stable while paging.
+**API.** One read endpoint does most of the work. The app calls it every time the map moves or a filter changes, waiting about 300 ms after the map stops and cancelling the request in flight.
+
+```text
+GET /v1/search?bbox=38.69,-9.23,38.76,-9.09
+      &check_in=2027-03-10&check_out=2027-03-13
+      &guests=2&price_max=200&amenities=wifi,pool
+      &sort=relevance&limit=20
+  -> 200 {results: [ListingCard], next_cursor,
+          total_estimate}
+GET /v1/search?cursor=eyJxIjoi...
+  -> 200 the next page of the same search
+GET /v1/search/clusters?bbox=...&zoom=6&<filters>
+  -> 200 {clusters: [{lat, lng, count,
+                      min_price}]}
+GET /v1/listings/{id}
+  -> 200 Listing (every detail, for a tapped card)
+```
+
+- **Say the `bbox` order out loud:** `south,west,north,east`, in degrees. When west is greater than east, the box crosses the antimeridian and the service splits it in two (deep dive 1). A box too large to search usefully gets `400 bbox_too_large`, and the app asks for clusters instead.
+- **Results are cards, not listings:** ID, title, position, one photo URL, nightly price, total for the dates and rating. That's enough for a pin and a card at about 1 KB each, so a page of 20 stays small; the full listing loads when the user taps one.
+- **[Cursor pagination](#/design/learn/networking/pagination-offset-vs-cursor).** The cursor is opaque and carries the query plus a position in a ranked list kept for the session (a few minutes), so page 2 continues the same ranking even if prices change in between. A cursor replaces the other parameters; an expired one gets `400 invalid_cursor` and the app starts again at page 1.
+- **`total_estimate` is approximate** ("1,000+ stays"). An exact count across every shard costs more than the page itself.
+- **Validate dates and filters:** `check_out` after `check_in`, at most a year ahead, guests within limits. Unknown amenities get `400` rather than being ignored, so a typo doesn't quietly return everything.
+- **Caching.** Anonymous searches with default ranking can be cached at the CDN for 30–60 s, keyed on the canonical query (deep dive 5), with `Cache-Control: public, max-age=30`. Personalized results are `private`.
+
+**Data model.** The listing database is the source of truth. The search index holds one denormalized document per listing, built from the listing and a summary of its calendar, so a query reads one document per candidate and never joins.
+
+```mermaid
+erDiagram
+  listing ||--o{ calendar : "one row per night"
+  listing ||--|| search_doc : "copied into"
+  calendar }o--|| search_doc : "summarized into"
+  listing {
+    id id PK
+    id host_id
+    string details "title, location, price, amenities"
+  }
+  calendar {
+    id listing_id PK
+    date night PK
+    enum status
+  }
+  search_doc {
+    id listing_id PK
+    geo_point location
+    list cell_ids "geohash or S2 cells"
+    int price
+    list amenities
+    float rating
+    int capacity
+    bitmap free_nights "availability summary"
+  }
+```
 
 **Design.**
 
@@ -49,6 +113,8 @@ flowchart TD
 ```
 
 **Variant: nearest drivers (ride-hailing).** Locations change every few seconds, so a disk-backed index is the wrong tool. [Keep driver positions in memory](#/design/learn/building-blocks/moving-objects) (Redis geo, or a service holding an in-memory grid) partitioned by cell. Each driver app sends a location update every 4–5 seconds (about 1M drivers → 200,000–250,000 writes/s, a few in-memory shards at ~100K writes/s each), which overwrites the previous entry and expires with a TTL. A ride request queries the rider's cell and neighbors, filters by distance and availability, and hands candidates to a matching service. Use the same cell grid to shard the service so most queries touch one or two partitions.
+
+The API changes too. Drivers send `{lat, lng, heading, ts}` over one long-lived connection (a WebSocket or a gRPC stream) rather than a fresh HTTPS request each time, which is far cheaper at 250,000 updates/s; the `ts` lets the server drop an update that arrives after a newer one. Riders call `POST /v1/rides {pickup, dropoff}` with an idempotency key and get `201 {ride_id, status: MATCHING}`; the matched driver is pushed to the rider's own connection when it's found.
 
 ```mermaid
 flowchart TD

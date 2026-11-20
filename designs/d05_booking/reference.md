@@ -2,13 +2,72 @@ This is the classic reservation question ("design a reservation system"), with e
 
 **Requirements.** Functional: search availability for dates; view a property with a calendar; reserve (hold) while paying; confirm; cancel; hosts manage calendars and prices. Non-functional: **[never double-book](#/design/learn/reliability/concurrency-control-and-double-booking)**; search is fast and may be slightly stale; [booking is strongly consistent](#/design/learn/data/picking-a-guarantee-per-operation); handles flash demand for popular listings or events. Clarify: unique listings (a vacation home, one seat) or fungible inventory ("any of 40 standard rooms")? Both are covered below.
 
+Amber marks the non-functional requirements, each beside the operation it constrains.
+
+```mermaid
+flowchart LR
+  G((Guest)) --> S["Search dates and<br/>view a calendar"]
+  G --> B["Hold, pay<br/>and confirm"]
+  G --> C["Cancel"]
+  H((Host)) --> M["Manage calendar<br/>and prices"]
+  S -.- N1(["Fast, may be<br/>seconds stale"]):::warn
+  B -.- N2(["Never double-book,<br/>strongly consistent"]):::warn
+  B -.- N3(["Flash demand on<br/>popular listings"]):::warn
+```
+
 **Estimates.** 10M listings, 500K bookings/day ≈ 6/s average, 50/s peak: tiny next to [the few thousand writes/s one relational primary takes](#/design/learn/building-blocks/estimation-and-benchmarks). Searches: 100M/day ≈ 1,200/s average, 5,000+/s peak, so the read/search side is the scale problem, while booking is a correctness problem. Calendar storage: 10M listings × 365 nights × ~20 bytes = 73 GB, which fits on one relational primary (a few TB is comfortable), so neither size nor writes force sharding.
 
-**API.**
+**API.** REST for the guest and host apps, authenticated with the user's token. Every booking call [checks the caller](#/design/learn/networking/authentication-vs-authorization), not just the token: a guest sees only their own bookings, and a host changes only their own listings.
 
-- `GET /search?location&dates&guests&filters` → listings (served by the search system; see the proximity search question)
-- `POST /bookings {listing_id, check_in, check_out, guests}` with [`Idempotency-Key`](#/design/learn/networking/idempotency-keys) → `201 {booking_id, status: HELD, expires_at}`
-- `POST /bookings/{id}/confirm` (after payment) → `CONFIRMED`; `DELETE /bookings/{id}` cancels.
+```text
+GET   /v1/search?location=&check_in=&check_out=
+          &guests=
+  -> 200 {results, next_cursor}   (search system)
+GET   /v1/listings/{id}/calendar?from=&to=
+  -> 200 {nights: [{date, available, price}]}
+POST  /v1/bookings   Idempotency-Key: 5c1e...
+      {listing_id, check_in, check_out, guests}
+  -> 201 Booking (HELD, expires_at)
+POST  /v1/bookings/{id}/confirm  {payment_method}
+  -> 200 Booking (CONFIRMED)
+POST  /v1/bookings/{id}/cancel
+  -> 200 Booking (CANCELLED, refund)
+PATCH /v1/listings/{id}/calendar   (host only)
+      {from, to, available?, price?}
+  -> 200 {nights}
+```
+
+Search is served by the search system (see the proximity search question). A held booking, as `POST /v1/bookings` returns it:
+
+```json
+{
+  "id": "bk_7Hq2",
+  "listing_id": "ls_381",
+  "check_in": "2027-03-10",
+  "check_out": "2027-03-13",
+  "guests": 2,
+  "status": "HELD",
+  "expires_at": "2027-01-04T18:40:00Z",
+  "price": {"nights": 3, "total": 54000,
+            "currency": "EUR"}
+}
+```
+
+- **Dates are the listing's local calendar dates,** with no time or time zone, and `check_out` is exclusive: the booking above is the nights of the 10th, 11th and 12th. Say this out loud; off-by-one nights are a classic bug.
+- **The price is locked into the hold,** in minor units (54000 is €540.00), so a host changing prices mid-checkout doesn't change what this guest pays.
+- **Creating a hold is [idempotent](#/design/learn/networking/idempotency-keys).** A double-tapped "Reserve" or a timeout retry returns the same booking instead of making a second hold that blocks the same nights. Confirm is safe to repeat too: the charge uses the booking ID as its idempotency key, and confirming a booking that is already `CONFIRMED` returns it unchanged.
+- **Cancel is a `POST` action, not a `DELETE`.** The booking isn't removed: it changes status, may trigger a refund, and must stay on record for the guest, the host and accounting ([resources and verbs](#/design/learn/networking/resources-and-verbs)).
+
+The error cases are where this API earns its keep:
+
+| Case | Response |
+| --- | --- |
+| `check_out` not after `check_in`, dates in the past, or a stay outside the listing's minimum and maximum | `400 invalid_dates` |
+| A night in the range is already held or booked (the race below) | `409 dates_unavailable` |
+| Confirming after the hold expired | `409 hold_expired`; the guest starts again |
+| Card declined at confirm | `402 payment_declined`; the hold stays until it expires, so the guest can try another card |
+| Someone else's booking | `404`, so booking IDs can't be probed |
+| The same `Idempotency-Key` with a different body | `422` |
 
 **Data model (relational; [this needs transactions](#/design/learn/data/transactions)).**
 
@@ -17,6 +76,34 @@ This is the classic reservation question ("design a reservation system"), with e
 - `booking(id, listing_id, guest_id, check_in, check_out, status, expires_at, idempotency_key UNIQUE)`
 
 Status values: `HELD`, `CONFIRMED`, `CANCELLED`, `EXPIRED`.
+
+```mermaid
+erDiagram
+  listing ||--o{ calendar : "one row per night"
+  listing ||--o{ booking : "booked as"
+  booking |o--o{ calendar : "claims nights"
+  listing {
+    id id PK
+    id host_id
+  }
+  calendar {
+    id listing_id PK "unique together"
+    date night PK
+    enum status
+    int price
+    id booking_id FK
+  }
+  booking {
+    id id PK
+    id listing_id FK
+    id guest_id
+    date check_in
+    date check_out "exclusive"
+    enum status
+    timestamp expires_at
+    string idempotency_key UK
+  }
+```
 
 **High-level design.** Search and booking need different things, so they take different paths. Search reads an index kept up to date from the database's change events and may lag by seconds. Booking writes to the relational database, the single source of truth, in one transaction.
 
@@ -69,6 +156,17 @@ stateDiagram-v2
 ```
 
 **Fungible inventory (hotel room types).** Keep `inventory(hotel_id, room_type, night, total, reserved)` and book with `UPDATE ... SET reserved = reserved + 1 WHERE reserved < total` for every night in one transaction. Contention concentrates on popular nights, so keep transactions short and ordered consistently by night to [avoid deadlocks](#/design/learn/data/pessimistic-locking-and-deadlocks).
+
+```mermaid
+erDiagram
+  inventory {
+    id hotel_id PK
+    string room_type PK
+    date night PK
+    int total
+    int reserved "never above total"
+  }
+```
 
 **Deep dives.**
 

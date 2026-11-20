@@ -1,13 +1,98 @@
 **Requirements.** Functional: one-to-one and group chat (up to, say, 500 members); real-time delivery; message history; delivery and read receipts; offline users receive messages when they return; online presence. Out of scope for v1: voice/video, end-to-end encryption (mention the trade-off with server-side features), large channels. Non-functional: delivery latency under 200 ms when both online; no lost messages; per-conversation ordering; highly available.
 
+Amber marks the non-functional requirements, each beside the operation it constrains. Grey is out of scope.
+
+```mermaid
+flowchart LR
+  U((User)) --> S["Send to a person, or<br/>a group of up to 500"]
+  U --> V["Receive live, or on<br/>return if offline"]
+  U --> H["Scroll history"]
+  U --> RP["See receipts<br/>and presence"]
+  S -.- N1(["Never lost,<br/>highly available"]):::warn
+  V -.- N2(["Under 200 ms when<br/>both are online"]):::warn
+  H -.- N3(["Ordered within<br/>each conversation"]):::warn
+  U -.-> X1["Voice and video"]:::muted
+  U -.-> X2["End-to-end encryption"]:::muted
+  U -.-> X3["Large channels"]:::muted
+```
+
 **Estimates.** 500M DAU, 40 messages sent per user per day = 20B messages/day ≈ 230,000/s average, 500,000+/s peak. At ~200 bytes per message, 4 TB/day, about 1.5 PB/year (4.5 PB with three replicas), so storage is large and must be partitioned. Concurrent connections: say 100M open sockets; at [~100K connections per gateway server](#/design/learn/building-blocks/estimation-and-benchmarks), that's 1,000+ gateway servers.
 
-**API and protocol.** Use a persistent **[WebSocket](#/design/learn/networking/websockets)** per client (bidirectional, low overhead), with HTTPS for non-realtime calls (history, media upload, login). Messages carry a client-generated `message_id` [for idempotency](#/design/learn/reliability/idempotency-keys). Events: `send(conv_id, message_id, body)`, `ack(message_id)`, `deliver`, `read(conv_id, up_to_id)`. Fallback to [long polling](#/design/learn/networking/long-polling) where WebSockets are blocked; push notifications (APNs/FCM) for offline devices.
+**API and protocol.** Use a persistent **[WebSocket](#/design/learn/networking/websockets)** per device for everything real-time, in both directions: sending, delivery, receipts, typing and presence. Use plain HTTPS for everything else: the conversation list, history, media upload and login. Fall back to [long polling](#/design/learn/networking/long-polling) where WebSockets are blocked; push notifications (APNs/FCM) reach devices with no open socket.
+
+The client opens `wss://chat.example/v1/connect` with its access token. A bad token gets `401` before the upgrade. A token that expires mid-session gets an `error` frame and a close with an application close code (4000–4999), and the client reconnects with a fresh token.
+
+Every frame is a JSON envelope with a `type`. Clients ignore types they don't know, so adding a frame type never breaks old app versions ([forward compatibility](#/design/learn/networking/backward-and-forward-compatibility)).
+
+```text
+client -> server
+  send     {conv_id, message_id, body, media_id?}
+  ack      {conv_id, seq}      (received up to seq)
+  read     {conv_id, seq}      (read up to seq)
+  typing   {conv_id}
+  ping     {}                  (every 30 s)
+
+server -> client
+  sent     {message_id, conv_id, seq, created_at}
+  message  {conv_id, seq, message_id, sender_id,
+            body, created_at}
+  receipt  {conv_id, user_id, delivered_seq?,
+            read_seq?}
+  presence {user_id, online, last_seen}
+  error    {message_id?, code, retry_after_s?}
+```
+
+- **Two IDs per message.** `message_id` is a UUID the sender's device generates, so a resend after a dropped connection is [deduplicated](#/design/learn/reliability/idempotency-keys) instead of shown twice. `seq` is assigned by the server, per conversation, and sets the order every member sees (deep dive 1). The `sent` frame is the first tick: the message is stored.
+- **Receipts are cumulative.** `ack` and `read` say "up to seq 42", so one frame covers a burst of messages, and a lost frame is repaired by the next one.
+- **Errors don't close the socket.** `not_a_member`, `too_large` (text over 64 KB; files go by `media_id`) and `rate_limited` with `retry_after_s` are reported against the `message_id` they refer to, and the connection stays up.
+
+The HTTPS side:
+
+```text
+GET  /v1/conversations?cursor=
+  -> 200 {items: [{conv_id, title, last_seq,
+                   unread_count}], next_cursor}
+POST /v1/conversations  {member_ids, title?}
+  -> 201 Conversation
+GET  /v1/conversations/{id}/messages
+     ?after_seq=41&limit=100
+  -> 200 {messages, has_more}
+POST /v1/media  {content_type, size}
+  -> 201 {media_id, upload_url}
+```
+
+- **Sync after reconnect.** The conversation list shows each conversation's `last_seq`. For each one that moved, the device asks for `messages?after_seq=<the last seq it has>`, so a device that was offline gets everything it missed, in order. Scrolling back through history uses `before_seq`. Both are [cursors](#/design/learn/networking/pagination-offset-vs-cursor) on `seq`, so new messages never shift a page.
+- **Media goes over HTTPS,** straight to object storage with a [pre-signed URL](#/design/learn/building-blocks/presigned-url-uploads); the message then carries only the `media_id`, which keeps the socket free for small, fast frames.
 
 **Data model.**
 
-- `messages` partitioned by `conversation_id`, clustered by a time-ordered message ID: `(conv_id, message_id, sender_id, body, created_at)`. A [wide-column store](#/design/learn/data/wide-column-tables) (Cassandra/DynamoDB) fits: append-heavy, range-read by conversation, scales horizontally. [Partition key](#/design/learn/data/choosing-a-partition-key) `conv_id` keeps a conversation's messages together; for huge conversations bucket by time (`conv_id, month`).
-- `conversations(conv_id, members, ...)` and `user_conversations(user_id, conv_id, last_read_id)` in a relational or key-value store.
+- `messages` partitioned by `conversation_id`, clustered by the per-conversation sequence number: `(conv_id, seq, message_id, sender_id, body, created_at)`. A [wide-column store](#/design/learn/data/wide-column-tables) (Cassandra/DynamoDB) fits: append-heavy, range-read by conversation, scales horizontally. [Partition key](#/design/learn/data/choosing-a-partition-key) `conv_id` keeps a conversation's messages together; for huge conversations bucket by time (`conv_id, month`).
+- `conversations(conv_id, members, last_seq, ...)` and `user_conversations(user_id, conv_id, delivered_seq, read_seq)` in a relational or key-value store.
+
+```mermaid
+erDiagram
+  conversations ||--o{ messages : "holds"
+  conversations ||--|{ user_conversations : "one row per member"
+  conversations {
+    id conv_id PK
+    list members
+    int last_seq
+  }
+  messages {
+    id conv_id PK "partition key"
+    int seq PK "clustering key"
+    id message_id
+    id sender_id
+    string body
+    timestamp created_at
+  }
+  user_conversations {
+    id user_id PK
+    id conv_id PK
+    int delivered_seq "receipts"
+    int read_seq
+  }
+```
 
 **High-level design.**
 

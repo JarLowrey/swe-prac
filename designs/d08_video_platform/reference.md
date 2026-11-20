@@ -2,13 +2,80 @@ Two related questions: **video platform** (upload, process, stream globally) and
 
 **Requirements.** Functional: upload videos (up to several GB); process into streamable formats; watch with adaptive quality on any device; metadata, search and recommendations are out of scope except a metadata API. Non-functional: uploads survive flaky networks; playback starts in under 2 seconds with little rebuffering; global; very high availability for playback; processing can take minutes.
 
+Amber marks the non-functional requirements, each beside the operation it constrains. Grey is out of scope.
+
+```mermaid
+flowchart LR
+  CR((Creator)) --> U["Upload up to several GB,<br/>processed for streaming"]
+  CR --> MD["Set metadata<br/>through an API"]
+  V((Viewer)) --> W["Watch at adaptive<br/>quality, any device"]
+  U -.- N1(["Survives flaky<br/>networks"]):::warn
+  U -.- N2(["Processing may<br/>take minutes"]):::warn
+  W -.- N3(["Starts under 2 s,<br/>little rebuffering"]):::warn
+  W -.- N4(["Global, very<br/>highly available"]):::warn
+  V -.-> X1["Search and<br/>recommendations"]:::muted
+```
+
 **Estimates.** 5M uploads/day (≈ 60/s), average 300 MB raw = 1.5 PB/day raw. Keeping the original plus ~6 renditions (the full ladder is about twice the top rendition) brings that to roughly 3x, about 4.5 PB/day. Playback: 1B views/day ≈ 12,000 starts/s; at ~10 minutes watched per view that is about 7M streams at once, × 5 Mbps average ≈ 35 Tbps, more at peak: [thousands of servers' worth of 10–25 Gbps network cards](#/design/learn/building-blocks/estimation-and-benchmarks). Conclusion: bandwidth and storage dominate cost, so the CDN carries nearly all playback and [uploads must bypass application servers](#/design/learn/building-blocks/presigned-url-uploads).
 
-**API.**
+**API.** REST for metadata and control, with the video bytes never passing through it: uploads go straight to object storage, and playback comes from the CDN.
 
-- `POST /videos {title, size, content_type}` → `{video_id, upload_session_url}` (pre-signed, [multipart/resumable](#/design/learn/building-blocks/multipart-and-resumable-uploads))
-- Client uploads parts directly to object storage; `POST /videos/{id}/complete`.
-- `GET /videos/{id}` → metadata and the manifest URL; the player fetches the manifest (HLS `.m3u8` / DASH `.mpd`) and then segments from the CDN.
+```text
+POST /v1/videos  {title, size_bytes, content_type}
+  -> 201 {video_id, status: UPLOADING,
+          upload: {part_size, part_urls,
+                   expires_at}}
+GET  /v1/videos/{id}/upload
+  -> 200 {parts_received, part_urls (fresh)}
+PUT  <part_url>        (bytes, straight to storage)
+  -> 200, ETag: "<part checksum>"
+POST /v1/videos/{id}/complete
+     {parts: [{number, etag}]}
+  -> 202 {status: UPLOADED}
+GET  /v1/videos/{id}
+  -> 200 {title, status, duration_s, thumbnails}
+GET  /v1/videos/{id}/play
+  -> 200 {manifest_url (signed), captions}
+```
+
+- **Uploading.** A 3 GB file in 16 MB parts is about 190 parts, each with its own [pre-signed URL](#/design/learn/building-blocks/presigned-url-uploads) valid for a few hours. The client uploads several parts in parallel and keeps each part's `ETag`. `complete` sends that list so storage can assemble the parts in order; a missing or mismatched part gets `409 parts_missing` with the part numbers.
+- **Resuming.** After a crash or a long pause, `GET /v1/videos/{id}/upload` says which parts already arrived and hands out fresh URLs for the rest, so the client never sends a finished part twice ([multipart and resumable uploads](#/design/learn/building-blocks/multipart-and-resumable-uploads)).
+- **Processing is [asynchronous](#/design/learn/networking/async-request-reply).** `complete` returns `202`, and `status` moves through `UPLOADING`, `UPLOADED`, `PROCESSING` and `READY` (or `FAILED`, with a reason). The uploader's app polls `GET /v1/videos/{id}` or hears through a notification.
+- **Checks before a byte is sent.** `POST /v1/videos` rejects a file over the size limit with `413` and a type that isn't video with `415`. The pipeline's validate step checks again, since a client can lie about both.
+- **Playback.** `/play` returns a [signed manifest URL](#/design/learn/building-blocks/serving-downloads) (HLS `.m3u8` or DASH `.mpd`) that expires in a few hours; the player then fetches segments from the CDN, never from this API. Segments never change once written, so they're served with `Cache-Control: public, max-age=31536000, immutable`. A video that isn't `READY` gets `409 not_ready`; a private video the viewer can't see gets `404`.
+- **Playback events.** The player sends a batch every 30 s or so (`POST /v1/playback-events` with position, bitrate and rebuffer time). They feed the view counter and the wrap-up's metrics, and go to a stream rather than the metadata database.
+
+**Data model.** Only the `video` row lives in the metadata database. The bytes are objects in storage, named by the keys below: the raw parts in the upload bucket, and the manifests and segments in the delivery bucket. Segments never change once written, which is what lets the CDN cache them for a year.
+
+```mermaid
+erDiagram
+  video ||--o{ upload_part : "uploaded as"
+  video ||--|{ manifest : "packaged as"
+  manifest ||--|{ segment : "lists"
+  video {
+    id video_id PK
+    string title
+    enum status "UPLOADING to READY, or FAILED"
+    int duration_s
+    list thumbnails
+    list captions
+  }
+  upload_part {
+    id video_id PK
+    int part_number PK
+    string etag "part checksum"
+  }
+  manifest {
+    id video_id PK
+    enum format PK "HLS or DASH"
+    list renditions
+  }
+  segment {
+    id video_id PK
+    string rendition PK "resolution, bitrate, codec"
+    int number PK "2 to 10 s each"
+  }
+```
 
 **High-level design.** Three paths share the metadata database: uploads go straight to object storage, a queue drives processing, and the CDN serves playback.
 

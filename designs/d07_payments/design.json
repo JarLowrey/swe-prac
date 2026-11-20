@@ -21,6 +21,7 @@
   "foundations": [
     "networking/idempotency-keys",
     "networking/webhooks",
+    "networking/errors-and-status-codes",
     "data/unique-constraints",
     "data/transactions-across-partitions-and-services",
     "building-blocks/estimation-and-benchmarks",

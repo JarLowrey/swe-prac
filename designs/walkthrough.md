@@ -7,6 +7,20 @@ listing for a date range; hosts manage their calendar. Non-functional: never dou
 (strong consistency for bookings); search under about 300 ms; search can show slightly stale
 availability for a few seconds. Out of scope: payments, reviews, messaging.
 
+Amber marks the non-functional requirements, each beside the operation it constrains. Grey is out of scope.
+
+```mermaid
+flowchart LR
+  G((Guest)) --> S["Search by location,<br/>dates and guests"]
+  G --> B["Book a<br/>date range"]
+  H((Host)) --> M["Manage their<br/>calendar"]
+  S -.- N1(["Under 300 ms, may be<br/>a few seconds stale"]):::warn
+  B -.- N2(["Never double-book,<br/>strongly consistent"]):::warn
+  G -.-> X1["Payments"]:::muted
+  G -.-> X2["Reviews"]:::muted
+  G -.-> X3["Messaging"]:::muted
+```
+
 **2. Estimates.** Assume 10M listings and 1M bookings a day, which is about 12 bookings per second
 on average and maybe 100 at peak. Searches run perhaps 100x that. Conclusion: writes are small
 enough for one relational database; search is the part that needs scaling.
@@ -18,6 +32,31 @@ idempotency key), cancel booking.
 guest, check-in, check-out, status). Booked nights as one row per listing per night, with a unique
 constraint on (listing, night), in a relational database. Search reads a denormalized index of
 listings plus availability.
+
+```mermaid
+erDiagram
+  listing ||--o{ booking : "booked as"
+  booking ||--|{ booked_night : "one row per night"
+  listing {
+    id id PK
+    id host
+    string location
+    string details
+  }
+  booking {
+    id id PK
+    id listing FK
+    id guest
+    date check_in
+    date check_out
+    enum status
+  }
+  booked_night {
+    id listing PK "unique together"
+    date night PK
+    id booking FK
+  }
+```
 
 **5. High-level design.**
 

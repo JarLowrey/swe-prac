@@ -26,6 +26,7 @@
     "building-blocks/count-min-sketch",
     "building-blocks/batch-vs-stream-processing",
     "building-blocks/cdns-and-edge-caching",
+    "building-blocks/cache-control-headers-and-cache-keys",
     "reliability/atomic-snapshot-swaps",
     "reliability/rollout-strategies",
     "reliability/graceful-degradation"
