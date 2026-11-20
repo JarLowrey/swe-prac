@@ -334,24 +334,63 @@ export async function renderMermaid(root = document) {
   }
 }
 
-// Syntax-colour the ```python blocks of rendered markdown with Monaco's colorizer (no editor).
-const PYTHON_BLOCKS = "pre > code.language-python:not([data-colored])";
+// Syntax-colour the code blocks of rendered markdown with Monaco's colorizer (no editor).
+// Python and JSON use Monaco's own languages. TypeScript, JavaScript, CSS, HTML and Markdown (the
+// tech pages and their file browser) use only their tokenizers, vendored from vs/basic-languages
+// and registered under ids of our own: Monaco's built-in "typescript", "css" and "html" ids would
+// also start their language services (tsMode.js, cssMode.js, htmlMode.js and their workers),
+// which aren't bundled.
+const TOKENIZERS = {
+  "code-ts": "typescript", "code-css": "css", "code-html": "html", "code-md": "markdown",
+};
+const FENCE_LANGUAGES = {
+  python: "python", json: "json", css: "code-css", html: "code-html", markdown: "code-md", md: "code-md",
+  ts: "code-ts", tsx: "code-ts", typescript: "code-ts", js: "code-ts", jsx: "code-ts", javascript: "code-ts",
+};
+const CODE_BLOCKS = Object.keys(FENCE_LANGUAGES)
+  .map((lang) => `pre > code.language-${lang}:not([data-colored])`).join(", ");
 
-async function colorizePython(root = document) {
-  const blocks = [...root.querySelectorAll(PYTHON_BLOCKS)];
+// A tokenizer can hand part of a file to another language: HTML's <script> and <style>, a
+// Markdown code fence. Monaco would then load that language's modules, which aren't bundled
+// (the load fails and the whole block stays uncoloured), so drop those hand-offs and let the
+// embedded text stay plain. A copy, keeping the rules' regular expressions.
+function withoutEmbedded(value) {
+  if (Array.isArray(value)) return value.map(withoutEmbedded);
+  if (!value || typeof value !== "object" || value instanceof RegExp) return value;
+  return Object.fromEntries(Object.entries(value)
+    .filter(([key]) => key !== "nextEmbedded")
+    .map(([key, v]) => [key, withoutEmbedded(v)]));
+}
+
+let tokenizersReady = null;
+function loadTokenizers(monaco) {
+  tokenizersReady ??= Promise.all(Object.entries(TOKENIZERS).map(([id, name]) => new Promise((resolve) => {
+    window.require([`vs/basic-languages/${name}/${name}`], (mod) => {
+      monaco.languages.register({ id });
+      monaco.languages.setMonarchTokensProvider(id, withoutEmbedded(mod.language));
+      resolve();
+    }, () => resolve()); // missing file: those blocks stay plain text
+  })));
+  return tokenizersReady;
+}
+
+async function colorizeCode(root = document) {
+  const blocks = [...root.querySelectorAll(CODE_BLOCKS)];
   if (!blocks.length || !window.monacoReady) return;
   blocks.forEach((code) => { code.dataset.colored = ""; });
   try {
     const monaco = await window.monacoReady;
+    await loadTokenizers(monaco);
     monaco.editor.setTheme("vs-dark"); // puts the token colours in the page
     for (const code of blocks) {
-      const html = await monaco.editor.colorize(code.textContent.replace(/\n$/, ""), "python", { tabSize: 4 });
+      const fence = [...code.classList].find((c) => c.startsWith("language-")).slice("language-".length);
+      const html = await monaco.editor.colorize(code.textContent.replace(/\n$/, ""), FENCE_LANGUAGES[fence], { tabSize: 4 });
       if (code.isConnected) code.innerHTML = html;
     }
   } catch { /* plain text is fine */ }
 }
 
-// Draw mermaid blocks and colour Python wherever rendered markdown lands, without every page asking.
+// Draw mermaid blocks and colour code wherever rendered markdown lands, without every page asking.
 export function watchDiagrams() {
   let queued = false;
   new MutationObserver(() => {
@@ -360,7 +399,7 @@ export function watchDiagrams() {
     requestAnimationFrame(() => {
       queued = false;
       if (document.querySelector("pre > code.language-mermaid")) renderMermaid(document);
-      if (document.querySelector(PYTHON_BLOCKS)) colorizePython(document);
+      if (document.querySelector(CODE_BLOCKS)) colorizeCode(document);
     });
   }).observe(document.body, { childList: true, subtree: true });
 }
