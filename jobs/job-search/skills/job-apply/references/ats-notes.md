@@ -28,13 +28,13 @@ Tips for the sites job applications usually run on. Read the section for the sit
 
 ## Forms embedded in a careers page
 
-Company careers pages often embed the Greenhouse, Ashby or iCIMS form in an iframe. If `read_page` shows the page but none of the form fields, find the iframe's `src` and open that URL directly in the tab. The form behaves the same and is much easier to read.
+Company careers pages often embed the Greenhouse, Ashby or iCIMS form in an iframe. If reading the page shows none of the form fields, find the iframe's `src` and open that URL directly in the tab. The form behaves the same and is much easier to read.
 
 ## Greenhouse
 
 - One page. Personal info at the top, then resume and cover letter, then custom questions, then the voluntary self-identification section at the bottom.
-- Resume: the file input is hidden behind an "Attach" button. Use `find` for "resume file input" and `file_upload` onto it.
-- Newer forms (`job-boards.greenhouse.io`) use searchable dropdowns for country, location, yes/no questions and EEO fields. `form_input` often doesn't take; click the field, type part of the option, then click the matching option or press Enter.
+- Resume: the file input is hidden behind an "Attach" button. Find that input and upload the file to it directly.
+- Newer forms (`job-boards.greenhouse.io`) use searchable dropdowns for country, location, yes/no questions and EEO fields. Setting them directly often doesn't take; click the field, type part of the option, then click the matching option or press Enter.
 - The location field is an autocomplete: type `location.city` from the profile and choose the full match (e.g. "Denver, Colorado, United States").
 - Self-identification asks for gender, Hispanic/Latino, race (sometimes only after the Hispanic/Latino answer), veteran status and disability status.
 - The final button is "Submit application". Don't click it.

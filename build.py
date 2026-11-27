@@ -6,7 +6,7 @@
 
     site/index.html     the landing page (home/index.html)
     site/practice/      the practice app (practice/tools/build_static.py)
-    site/jobs/          the job tracker and the Claude skills (jobs/build.py)
+    site/jobs/          the job tracker and the AI skills (jobs/build.py)
 
 Everything runs in the browser; GitHub Pages publishes site/ as it is.
 """

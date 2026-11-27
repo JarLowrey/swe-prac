@@ -1,9 +1,10 @@
 // Everything the Jobs page keeps, in this browser's IndexedDB (database "swe-prac-jobs"): your
-// downloaded mail, the applications found in it, your settings and the statuses you set by hand.
+// downloaded mail, the applications found in it, your settings, the statuses you set by hand and
+// the profile from the AI skills page.
 // Nothing is sent anywhere. IndexedDB rather than localStorage because mail can run to megabytes,
 // and localStorage (about 5 MB for the whole site) also holds the practice history.
 //
-//   kv store:        settings, run, apps, overrides, hidden, guides, sort
+//   kv store:        settings, run, apps, overrides, hidden, guides, sort, profile
 //   messages store:  one record per email (gmail_message.py's shape), keyed by Gmail's id
 
 const DB_NAME = "swe-prac-jobs";
@@ -55,7 +56,7 @@ export async function clearAll() {
 }
 
 // ---------------------------------------------------------------- export / import
-const KV_KEYS = ["settings", "run", "overrides", "hidden", "guides"];
+const KV_KEYS = ["settings", "run", "overrides", "hidden", "guides", "profile", "finder"];
 
 // A backup of everything but the derived applications (they are found again from the mail).
 export async function exportAll() {
@@ -67,7 +68,8 @@ export async function exportAll() {
 
 // Accepts this page's backup, or a bare list of mail records ({messages: [...]} or [...]): the
 // old command-line scraper's emails.json has the same shape. Mail is merged by id; a backup's
-// settings and hand-set statuses are merged over the ones here. Returns how many emails were new.
+// settings and hand-set statuses are merged over the ones here, and its profile is taken if this
+// browser has none. Returns how many emails were new.
 export async function importAll(data) {
   const list = Array.isArray(data) ? data : Array.isArray(data?.messages) ? data.messages : null;
   if (!list) throw new Error("No emails in that file. Import a file from Export, or an emails.json.");
@@ -88,6 +90,12 @@ export async function importAll(data) {
       // the settings already in this browser (its client ID, for one) win over the file's
       await setKV("settings", { ...data.settings, ...(await getKV("settings", {})) });
     }
+    const here = await getKV("profile", {});
+    if (data.profile && typeof data.profile === "object" && !Object.values(here ?? {}).some((v) => v !== "" && v !== false)) {
+      await setKV("profile", data.profile);
+    }
+    // Job finder postings: taken if this browser has none (they come from postings.json anyway)
+    if (data.finder?.file?.postings && !(await getKV("finder"))) await setKV("finder", data.finder);
   }
   return clean.filter((m) => !known.has(m.id)).length;
 }

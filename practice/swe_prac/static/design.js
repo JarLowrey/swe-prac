@@ -16,7 +16,7 @@ const scoreText = (score) => (score ? `${score.done}/${score.total}` : "not revi
 function confirmEnd() {
   return modal({
     title: "End this session?",
-    body: "<p>Your notes and diagram are locked. The reference design and the self-review checklist open on the review page.</p>",
+    body: "<p>Your notes and diagram lock, and the reference design and self-review unlock.</p>",
     actions: [{ label: "Keep working", value: false, kind: "ghost" }, { label: "End & review", value: true, kind: "primary" }],
   });
 }
@@ -32,9 +32,8 @@ export async function designTrackCard() {
     : `<span class="faint">${attempts ? `${plural(attempts, "attempt")} so far` : "No attempts yet"}</span>`;
   return `<a class="track-card" href="#/design">
     <div class="track-head"><span class="track-mark design">◇</span><h2>System design</h2></div>
-    <p>45 minutes, one open-ended question, worked through seven steps: requirements, estimates,
-      API, data model, high-level design, deep dives and wrap-up. You write notes and draw a diagram,
-      then compare with a reference design and score yourself.</p>
+    <p>One open-ended question in seven steps, from requirements to deep dives. Write notes, draw a
+      diagram, then score yourself against a reference design.</p>
     <ul class="track-facts"><li>${plural(questions.length, "question")}</li><li>${limit / 60} min</li><li>self-reviewed</li></ul>
     <div class="track-foot">${status}<span class="track-cta">Open →</span></div>
   </a>`;
@@ -44,7 +43,7 @@ export async function designTrackCard() {
 export async function renderDesignHome() {
   const [{ questions, steps }, { session: active }, foundations] = await Promise.all([
     api("GET", "/api/design/questions"), api("GET", "/api/design/active"),
-    foundationsSection("design", "The concepts every question builds on: networking and APIs, data, the building blocks, and reliability. Each question's hints link to the sections it needs."),
+    foundationsSection("design", "Networking and APIs, data, the building blocks, and reliability."),
   ]);
   const preferUnseen = storage("swe-prac-design-prefer-unseen") !== "0";
 
@@ -63,7 +62,7 @@ export async function renderDesignHome() {
 
   const cards = questions.map((q) => {
     const inSession = active && active.question.id === q.id;
-    const lock = inSession ? 'disabled title="Locked while this question is in a running session"' : "";
+    const lock = inSession ? 'disabled title="Locked during a session on this question"' : "";
     return `<article class="problem-card">
       <span class="num">QUESTION ${q.number}</span>
       <h3>${esc(q.title)}</h3>
@@ -81,18 +80,17 @@ export async function renderDesignHome() {
 
   $app.innerHTML = `${topnav("design")}<main class="page">
     <h1>System design practice</h1>
-    <p class="lead">One open-ended question, ${MINUTES} minutes. The prompt is deliberately vague: you
-      set the requirements, size it, sketch the API and data model, draw the design and go deep on the
-      hardest parts. Afterwards you compare with a reference design and tick off what you covered.</p>
+    <p class="lead">One deliberately vague question, ${MINUTES} minutes. Set the scope, design it, then compare
+      with a reference design and tick off what you covered.</p>
     ${banner}
     ${foundations}
     <h2 class="section-title">The seven steps</h2>
     <ol class="step-strip">${strip}</ol>
-    <p class="faint" style="margin:8px 0 0"><a href="#/design/framework">Read the framework guide →</a>
-      what each step should produce, what interviewers grade, common mistakes.</p>
+    <p class="faint" style="margin:8px 0 0"><a href="#/design/framework">Framework guide →</a>
+      what each step produces and what interviewers grade.</p>
     <h2 class="section-title">Questions</h2>
     <div class="random-row">
-      <button data-random ${active ? "disabled" : ""}>🎲 Start a random question</button>
+      <button data-random ${active ? "disabled" : ""}>🎲 Random question</button>
       <label><input type="checkbox" data-unseen ${preferUnseen ? "checked" : ""}> Prefer questions I haven't tried</label>
     </div>
     <div class="problem-grid">${cards || '<p class="dim">No questions found in <code>designs/</code>.</p>'}</div>
@@ -289,8 +287,8 @@ export async function renderDesignSession(sessionId) {
   async function showTimeUp() {
     const choice = await modal({
       title: "⏰ Time's up",
-      body: `<p>In a real interview the conversation ends here. You reached step ${st.s.current_step} of ${steps.length}.</p>
-        <p>You can keep going untimed; steps you start from now on are marked as overtime.</p>`,
+      body: `<p>A real interview ends here. You reached step ${st.s.current_step} of ${steps.length}.</p>
+        <p>Keep going and steps you start count as overtime.</p>`,
       actions: [{ label: "Keep going (overtime)", value: "keep", kind: "ghost" }, { label: "End & review", value: "end", kind: "primary" }],
     });
     if (choice === "end") await endSession(false);
@@ -389,7 +387,7 @@ export async function renderDesignSession(sessionId) {
       overlay.className = "overlay";
       overlay.dataset.overlay = "";
       overlay.innerHTML = `<div class="card"><h2>Paused</h2>
-        <p>The question and your notes are hidden while the clock is stopped. This pause is recorded.</p>
+        <p>Your work is hidden while paused. This pause is recorded.</p>
         <button class="primary" data-resume>Resume</button></div>`;
       overlay.querySelector("[data-resume]").onclick = togglePause;
       workspace.appendChild(overlay);
@@ -538,9 +536,8 @@ export async function renderDesignReview(sessionId) {
     $app.querySelectorAll("[data-k]").forEach((b) => { b.onclick = () => show(b.dataset.k); });
     panel.className = "review-panel";
     if (key === "assess") {
-      panel.innerHTML = `<p class="dim" style="margin-top:0">There is no answer key for system design, so you grade yourself.
-        Tick only what your notes and diagram actually show; read the reference design first if you're unsure.
-        Your ticks save as you go.</p>
+      panel.innerHTML = `<p class="dim" style="margin-top:0">Grade yourself: tick only what your notes and diagram show.
+        Ticks save as you go.</p>
         <div class="assess-grid">
           <section><h3>Key points for this question</h3>${checks(data.key_points, "key_points")}</section>
           <section><h3>Framework checklist</h3>${checks(data.checklist, "checklist")}</section>
@@ -586,8 +583,7 @@ export async function renderDesignStudy(questionId, kind) {
       <div class="tabs">${tabs.map(([k, label]) =>
         `<a class="tab ${k === kind ? "active" : ""}" href="#/design/question/${esc(questionId)}/${k}">${label}</a>`).join("")}</div>
       <div class="review-panel md">${kind === "hints"
-        ? `${hintsHtml(data.hints)}<p class="dim">The prompt is deliberately open. In the interview you'd set the
-            scope yourself, so these only say where the difficulty is, not how to solve it.</p>`
+        ? `${hintsHtml(data.hints)}<p class="dim">These say where the difficulty is, not how to solve it.</p>`
         : `${data.reference_html}<h3>What a strong answer covers</h3>
             <ul>${data.key_points.map((p) => `<li>${esc(p)}</li>`).join("")}</ul>`}</div>
     </div>

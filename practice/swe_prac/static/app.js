@@ -82,13 +82,11 @@ async function renderHome() {
 
   $app.innerHTML = `${topnav("home")}<main class="page">
     <h1>Interview practice</h1>
-    <p class="lead">Three kinds of timed practice, run the way the real rounds are, and deep dives into
-      specific technologies. Pick one.</p>
+    <p class="lead">Timed rounds run like the real ones, plus deep dives into specific technologies.</p>
     <div class="track-grid">
       <a class="track-card" href="#/coding">
         <div class="track-head"><span class="track-mark">&lt;/&gt;</span><h2>Coding assessment</h2></div>
-        <p>90 minutes, one problem in four levels, revealed one at a time. You write Python against
-          shown and hidden tests, and each level unlocks when everything up to it passes.</p>
+        <p>One Python problem in four levels. Pass every shown and hidden test to unlock the next.</p>
         <ul class="track-facts"><li>${plural(coding.problems.length, "problem")}</li><li>${coding.time_limit / 60} min</li><li>auto-graded</li></ul>
         <div class="track-foot">${status}<span class="track-cta">Open →</span></div>
       </a>
@@ -119,7 +117,7 @@ async function renderCodingHome() {
     // While a session on this problem is running, its spoilers stay shut.
     const inSession = active && active.problem.id === p.id;
     const studyButtons = studyViews.map(([view, label]) =>
-      `<button class="small" data-study="${view}" data-pid="${esc(p.id)}" ${inSession ? 'disabled title="Locked while this problem is in a running session"' : ""}>${label}</button>`,
+      `<button class="small" data-study="${view}" data-pid="${esc(p.id)}" ${inSession ? 'disabled title="Locked during a session on this problem"' : ""}>${label}</button>`,
     ).join("");
     return `<article class="problem-card">
       <span class="num">PROBLEM ${p.number}</span>
@@ -134,12 +132,12 @@ async function renderCodingHome() {
   }).join("");
 
   $app.innerHTML = `${topnav("coding")}<main class="page">
-    <h1>90-minute coding assessment practice</h1>
-    <p class="lead">One problem, four levels, revealed one at a time. Each level unlocks when every shown and hidden test up to it passes.</p>
+    <h1>90-minute coding assessment</h1>
+    <p class="lead">Four levels per problem. Pass every shown and hidden test to unlock the next.</p>
     ${banner}
     <h2 class="section-title">Problems</h2>
     <div class="random-row">
-      <button data-random ${active ? "disabled" : ""}>🎲 Start a random problem</button>
+      <button data-random ${active ? "disabled" : ""}>🎲 Random problem</button>
       <label><input type="checkbox" data-unseen ${preferUnseen ? "checked" : ""}> Prefer problems I haven't tried</label>
     </div>
     <div class="problem-grid">${cards || '<p class="dim">No problems are built yet. Run <code>tools/build_problem.py --all</code>.</p>'}</div>
@@ -177,7 +175,7 @@ async function renderCodingHome() {
 function confirmEnd() {
   return modal({
     title: "End this session?",
-    body: "<p>The session will be scored and locked. Hints, the solution analysis and the reference solution unlock on the review page.</p>",
+    body: "<p>Your score locks, and the hints, analysis and reference solution unlock.</p>",
     actions: [{ label: "Keep working", value: false, kind: "ghost" }, { label: "End & review", value: true, kind: "primary" }],
   });
 }
@@ -232,7 +230,7 @@ async function renderSession(sessionId) {
           <div class="file-tabs">
             <button class="file-tab active" data-file="solution">solution.py</button>
             <button class="file-tab" data-file="scratch">scratch.py</button>
-            <button class="file-tab" data-file="tests" title="The shown tests for your unlocked levels, as code. Run executes exactly these; Submit also runs the hidden tests.">tests.py <span class="ro">read-only</span></button>
+            <button class="file-tab" data-file="tests" title="The shown tests for your unlocked levels. Submit also runs hidden tests.">tests.py <span class="ro">read-only</span></button>
           </div>
           <span class="save-state" data-save-state></span>
           <button data-format title="Format with ruff (Shift+Alt+F)">Format</button>
@@ -383,8 +381,8 @@ async function renderSession(sessionId) {
     const done = st.session.levels.filter((l) => l.completed_at != null).length;
     const choice = await modal({
       title: "⏰ Time's up",
-      body: `<p>Timed result: <strong>${done} of 4 levels</strong>. That score is locked in.</p>
-        <p>You can keep going untimed; anything you finish from now on is recorded as overtime.</p>`,
+      body: `<p>Timed score: <strong>${done} of 4 levels</strong> (locked).</p>
+        <p>Keep going and anything you finish counts as overtime.</p>`,
       actions: [{ label: "Keep going (overtime)", value: "keep", kind: "ghost" }, { label: "End & review", value: "end", kind: "primary" }],
     });
     if (choice === "end") await endSession(false);
@@ -401,7 +399,7 @@ async function renderSession(sessionId) {
       overlay.className = "overlay";
       overlay.dataset.overlay = "";
       overlay.innerHTML = `<div class="card"><h2>Paused</h2>
-        <p>The problem and your code are hidden while the clock is stopped. This pause is recorded.</p>
+        <p>Your work is hidden while paused. This pause is recorded.</p>
         <button class="primary" data-resume>Resume</button></div>`;
       overlay.querySelector("[data-resume]").onclick = togglePause;
       workspace.appendChild(overlay);
@@ -451,7 +449,7 @@ async function renderSession(sessionId) {
       ? `<div class="passed-note">✓ Passed at ${fmtClock(info.completed_at)} (target ${fmtClock(target)})</div>` : "";
     const allDone = st.session.all_levels_done
       ? `<div class="callout good" style="margin:12px 22px 0"><strong>All four levels complete.</strong>
-          <span class="dim">End the session to see your results, hints and the reference solution.</span></div>` : "";
+          <span class="dim">End the session to review it.</span></div>` : "";
     q("[data-statement]").innerHTML = `${allDone}
       <details class="conventions"><summary>Conventions (apply to every level)</summary>
         <div class="md">${st.session.conventions_html}</div></details>
@@ -536,8 +534,8 @@ async function renderSession(sessionId) {
     if (st.resultsTab === "scratch") { el.innerHTML = renderScratch(); return; }
     const r = st.lastResult;
     if (!r) {
-      el.innerHTML = `<div class="empty">The shown tests are in <code>tests.py</code>. <kbd>Ctrl+↵</kbd> Run checks them with full details.
-        <kbd>Ctrl+⇧+↵</kbd> Submit also runs the hidden tests (counts only) and unlocks the next level when everything passes.</div>`;
+      el.innerHTML = `<div class="empty"><kbd>Ctrl+↵</kbd> Run checks the shown tests (<code>tests.py</code>) in full.
+        <kbd>Ctrl+⇧+↵</kbd> Submit adds the hidden tests (counts only) and unlocks the next level when all pass.</div>`;
       return;
     }
     el.innerHTML = renderTestResult(r);
@@ -555,14 +553,14 @@ async function renderSession(sessionId) {
       const msg = r.unlocked.new_level > 4 ? "All four levels complete!" : `Level ${r.unlocked.new_level} unlocked.`;
       parts.push(`<div class="callout good"><strong>Level ${r.unlocked.completed} passed.</strong> ${msg}</div>`);
     } else if (r.kind === "run" && r.all_passed) {
-      parts.push(`<div class="callout info">All shown tests pass. <strong>Submit</strong> to run the hidden tests and unlock the next level.</div>`);
+      parts.push(`<div class="callout info">All shown tests pass. <strong>Submit</strong> to run the hidden tests.</div>`);
     }
     if (r.import_error) {
       parts.push(`<div class="callout bad"><strong>Your code failed to load</strong><pre>${esc(r.import_error)}</pre>
         ${r.import_stdout ? `<div class="block-label">Output</div><pre>${esc(r.import_stdout)}</pre>` : ""}</div>`);
     }
     if (r.crashed) parts.push(`<div class="callout bad"><strong>Test process crashed</strong><pre>${esc(r.crashed)}</pre></div>`);
-    if (r.timed_out) parts.push(`<div class="callout bad"><strong>Timed out.</strong> The run was stopped after the time limit; tests that didn't finish count as failed.</div>`);
+    if (r.timed_out) parts.push(`<div class="callout bad"><strong>Timed out.</strong> Unfinished tests count as failed.</div>`);
 
     const rows = Object.entries(r.breakdown).sort().map(([lv, c]) => {
       const hidden = r.kind === "submit"
@@ -590,13 +588,13 @@ async function renderSession(sessionId) {
         <div class="body">
           ${t.error ? `<div class="callout bad"><pre>${esc(t.error)}</pre></div>` : ""}
           ${t.steps.length ? `<table class="steps"><tr><th></th><th>#</th><th>Call</th><th>Expected</th><th>Got</th></tr>${steps}</table>` : ""}
-          ${notRun > 0 && t.ran ? `<div class="faint" style="margin-top:6px">${notRun} more step${notRun > 1 ? "s" : ""} not run (a test stops at its first failure).</div>` : ""}
+          ${notRun > 0 && t.ran ? `<div class="faint" style="margin-top:6px">${notRun} more step${notRun > 1 ? "s" : ""} not run (stops at the first failure).</div>` : ""}
           ${!t.ran ? '<div class="faint">Not run.</div>' : ""}
           ${t.stdout ? `<div class="block-label">stdout</div><pre class="out">${esc(t.stdout)}</pre>` : ""}
         </div></details>`);
     }
     if (r.kind === "submit") {
-      parts.push('<p class="faint" style="font-size:12px">Hidden tests report pass counts only, never their inputs or expected values.</p>');
+      parts.push('<p class="faint" style="font-size:12px">Hidden tests show pass counts only.</p>');
     }
     return parts.join("");
   }
@@ -605,7 +603,7 @@ async function renderSession(sessionId) {
     const { issues, error } = st.lint;
     if (error) return `<div class="callout bad"><pre>${esc(error)}</pre></div>`;
     if (!issues.length) return '<div class="empty">✓ No lint issues (ruff).</div>';
-    return `<p class="faint" style="margin-top:0;font-size:12px">ruff · informational only, never blocks a level. Click an issue to jump to it.</p>
+    return `<p class="faint" style="margin-top:0;font-size:12px">ruff · informational, never blocks a level. Click an issue to jump to it.</p>
       <ul class="lint-list">${issues.map((i, n) => `<li data-issue="${n}">
         <span class="pos">${i.row}:${i.col}</span><span class="code">${esc(i.code)}</span>
         <span>${esc(i.message)}${i.fixable ? ' <span class="faint">(auto-fixable)</span>' : ""}</span></li>`).join("")}</ul>`;
@@ -624,7 +622,7 @@ async function renderSession(sessionId) {
 
   function renderScratch() {
     const o = st.scratchOut;
-    if (!o) return `<div class="empty">Write experiments in <code>scratch.py</code> (it starts with <code>from solution import *</code>) and press <strong>Run scratch</strong>.</div>`;
+    if (!o) return `<div class="empty">Experiment in <code>scratch.py</code> (it imports your solution), then <strong>Run scratch</strong>.</div>`;
     return `<div class="summary-row"><strong>scratch.py</strong>
         <span class="chip ${o.exit_code === 0 ? "good" : "bad"}">${o.timed_out ? "timed out" : o.crashed ? "crashed" : `exit ${o.exit_code}`}</span>
         <span class="faint">${o.ms} ms</span></div>
@@ -942,7 +940,7 @@ async function renderHistory() {
     </tr>`).join("");
   $app.innerHTML = `${topnav("history")}<main class="page">
     <h1>History</h1>
-    <p class="lead">Every attempt, newest first. Open one to see its results, pacing and your final work.</p>
+    <p class="lead">Every attempt, newest first. Open one to review it.</p>
     <h2 class="section-title">Coding</h2>
     ${sessions.length ? `<table class="table"><tr><th>Date</th><th>Problem</th><th>Mode</th><th>Timed levels</th><th>Incl. overtime</th><th>Time</th><th>Pauses</th></tr>${rows}</table>`
       : '<p class="dim">No coding attempts yet. <a href="#/coding">Start one</a>.</p>'}

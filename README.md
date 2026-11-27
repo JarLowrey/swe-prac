@@ -8,7 +8,7 @@ entirely in the browser: no account, no server, and what you do stays in your br
 | Section | On the site | In the repo |
 | --- | --- | --- |
 | **Interview practice**: timed multi-level coding problems, algorithm problems and system design rounds, with foundations pages to study from and tech investigations | [/practice/](https://jarlowrey.github.io/swe-prac/practice/) | [practice/](practice/README.md) |
-| **Job search**: an application tracker that reads your job mail from Gmail, and four Claude Code skills (fill in applications, draft answers, find people to contact, research an interview loop), each with a copyable prompt | [/jobs/](https://jarlowrey.github.io/swe-prac/jobs/) | [jobs/](jobs/README.md) |
+| **Job search**: an application tracker that reads your job mail from Gmail, a Job finder that charts recent LinkedIn and Indeed postings, and five AI skills (find postings, fill in applications, draft answers, find people to contact, research an interview loop), each with a copyable prompt; and an Open jobs page for employers who want to post a position | [/jobs/](https://jarlowrey.github.io/swe-prac/jobs/) | [jobs/](jobs/README.md) |
 
 ## Layout
 
@@ -16,7 +16,7 @@ entirely in the browser: no account, no server, and what you do stays in your br
 build.py      builds the whole site into site/ (gitignored); --serve serves it locally
 home/         the landing page (site/index.html)
 practice/     the interview practice app (site/practice/)
-jobs/         the job tracker page, its Python and the Claude skills kit (site/jobs/)
+jobs/         the job tracker page, its Python and the AI skills kit (site/jobs/)
 .github/      the workflow that tests and publishes site/ to GitHub Pages on every push to master
 ```
 

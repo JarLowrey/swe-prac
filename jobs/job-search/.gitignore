@@ -1,5 +1,5 @@
 # Personal data stays on this machine. Fake versions of every one of these live
-# in examples/, and the skills in .claude/skills/ read the real ones at runtime.
+# in examples/, and the skills in skills/ read the real ones at runtime.
 # Patterns start with "/" so they only match at the repo root, not examples/.
 
 # Your profile (name, contact details, work authorization, EEO answers, private
@@ -12,7 +12,7 @@
 # names and LinkedIn profiles of real people to contact.
 /applications/
 
-# Interview study guides written as files (when Claude Docs isn't connected).
+# Interview study guides written as files (when there's no docs connector).
 # They can quote details of your interview loop from your email.
 /guides/
 
@@ -20,11 +20,17 @@
 /tracker.csv
 /tracker.csv.tmp
 
+# Postings job-find found, and its per-search batch files. Not secret, but they
+# show what you're searching for. A fake postings.json lives in examples/.
+/postings.json
+/postings.json.tmp
+/postings-raw/
+
 # Old locations of the profile and resume, still ignored in case a copy lands
 # here again.
 /profile.yaml
 /resume/
 
-# Per-machine Claude Code settings and Python caches.
-.claude/settings.local.json
+# Per-machine agent settings, in any folder, and Python caches.
+settings.local.json
 __pycache__/

@@ -32,8 +32,10 @@ export function topnav(active) {
     <a class="brand" href="../"><span class="brand-mark">&lt;/&gt;</span>SWE Practice</a>
     <nav>
       ${link("tracker", "#/", "Tracker")}
-      ${link("skills", "#/skills", "Claude skills")}
+      ${link("finder", "#/finder", "Job finder")}
+      ${link("skills", "#/skills", "AI skills")}
       ${link("gmail", "#/gmail", "Connect Gmail")}
+      ${link("open", "#/open", "Open jobs")}
     </nav>
     <span class="nav-spacer"></span>
     <a class="nav-out" href="../practice/">Interview practice →</a>

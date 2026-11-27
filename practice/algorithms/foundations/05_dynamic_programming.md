@@ -1,6 +1,6 @@
 # Dynamic programming
 
-How to recognise a problem with overlapping subproblems, write it top-down as a helper with a memo, choose the memo key, turn it into a bottom-up table, and tell it apart from greedy. The classic shapes (one sequence, two sequences, grids, knapsack and coins) all use the same template.
+Spot overlapping subproblems, memoize the recursion, then turn it into a table. One template covers the classic shapes.
 
 Every solution on this page is built the same way. Write the recursion that tries every choice,
 notice that it solves the same subproblems again and again, and store each answer the first time.

@@ -23,8 +23,7 @@ export async function renderGmail(rescan) {
   const root = mount(`${topnav("gmail")}<main class="page jobs">
     <div class="privacy-banner" role="note">
       <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
-      <div><strong>All data is saved locally in this browser.</strong>
-        Your mail goes straight from Gmail to this page. It is never sent to or logged on any other server.</div>
+      <div><strong>Your data stays in this browser.</strong> Mail goes straight from Gmail to this page and nowhere else.</div>
     </div>
 
     <h1>Connect Gmail</h1>
@@ -51,14 +50,13 @@ export async function renderGmail(rescan) {
         <button class="primary" data-save-client>Save</button>
         <span id="client-state" class="dim small">${s.clientId ? "Saved. Connect from the Tracker." : ""}</span>
       </div>
-      <p class="dim small">Google will say the app is unverified: it's yours, so choose Continue. Access is read-only,
-        and Google asks again every 7 days. ${link("https://myaccount.google.com/connections", "Revoke it any time")}.</p>
+      <p class="dim small">Google will call the app unverified: it's yours, so choose Continue. Access is read-only and
+        lasts 7 days. ${link("https://myaccount.google.com/connections", "Revoke it any time")}.</p>
     </section>
 
     <section class="panel">
       <h2>What to download</h2>
-      <p class="dim small">Gmail allows about 100 emails a minute, so a first sync of a few hundred takes a few
-        minutes. Later syncs only fetch new mail.</p>
+      <p class="dim small">The first sync runs at about 100 emails a minute. Later ones fetch only new mail.</p>
       <div class="settings-grid">
         <label class="field"><span>Since</span><input type="date" id="since" value="${esc(s.since)}"></label>
         <label class="field"><span>Before (optional)</span><input type="date" id="before" value="${esc(s.before)}"></label>
@@ -84,7 +82,7 @@ export async function renderGmail(rescan) {
         <label class="button-like">Import<input type="file" id="import" accept=".json,application/json" hidden></label>
         <button class="danger" data-delete>Delete everything</button>
       </div>
-      <p class="dim small">Exports include your full emails: keep them private.</p>
+      <p class="dim small">Exports include your full emails and your profile: keep them private.</p>
     </section>
   </main>`);
   bindCopy(root);
@@ -141,7 +139,7 @@ export async function renderGmail(rescan) {
   };
 
   $("[data-delete]").onclick = async () => {
-    if (!confirm("Delete your downloaded mail, the applications, your settings and the statuses you set, from this browser?")) return;
+    if (!confirm("Delete all your mail, applications, settings, profile and postings from this browser?")) return;
     await clearAll();
     toast("Deleted.", "good");
     renderGmail(rescan);

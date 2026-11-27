@@ -1,6 +1,6 @@
 # Big O and complexity
 
-How to measure an algorithm's time and space, read the complexity off code, and use the input size to guess the complexity the interviewer expects.
+Measure time and space, read complexity off code, and guess the expected complexity from the input size.
 
 ## What Big O measures
 

@@ -31,7 +31,7 @@ If an earlier application to the same company has a `contacts.md` from the last 
 
 ## Search
 
-Use the user's own signed-in Chrome through Claude in Chrome. Load the tools in one ToolSearch call (`tabs_context_mcp`, `tabs_create_mcp`, `navigate`, `get_page_text`, `find`, `computer`), call `tabs_context_mcp`, and work in a new tab. If LinkedIn shows a sign-in page, ask the user to sign in.
+Use the user's own signed-in Chrome, in a new tab. If you can't, tell the user to connect their agent to Chrome, then stop. If LinkedIn shows a sign-in page, ask the user to sign in.
 
 Keep it light. LinkedIn restricts accounts that view lots of profiles quickly or look automated, and the user needs this account for the job search. Budget about 6–8 page loads per company. Search result pages already show name, headline, location and connection degree, which is usually enough. Open a profile only to confirm a shortlisted person's current role when the headline is unclear.
 
@@ -41,7 +41,7 @@ Searches, in order (`<City>` is `location.city` from the profile):
 2. People search with the company and role in the keywords:
    `https://www.linkedin.com/search/results/people/?keywords=<Company>%20technical%20recruiter%20<City>`
    then the team or tech area from the posting, e.g. `<Company> engineering manager <team>` and `<Company> senior engineer <tech area>`. Confirm each result's current company in the headline.
-3. If LinkedIn search isn't usable (not signed in, the monthly search limit is hit, or results are thin), fall back to WebSearch: `site:linkedin.com/in "<Company>" "technical recruiter" <City>`. Those results can be out of date, so check the current position on the profile before including anyone.
+3. If LinkedIn search isn't usable (not signed in, the monthly search limit is hit, or results are thin), fall back to a web search: `site:linkedin.com/in "<Company>" "technical recruiter" <City>`. Those results can be out of date, so check the current position on the profile before including anyone.
 
 ## Notes to send
 

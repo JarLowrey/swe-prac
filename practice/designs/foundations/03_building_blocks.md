@@ -1,9 +1,6 @@
 # Building blocks
 
-Most designs are assembled from the same dozen parts: load balancers, caches, CDNs, queues, rate
-limiters, ID generators, object storage, and indexes for search, location and very large counts. For
-each one, this page covers what it does, when to reach for it, what it costs, how it fails, and the
-numbers worth quoting.
+The dozen parts most designs are built from: what each does, when to use it, what it costs and how it fails.
 
 ## How the blocks fit together
 

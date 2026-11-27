@@ -1,23 +1,21 @@
-// The prompts the Skills page builds for Claude Code, and what each skill says it needs.
+// The prompts the AI skills page builds for your agent.
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { importSite } from "./harness.mjs";
 
-const { NEEDS, SKILLS, skill } = await importSite("jobs/prompts.js");
+const { SKILLS, skill } = await importSite("jobs/prompts.js");
 
-test("every skill has what the page shows, and its needs exist", () => {
-  assert.deepEqual(SKILLS.map((s) => s.id), ["job-apply", "job-answers", "job-contacts", "interview-prep"]);
+test("every skill has what the page shows", () => {
+  assert.deepEqual(SKILLS.map((s) => s.id), ["job-find", "job-apply", "job-answers", "job-contacts", "interview-prep"]);
   for (const s of SKILLS) {
     assert.ok(s.title && s.does && s.fields.length, s.id);
-    for (const k of s.needs) assert.ok(NEEDS[k], `${s.id} needs ${k}`);
-    assert.equal(s.prompt({}), "", `${s.id} with nothing filled in has no prompt`);
+    // job-find runs on its defaults (your profile's roles and locations); the others need input
+    assert.equal(s.prompt({}), s.id === "job-find" ? "/job-find" : "", `${s.id} with nothing filled in`);
   }
 });
 
-test("the skills that drive a browser ask for Claude in Chrome first", () => {
-  for (const id of ["job-apply", "job-contacts"]) assert.ok(skill(id).needs.includes("chrome"), id);
-  assert.match(NEEDS.chrome[1], /\/chrome/);
-  assert.match(NEEDS.chrome[1], /claude --chrome/);
+test("the skills that drive a browser are marked as using Chrome", () => {
+  assert.deepEqual(SKILLS.filter((s) => s.browser).map((s) => s.id), ["job-find", "job-apply", "job-contacts"]);
 });
 
 test("job-apply: one link per line, and a batch command for several", () => {
@@ -26,7 +24,7 @@ test("job-apply: one link per line, and a batch command for several", () => {
   assert.equal(s.batch({ links: "https://a.example/1" }), "");
   const v = { links: "https://a.example/1\r\nhttps://b.example/2" };
   assert.equal(s.prompt(v), "/job-apply https://a.example/1\nhttps://b.example/2");
-  assert.equal(s.batch(v), "python .claude/skills/job-apply/scripts/apply.py run https://a.example/1 https://b.example/2");
+  assert.equal(s.batch(v), "python skills/job-apply/scripts/apply.py run https://a.example/1 https://b.example/2");
 });
 
 test("job-answers numbers the questions", () => {
@@ -53,4 +51,12 @@ test("interview-prep adds the tracker's status and the email context", () => {
   assert.match(text, /^\/interview-prep Northwind\n\nRole: Backend Engineer\nStatus: interviewing \(latest email Oct 24, 2026\)\n/);
   assert.match(text, /Keep names, email text, links and ids out of any web search\./);
   assert.ok(text.endsWith("## Applications at Northwind (1)"));
+});
+
+test("job-find: only what differs from the defaults goes in the prompt", () => {
+  const s = skill("job-find");
+  assert.equal(s.prompt({ days: "1", sources: "both", locations: "\n \n" }), "/job-find");
+  assert.equal(s.prompt({ keywords: " platform engineer ", locations: "Denver, CO\r\nRemote", days: "7", sources: "indeed" }),
+    "/job-find\nKeywords: platform engineer\nLocations: Denver, CO; Remote\nPosted within: 7 days\nSites: Indeed only");
+  assert.ok(s.fields.filter((f) => f.kind === "select").every((f) => f.options[0][0] && f.options.length > 1));
 });

@@ -6,8 +6,7 @@
 import { $app, api, esc, plural, topnav, renderMermaid } from "./common.js";
 import { filesHref, projectTabs } from "./files.js";
 
-const FOUNDATIONS_LEAD = `The concepts the questions build on, with diagrams. Read a page end to end, or jump
-  to a section from a hint or an explanation.`;
+const FOUNDATIONS_LEAD = "The concepts the questions build on, with diagrams.";
 
 // base: the index of the pages. home: the track's own page; the tech pages have no other, so
 // their index is their home and links back from it go to the site's home page.
@@ -23,10 +22,8 @@ const TRACKS = {
   tech: {
     api: "/api/tech/pages", base: "#/tech", nav: "tech", home: "#/tech",
     label: "Tech investigations", index: "Tech investigations",
-    lead: `One technology at a time, through a small, complete project in this repo. Each guide
-      shows the files with their comments and explains the choices behind them: what's current
-      best practice, what it replaces, and the questions it prepares you for. The file browser
-      has the whole finished project. Run it, then change it.`,
+    lead: `One technology per guide, built around a small, complete project: the files, the choices
+      behind them, and the interview questions they prepare you for.`,
   },
 };
 
@@ -39,9 +36,7 @@ export async function techTrackCard() {
   const titles = pages.map((p) => esc(p.title)).join(" · ");
   return `<a class="track-card" href="#/tech">
     <div class="track-head"><span class="track-mark tech">&#9881;</span><h2>Tech investigations</h2></div>
-    <p>Deep dives into one technology at a time, each built around a small project you can run:
-      what every file does, why it's written that way, and the follow-up questions an interviewer
-      would ask about it.</p>
+    <p>Deep dives into one technology at a time, each around a small project you can run.</p>
     <ul class="track-facts"><li>${plural(pages.length, "investigation")}</li><li>runnable code</li><li>untimed</li></ul>
     <div class="track-foot"><span class="faint">${titles || "None yet"}</span><span class="track-cta">Open →</span></div>
   </a>`;

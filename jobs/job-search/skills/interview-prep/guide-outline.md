@@ -4,11 +4,11 @@ One guide per company, titled `<Company> Interview Guide` (the company as the pr
 
 ## Starting it
 
-**As a Claude Docs doc** (one `batch`, then `open` the link it returns). Byline: as-of date chip (today) · mention of the user. Then one pending block per section, in the order below. Put "(research running)" at the end of an intent while its agent is still out.
+**As a doc** (with a docs connector): the title, a line `As of <date>`, then one placeholder per section, in the order below, saying what it will hold. Put "(research running)" at the end of a placeholder while its agent is still out. Give the user the doc's link.
 
 **As a markdown file** (`guides/<company-slug>-interview-guide.md`): `# <Company> Interview Guide`, a line `As of <date>`, then each section's heading with `_Research running._` under it, replaced as each section is filled.
 
-| Key | Pending intent |
+| Section | What it will hold |
 | --- | --- |
 | `lead` | At a glance: the loop in two sentences and the three things to prepare first |
 | `s1` | The loop: each round, its format and what it tests, from your emails and candidate reports |
@@ -20,7 +20,7 @@ One guide per company, titled `<Company> Interview Guide` (the company as the pr
 
 ## Filling it
 
-A doc: one `update` per section, each a `replace` of its pending block with `## <heading>` + body, `"as":"markdown"`. A file: edit that section in place. Fill a section as soon as its agent reports; fill `lead` last.
+Replace each section's placeholder with `## <heading>` and its body, in the doc or the file. Fill a section as soon as its agent reports; fill `lead` last.
 
 **Lead** (no heading): 2-3 sentences. The loop's shape with dates, then the three highest-value things to prepare. Example: "Your loop is four 1-hour video rounds on Nov 19, 20 and 24. Prepare ..."
 

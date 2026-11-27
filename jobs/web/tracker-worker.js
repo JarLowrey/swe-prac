@@ -1,6 +1,6 @@
 // A Web Worker that keeps the tracker's Python loaded, so classifying mail never blocks the page.
 // It uses the Pyodide the practice section ships (../practice/vendor/pyodide/), so a browser that
-// has practised already has it cached. Messages: {id, op, payload} in, {id, ok, result | error} out.
+// has practiced already has it cached. Messages: {id, op, payload} in, {id, ok, result | error} out.
 import { loadPyodide } from "../practice/vendor/pyodide/pyodide.mjs";
 import { callTracker, startTracker } from "./tracker-py.js";
 

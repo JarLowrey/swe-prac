@@ -1,8 +1,12 @@
 // The Jobs section's router. Routes:
 //   #/                     the application tracker
-//   #/skills[/<id>][?…]    the Claude skills, optionally scrolled to one and prefilled (company, role, app)
+//   #/skills[/<id>][?…]    the AI skills, optionally scrolled to one and prefilled (company, role, app)
 //   #/gmail                Gmail setup, settings and your data
+//   #/finder               Job finder: postings the job-find skill found, imported and charted
+//   #/open                 Open jobs: how employers get a position posted here
 
+import { renderFinder } from "./finder.js";
+import { renderOpenJobs } from "./open.js";
 import { renderGmail } from "./setup.js";
 import { renderSkills } from "./skills.js";
 import { renderTracker, rescan } from "./tracker.js";
@@ -19,11 +23,19 @@ async function route() {
   prev?.();
   try {
     if (parts[0] === "skills") {
-      document.title = "Claude skills · Jobs";
+      document.title = "AI skills · Jobs";
       await renderSkills(parts[1], params);
     } else if (parts[0] === "gmail") {
       document.title = "Connect Gmail · Jobs";
       await renderGmail(rescan);
+      scrollTo(0, 0);
+    } else if (parts[0] === "finder") {
+      document.title = "Job finder · Jobs";
+      leave = await renderFinder();
+      scrollTo(0, 0);
+    } else if (parts[0] === "open") {
+      document.title = "Open jobs · Jobs";
+      renderOpenJobs();
       scrollTo(0, 0);
     } else {
       document.title = "Application tracker · Jobs";

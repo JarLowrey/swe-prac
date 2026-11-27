@@ -1,7 +1,7 @@
 // The tracker: sync job mail from Gmail, sort it into applications with job_tracker.py (in the
 // browser's Python), and show them: a status strip that filters, applications over time, the flow
 // of statuses, and a ledger whose rows open into their email trail. Statuses come from rules, not
-// AI; you can set one yourself, hide a row, or hand an application to a Claude skill.
+// AI; you can set one yourself, hide a row, or hand an application to an AI skill.
 
 import { AuthError, connect, currentToken, forget, prepare, sync } from "./gmail.js";
 import { py } from "./python.js";
@@ -166,9 +166,8 @@ export async function renderTracker() {
   if (sort && SORTS[sort.by]) Object.assign(view, { sortBy: sort.by, sortDir: sort.dir === -1 ? -1 : 1 });
   const root = mount(`${topnav("tracker")}<main class="page jobs">
     <h1>Application tracker</h1>
-    <p class="lead">Your job applications, found in your Gmail by rules in Python (<code>job_tracker.py</code>), each with
-      the status from the company's latest email. It runs in this page: your mail goes from Gmail to this browser and
-      nowhere else, and no AI reads it.</p>
+    <p class="lead">Your job applications from Gmail, each with the status from the company's latest email. It runs in
+      this browser, and no AI reads your mail.</p>
     <section class="syncbar" id="syncbar"></section>
     <div id="notice" class="callout info" hidden></div>
     <div id="body" class="stack"></div>
@@ -253,8 +252,8 @@ export async function renderTracker() {
         ${hiddenCount ? `<button class="ghost" id="toggle-hidden">${view.showHidden ? "Hide dismissed" : `Show ${hiddenCount} dismissed`}</button>` : ""}
       </div>
       <section class="ledger" aria-label="Applications">${shown.length ? ledger(shown, state) : `<div class="empty-state"><strong>Nothing matches</strong><p>Try a different search or status.</p></div>`}</section>
-      <p class="foot dim small">Statuses come from rules in <code>job_tracker.py</code>, not AI, and rules can be wrong:
-        open an application to set its status yourself. ${state.run?.notices != null ? `${plural(state.run.notices, "email")} of ${state.run.messages} read as application notices.` : ""}</p>`;
+      <p class="foot dim small">Statuses come from rules, not AI, and can be wrong: open an application to change one.
+        ${state.run?.notices != null ? `${state.run.notices} of ${plural(state.run.messages, "email")} read as application notices.` : ""}</p>`;
   }
 
   // ---------------------------------------------------------------- events
@@ -320,15 +319,13 @@ export async function renderTracker() {
 // ---------------------------------------------------------------- pieces
 function welcome({ settings, run }) {
   const steps = settings.clientId
-    ? `<p>Gmail is set up. <strong>Connect and sync</strong> above downloads the job mail since
-        ${esc(fmtFull(settings.since))} (change it in Settings) and sorts it into applications. The first sync takes
-        about a minute per hundred emails; later ones only fetch what's new.</p>`
-    : `<p>Two steps: <a href="#/gmail">set up Gmail access</a> once (a Google Cloud project of your own, about ten
-        minutes), then connect and sync from here.</p>`;
+    ? `<p>Gmail is set up. <strong>Connect and sync</strong> above downloads your job mail since
+        ${esc(fmtFull(settings.since))}, about a minute per hundred emails the first time.</p>`
+    : `<p><a href="#/gmail">Set up Gmail access</a> once (about ten minutes), then sync from here.</p>`;
   return `<div class="panel empty-state">
     <strong>${run?.synced_at ? "No applications found in that mail yet" : "No applications yet"}</strong>
     ${steps}
-    <p class="dim small">Have an export from another browser? Import it on the <a href="#/gmail">Connect Gmail</a> page.</p>
+    <p class="dim small">Have an export? Import it on <a href="#/gmail">Connect Gmail</a>.</p>
   </div>`;
 }
 
@@ -384,14 +381,14 @@ function trail(a, state, guide) {
   return `<div class="trail"><ul class="tl">${li}</ul>
     <div class="edit"><label for="${sid}">Status</label><select id="${sid}" data-act="override">${opts}</select>
       <button data-act="hide">${a.hidden ? "Restore to list" : "Not a job application"}</button></div>
-    <p class="dim small">A status you set holds until a newer email about this application arrives.</p>
-    <div class="handoff"><span class="lbl">With Claude</span>
-      <a class="button-like" href="${esc(params("interview-prep"))}">Interview prep prompt</a>
-      <a class="button-like" href="${esc(params("job-contacts"))}">Find contacts prompt</a>
-      <a class="button-like" href="${esc(params("job-answers"))}">Draft answers prompt</a></div>
+    <p class="dim small">A status you set holds until a newer email arrives.</p>
+    <div class="handoff"><span class="lbl">AI prompts</span>
+      <a class="button-like" href="${esc(params("interview-prep"))}">Interview prep</a>
+      <a class="button-like" href="${esc(params("job-contacts"))}">Find contacts</a>
+      <a class="button-like" href="${esc(params("job-answers"))}">Draft answers</a></div>
     <div class="handoff"><span class="lbl">Study guide</span>
       ${guide ? `<a class="button-like primary" href="${esc(guide)}" target="_blank" rel="noopener">Open</a>` : ""}
-      <input type="url" data-guide placeholder="Paste the guide's link once interview-prep has written it" value="${esc(guide)}">
+      <input type="url" data-guide placeholder="Link to your study guide" value="${esc(guide)}">
       <button data-act="guide-save">Save link</button></div>
   </div>`;
 }
@@ -527,5 +524,5 @@ function sankey(allApps) {
     svg += `<text x="${n.x + nodeWidth + 6}" y="${n.y + Math.max(n.h, 12) / 2 + 4}" class="sankey-text">${esc(label)} <tspan class="sankey-label">${value(n)}</tspan></text>`;
   }
   const moved = paths.filter((p) => p[1] !== "no-update").length;
-  return `${head}<p class="dim small">${plural(total, "application")}, ${moved} with at least one change of status. Each column is the next change; "No update" means nothing came after the application.</p>${svg}</svg>`;
+  return `${head}<p class="dim small">${plural(total, "application")}, ${moved} changed status. Each column is the next change; "No update" means nothing followed.</p>${svg}</svg>`;
 }

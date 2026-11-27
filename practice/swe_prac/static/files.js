@@ -97,8 +97,8 @@ export async function renderFiles(slug, rawPath) {
     <p class="faint crumbs"><a href="#/tech">← Tech investigations</a></p>
     <h1>${esc(project.title)}</h1>
     ${projectTabs(slug, info, "files")}
-    <p class="dim files-lead">The finished project, file by file, as it is in
-      <span class="mono">tech/${esc(project.folder)}/</span>. Its README says how to run it.</p>
+    <p class="dim files-lead">The finished project in <span class="mono">tech/${esc(project.folder)}/</span>.
+      Its README says how to run it.</p>
     <div class="files-layout">
       <nav class="file-tree" aria-label="Files">${treeHtml(slug, buildTree(project.files))}</nav>
       <section class="file-view" aria-live="polite"></section>
@@ -142,7 +142,7 @@ export async function renderFiles(slug, rawPath) {
       await navigator.clipboard.writeText(current.text);
       toast(`Copied ${current.path.split("/").at(-1)}`, "good");
     } catch {
-      toast("Couldn't copy: the browser blocked the clipboard", "bad");
+      toast("Couldn't copy: clipboard blocked", "bad");
     }
   });
 

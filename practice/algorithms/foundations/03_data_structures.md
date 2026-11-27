@@ -1,6 +1,6 @@
 # Data structures toolbox
 
-The structures interview problems are built from: what each one is good at, what its operations cost, and how to use it in Python.
+What each structure is good at, what its operations cost, and how to use it in Python.
 
 Pick a structure by the question your algorithm asks most often:
 

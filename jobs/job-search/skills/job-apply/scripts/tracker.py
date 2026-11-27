@@ -48,11 +48,11 @@ def data_dir() -> Path:
     if env:
         return Path(env).expanduser()
     candidates = [Path.cwd()]
-    # Repo layout: <repo>/.claude/skills/job-apply/scripts/tracker.py.
-    # resolve() follows a junction or symlink from ~/.claude/skills.
+    # Kit layout: <kit>/skills/job-apply/scripts/tracker.py.
+    # resolve() follows a junction or symlink from an agent's personal skills folder.
     here = Path(__file__).resolve()
-    if len(here.parents) > 4:
-        candidates.append(here.parents[4])
+    if len(here.parents) > 3:
+        candidates.append(here.parents[3])
     for folder in candidates:
         if (folder / "reference" / "profile.yaml").exists():
             return folder

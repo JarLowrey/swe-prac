@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1080" height="790" viewBox="0 0 1080 790" role="img" aria-labelledby="title desc">
-  <title id="title">swe-prac architecture while you practise</title>
+  <title id="title">swe-prac architecture while you practice</title>
   <desc id="desc">The app is static files, built by tools/build_static.py into site/ and served as they are by GitHub Pages or build_static.py --serve. Everything runs in one browser tab. The pages (app.js, algo.js, design.js) call api(), which is a function in backend.js, not a server: it keeps sessions, the timer, level unlocks and scoring, and stores your history in localStorage, which the History page can export and import as a JSON file. For Lint and Format, backend.js calls lint.js, which runs ruff compiled to WebAssembly on the page. For Run, Submit and Run scratch it calls python.js, which hands the job to a fresh Web Worker and ends the worker at 10 seconds, or at 1.5 times a test's own time limit. The worker, py-worker.js, runs Pyodide (CPython 3.14 compiled to WebAssembly), which runs runner.py for Run and Submit or scratch.py for Run scratch. A spare worker is started ahead of the next job.</desc>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">

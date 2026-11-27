@@ -1,6 +1,6 @@
 # Data
 
-Most designs are decided by their data: where the source of truth lives, how it stays correct when many requests write at once, and how it grows past one machine. This page covers choosing a store, indexes, transactions and locking, sharding, replication, consistency, consensus, data modelling and caching, with the trade-off to say out loud for each.
+Where the source of truth lives, how it stays correct under concurrent writes, and how it grows past one machine.
 
 ## Choosing a store
 

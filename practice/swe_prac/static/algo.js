@@ -54,7 +54,7 @@ function foundationChips(links, label = "Foundations to review") {
 function confirmEnd() {
   return modal({
     title: "End this session?",
-    body: "<p>Your code is locked and the session is scored. The hints and the explanation, with the commented solution, open on the review page.</p>",
+    body: "<p>Your code and score lock, and the hints and explained solution unlock.</p>",
     actions: [{ label: "Keep working", value: false, kind: "ghost" }, { label: "End & review", value: true, kind: "primary" }],
   });
 }
@@ -83,10 +83,8 @@ export async function algoTrackCard() {
     : `<span class="faint">${attempts ? `${plural(attempts, "attempt")} · ${solved} solved` : "No attempts yet"}</span>`;
   return `<a class="track-card" href="#/algo">
     <div class="track-head"><span class="track-mark algo">{ }</span><h2>Algorithms</h2></div>
-    <p>One classic interview problem against the clock: ${minutes.Easy}, ${minutes.Medium} or
-      ${minutes.Hard} minutes by difficulty. You write a Python <code>Solution</code> class, and the
-      hidden tests include large inputs only an efficient algorithm finishes in time. Then a full
-      explanation with diagrams, and foundations pages on the patterns behind them.</p>
+    <p>Classic interview problems in Python. Hidden tests include inputs only an efficient algorithm
+      finishes in time. Explanations and foundations pages follow.</p>
     <ul class="track-facts"><li>${plural(problems.length, "problem")}</li><li>${minutes.Easy}–${minutes.Hard} min</li><li>auto-graded</li></ul>
     <div class="track-foot">${status}<span class="track-cta">Open →</span></div>
   </a>`;
@@ -96,7 +94,7 @@ export async function algoTrackCard() {
 export async function renderAlgoHome() {
   const [{ problems, minutes, patterns }, { session: active }, foundations] = await Promise.all([
     api("GET", "/api/algo/problems"), api("GET", "/api/algo/active"),
-    foundationsSection("algo", "How to approach a problem, Big O, the data structures and patterns the problems use, and dynamic programming. Every explanation links to the sections it builds on."),
+    foundationsSection("algo", "Approach, Big O, data structures, patterns and dynamic programming."),
   ]);
   const f = {
     q: "",
@@ -118,11 +116,9 @@ export async function renderAlgoHome() {
 
   $app.innerHTML = `${topnav("algo")}<main class="page">
     <h1>Algorithm interview practice</h1>
-    <p class="lead">One problem against the clock: ${minutes.Easy} minutes for Easy, ${minutes.Medium} for
-      Medium, ${minutes.Hard} for Hard. Write a Python <code>Solution</code> class. <strong>Run</strong> checks
-      the examples; <strong>Submit</strong> adds hidden tests, from edge cases to inputs big enough that only an
-      efficient algorithm finishes in time. The hints and an explanation with diagrams and the
-      commented solution open when the session ends.</p>
+    <p class="lead">${minutes.Easy} minutes for Easy, ${minutes.Medium} for Medium, ${minutes.Hard} for Hard.
+      <strong>Run</strong> checks the examples; <strong>Submit</strong> adds hidden tests, including inputs only an
+      efficient algorithm finishes in time. Hints and the explained solution open when the session ends.</p>
     ${banner}
     ${foundations}
     <h2 class="section-title">Problems</h2>
@@ -135,8 +131,8 @@ export async function renderAlgoHome() {
       <span class="faint" data-count></span>
     </div>
     <div class="random-row">
-      <button data-random ${active ? "disabled" : ""}>🎲 Start a random problem</button>
-      <span class="faint">matching the difficulty and pattern filters</span>
+      <button data-random ${active ? "disabled" : ""}>🎲 Random problem</button>
+      <span class="faint">within the filters</span>
       <label><input type="checkbox" data-unseen ${preferUnseen ? "checked" : ""}> Prefer problems I haven't tried</label>
     </div>
     <div class="problem-grid ${showPatterns ? "" : "hide-patterns"}" data-grid></div>
@@ -147,7 +143,7 @@ export async function renderAlgoHome() {
 
   const card = (p) => {
     const inSession = active && active.problem.id === p.id;
-    const lock = inSession ? 'disabled title="Locked while this problem is in a running session"' : "";
+    const lock = inSession ? 'disabled title="Locked during a session on this problem"' : "";
     const status = p.solved
       ? `<span class="pass">✓ Solved${p.solved_in_time ? "" : " in overtime"}</span> · ${plural(p.attempts, "attempt")}`
       : p.attempts ? `${plural(p.attempts, "attempt")} · not solved yet` : "Not attempted";
@@ -261,19 +257,19 @@ async function renderOverview(problemId) {
   if (!p) throw new Error(`Unknown problem ${problemId}`);
   const mine = sessions.filter((s) => s.problem_id === p.id);
   const inSession = active && active.problem.id === p.id;
-  const lock = inSession ? 'disabled title="Locked while this problem is in a running session"' : "";
+  const lock = inSession ? 'disabled title="Locked during a session on this problem"' : "";
   $app.innerHTML = `${topnav("algo")}<main class="page">
     <p class="faint" style="margin:0 0 4px"><a href="#/algo">← Algorithms</a></p>
     <h1>${esc(p.title)}</h1>
     <p class="lead">${diffChip(p.difficulty)} <span class="faint">#${p.number} · ${p.minutes}-minute session ·
       ${p.patterns.map(esc).join(", ")}</span></p>
-    ${inSession ? `<div class="banner"><div><strong>This problem is in a running session</strong> ·
+    ${inSession ? `<div class="banner"><div><strong>Session in progress</strong> ·
       <span class="mono">${timerLabel(active.timer)}</span></div><button class="primary" data-resume>Resume</button></div>` : ""}
     <div class="overview-actions">
       <button class="primary" data-start ${active ? "disabled" : ""}>Start a timed attempt</button>
       ${STUDY_VIEWS.map(([view, label]) => `<button data-study="${view}" ${lock}>${label}</button>`).join("")}
     </div>
-    <p class="dim">${p.attempts ? "" : "You haven't attempted this one yet. A cold, timed attempt is the best practice; the question, hints and solution will still be here afterwards."}</p>
+    <p class="dim">${p.attempts ? "" : "Not attempted yet. Try it cold and timed first; the spoilers will still be here."}</p>
     <h2 class="section-title">Your attempts</h2>
     ${mine.length ? historyTable(mine, false) : '<p class="dim">None yet.</p>'}
   </main>`;
@@ -345,7 +341,7 @@ export async function renderAlgoSession(sessionId) {
         <div class="editor-toolbar">
           <div class="file-tabs">
             <button class="file-tab active" data-file="solution">solution.py</button>
-            <button class="file-tab" data-file="scratch" title="Your own experiments: Run scratch executes this file">scratch.py</button>
+            <button class="file-tab" data-file="scratch" title="Your experiments, for Run scratch">scratch.py</button>
           </div>
           <span class="save-state" data-save-state></span>
           <button data-format title="Format with ruff (Shift+Alt+F)">Format</button>
@@ -493,8 +489,8 @@ export async function renderAlgoSession(sessionId) {
   async function showTimeUp() {
     const result = st.solvedAt != null
       ? `<p>Timed result: <strong>solved</strong> at ${fmtClock(st.solvedAt)}.</p>`
-      : `<p>Timed result: <strong>not solved</strong> in ${fmtClock(st.timer.limit)}. That result is locked in.</p>
-        <p>You can keep going untimed; a solve from now on is recorded as overtime.</p>`;
+      : `<p>Timed result: <strong>not solved</strong> in ${fmtClock(st.timer.limit)} (locked).</p>
+        <p>Keep going and a solve counts as overtime.</p>`;
     const choice = await modal({
       title: "⏰ Time's up",
       body: result,
@@ -514,7 +510,7 @@ export async function renderAlgoSession(sessionId) {
       overlay.className = "overlay";
       overlay.dataset.overlay = "";
       overlay.innerHTML = `<div class="card"><h2>Paused</h2>
-        <p>The problem and your code are hidden while the clock is stopped. This pause is recorded.</p>
+        <p>Your work is hidden while paused. This pause is recorded.</p>
         <button class="primary" data-resume>Resume</button></div>`;
       overlay.querySelector("[data-resume]").onclick = togglePause;
       workspace.appendChild(overlay);
@@ -570,7 +566,7 @@ export async function renderAlgoSession(sessionId) {
   }
 
   function renderExamples() {
-    const intro = "<kbd>Ctrl+↵</kbd> <strong>Run</strong> checks these examples with full details. <kbd>Ctrl+⇧+↵</kbd> <strong>Submit</strong> also runs the hidden tests (counts only); passing them all solves the problem.";
+    const intro = "<kbd>Ctrl+↵</kbd> <strong>Run</strong> checks these examples in full. <kbd>Ctrl+⇧+↵</kbd> <strong>Submit</strong> adds the hidden tests (counts only); pass them all to solve it.";
     const rows = session.examples.map((e) => `<tr><td>${esc(e.name)}</td>
       <td class="call">${esc(argsText(session.params, e.args))}</td><td>${esc(py(e.expect))}</td></tr>`).join("");
     return `<p class="faint" style="margin:0 0 10px">${intro}</p>
@@ -585,19 +581,19 @@ export async function renderAlgoSession(sessionId) {
       <span class="chip ${r.all_passed ? "good" : "bad"}">${c.shown_passed + c.hidden_passed}/${c.shown_total + c.hidden_total} passed</span>
       <span class="faint">${r.ms} ms</span></div>`);
     if (r.solved) {
-      parts.push(`<div class="callout good"><strong>Solved at ${fmtClock(r.solved_at)}.</strong> Every test passes,
-        including the hidden ones. Tidy up if you like, then end the session for the explanation and the commented solution.</div>`);
+      parts.push(`<div class="callout good"><strong>Solved at ${fmtClock(r.solved_at)}.</strong> Every test passes.
+        End the session for the explained solution.</div>`);
     } else if (r.kind === "submit" && r.all_passed) {
       parts.push('<div class="callout good"><strong>All tests pass.</strong></div>');
     } else if (r.kind === "run" && r.all_passed) {
-      parts.push('<div class="callout info">All examples pass. <strong>Submit</strong> to run the hidden tests: edge cases, and large inputs with a time limit.</div>');
+      parts.push('<div class="callout info">All examples pass. <strong>Submit</strong> to run the hidden tests.</div>');
     }
     if (r.import_error) {
       parts.push(`<div class="callout bad"><strong>Your code failed to load</strong><pre>${esc(r.import_error)}</pre>
         ${r.import_stdout ? `<div class="block-label">Output</div><pre>${esc(r.import_stdout)}</pre>` : ""}</div>`);
     }
     if (r.crashed) parts.push(`<div class="callout bad"><strong>Test process crashed</strong><pre>${esc(r.crashed)}</pre></div>`);
-    if (r.timed_out) parts.push('<div class="callout bad"><strong>Timed out.</strong> The whole run took too long and was stopped; tests that didn\'t finish count as failed.</div>');
+    if (r.timed_out) parts.push('<div class="callout bad"><strong>Timed out.</strong> Unfinished tests count as failed.</div>');
     if (r.stopped) {
       const why = r.stopped.replace(/^Too slow:\s*/, "");
       parts.push(`<div class="callout bad"><strong>Too slow.</strong> A hidden test ${esc(why)} The tests after it didn't run.</div>`);
@@ -624,7 +620,7 @@ export async function renderAlgoSession(sessionId) {
         </div></details>`);
     }
     if (r.kind === "submit") {
-      parts.push('<p class="faint" style="font-size:12px">Hidden tests report counts only, never their inputs or expected values.</p>');
+      parts.push('<p class="faint" style="font-size:12px">Hidden tests show pass counts only.</p>');
     }
     return parts.join("");
   }
@@ -633,7 +629,7 @@ export async function renderAlgoSession(sessionId) {
     const { issues, error } = st.lint;
     if (error) return `<div class="callout bad"><pre>${esc(error)}</pre></div>`;
     if (!issues.length) return '<div class="empty">✓ No lint issues (ruff).</div>';
-    return `<p class="faint" style="margin-top:0;font-size:12px">ruff · informational only. Click an issue to jump to it.</p>
+    return `<p class="faint" style="margin-top:0;font-size:12px">ruff · informational. Click an issue to jump to it.</p>
       <ul class="lint-list">${issues.map((i, n) => `<li data-issue="${n}">
         <span class="pos">${i.row}:${i.col}</span><span class="code">${esc(i.code)}</span>
         <span>${esc(i.message)}${i.fixable ? ' <span class="faint">(auto-fixable)</span>' : ""}</span></li>`).join("")}</ul>`;
@@ -653,8 +649,8 @@ export async function renderAlgoSession(sessionId) {
   function renderScratch() {
     const o = st.scratchOut;
     if (!o) {
-      return `<div class="empty"><code>scratch.py</code> starts by calling your method on the first example.
-        Add your own inputs and prints, then press <strong>Run scratch</strong>.</div>`;
+      return `<div class="empty"><code>scratch.py</code> calls your method on the first example.
+        Add inputs and prints, then <strong>Run scratch</strong>.</div>`;
     }
     return `<div class="summary-row"><strong>scratch.py</strong>
         <span class="chip ${o.exit_code === 0 ? "good" : "bad"}">${o.timed_out ? "timed out" : o.crashed ? "crashed" : `exit ${o.exit_code}`}</span>

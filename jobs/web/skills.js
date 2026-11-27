@@ -1,51 +1,118 @@
-// The Claude skills page: how to install the job-search skills once, then one card per skill with
-// what it does, what it needs before you start, the details to fill in and the prompt to copy into
-// Claude Code. The page never runs a skill itself: Claude Code does, on your computer, with your
-// Claude plan and your own browser.
+// The AI skills page: your profile (saved in this browser, and written into the kit you download
+// as reference/profile.yaml), one "Before you start" list, then a card per skill with the details
+// to fill in and the prompt to copy into your AI agent. The page never runs a skill: the agent
+// does, on your computer, with your own browser.
 
-import { NEEDS, SKILLS, skill } from "./prompts.js";
+import { GROUPS, FIELDS, initial, missing, profileYaml } from "./profile.js";
+import { SKILLS, skill } from "./prompts.js";
 import { py } from "./python.js";
-import { allMessages, getKV } from "./store.js";
-import { bindCopy, copyBlock, esc, fmtFull, mount, topnav } from "./ui.js";
+import { allMessages, getKV, setKV } from "./store.js";
+import { bindCopy, copyBlock, esc, fmtFull, mount, toast, topnav } from "./ui.js";
+import { addFile } from "./zip.js";
 
 const SOURCE = "https://github.com/JarLowrey/swe-prac/tree/master/jobs/job-search";
 const values = Object.fromEntries(SKILLS.map((s) => [s.id, {}])); // what you typed, kept while the page is open
+const link = (href, text) => `<a href="${href}" target="_blank" rel="noopener">${text}</a>`;
 
 const INSTALL_WIN = `Expand-Archive "$HOME\\Downloads\\job-search.zip" "$HOME"
-cd "$HOME\\job-search"
-mkdir reference; copy examples\\reference\\profile.yaml reference\\
-claude`;
+cd "$HOME\\job-search"`;
 const INSTALL_UNIX = `unzip ~/Downloads/job-search.zip -d ~
-cd ~/job-search
-mkdir -p reference && cp examples/reference/profile.yaml reference/
-claude`;
+cd ~/job-search`;
 
-function setupSection() {
+// ---------------------------------------------------------------- profile
+
+function profileField(f, p) {
+  const id = `pf-${f.key.replace(/\W/g, "-")}`;
+  const v = p[f.key] ?? initial(f);
+  const attrs = `id="${id}" data-pf="${esc(f.key)}"${f.required ? ' aria-required="true"' : ""}`;
+  if (f.kind === "check") {
+    return `<label class="check"><input type="checkbox" ${attrs} ${v === true ? "checked" : ""}>${esc(f.label)}</label>`;
+  }
+  const ph = `placeholder="${esc(f.placeholder ?? "")}"`;
+  const control = f.kind === "select"
+    ? `<select ${attrs}>${f.options.map(([o, l]) => `<option value="${esc(o)}" ${o === v ? "selected" : ""}>${esc(l)}</option>`).join("")}</select>`
+    : f.kind === "list" || f.kind === "docs"
+      ? `<textarea ${attrs} rows="3" ${ph}>${esc(v)}</textarea>`
+      : `<input type="text" ${attrs} value="${esc(v)}" ${ph} autocomplete="${f.auto ?? "off"}"${f.url ? ' spellcheck="false"' : ""}>`;
+  return `<label class="field${f.wide ? " wide" : ""}" for="${id}">
+    <span>${esc(f.label)}${f.required ? ' <b class="req" aria-hidden="true">*</b>' : ""}</span>${control}
+    ${f.hint ? `<small class="dim">${esc(f.hint)}</small>` : ""}</label>`;
+}
+
+function profileGroups(p) {
+  return GROUPS.map((g) => {
+    const grid = `<div class="profile-grid">${g.fields.map((f) => profileField(f, p)).join("")}</div>`;
+    return g.collapsed
+      ? `<details class="profile-group"><summary>${esc(g.title)} <span class="dim small">${esc(g.note)}</span></summary>${grid}</details>`
+      : `<fieldset class="profile-group"><legend>${esc(g.title)}</legend>${grid}</fieldset>`;
+  }).join("");
+}
+
+const missingNote = (p) => {
+  const m = missing(p);
+  return m.length ? `Blank, so you'll be asked: ${m.join(", ")}.` : "All required fields are filled in.";
+};
+
+function profileSection(p) {
+  return `<section class="panel" id="profile">
+    <h2>Your profile</h2>
+    <p class="dim small">Used to fill in applications. <b class="req">*</b> Required.</p>
+    <div class="profile-form">${profileGroups(p)}</div>
+    <div class="actions">
+      <button class="primary" data-download>Download job-search.zip</button>
+      <button data-clear-profile>Clear</button>
+    </div>
+    <p class="dim small" id="profile-missing">${esc(missingNote(p))}</p>
+  </section>`;
+}
+
+// Fetch the kit the site built, add your profile to it, and hand it to the browser to save.
+async function downloadKit(p, button) {
+  const label = button.textContent;
+  button.disabled = true;
+  button.textContent = "Building…";
+  try {
+    const res = await fetch("job-search.zip", { cache: "no-cache" });
+    if (!res.ok) throw new Error(`the kit didn't load (HTTP ${res.status})`);
+    const zip = addFile(new Uint8Array(await res.arrayBuffer()), "job-search/reference/profile.yaml", profileYaml(p));
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([zip], { type: "application/zip" }));
+    a.download = "job-search.zip";
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
+  } catch (err) {
+    toast(`Couldn't build the download: ${err.message}`, "bad");
+  } finally {
+    button.disabled = false;
+    button.textContent = label;
+  }
+}
+
+function beforeSection() {
   return `<section class="panel">
-    <h2>Before the first one: install the skills</h2>
+    <h2>Before you start</h2>
     <ol class="setup-steps">
-      <li><strong>Install Claude Code</strong> and sign in (<code>/login</code>) with your Claude account. See
-        <a href="https://code.claude.com/docs/en/overview" target="_blank" rel="noopener">code.claude.com</a>.</li>
-      <li><strong>Download <a href="job-search.zip" download>job-search.zip</a></strong>: the skills, a profile template,
-        and fake examples of every file they read and write. Unzip it into your home folder, copy the profile template,
-        and start Claude Code there (the skills load from the folder):
+      <li><strong>Fill in your profile and download the kit.</strong></li>
+      <li><strong>Unzip it and start your AI agent there.</strong> Any agent that runs skills (SKILL.md) works.
         <div class="two-col">
           <div><div class="sub-label">Windows (PowerShell)</div>${copyBlock(INSTALL_WIN)}</div>
           <div><div class="sub-label">macOS or Linux</div>${copyBlock(INSTALL_UNIX)}</div>
         </div></li>
-      <li><strong>Fill in <code>reference/profile.yaml</code></strong>: who you are, the locations you'd work in,
-        your target roles, work authorization and the voluntary self-ID answers (<code>decline</code> is always fine).
-        Put your resume PDF in <code>reference/</code>, with a brag doc, stories and project write-ups to draft answers
-        from. The skills won't fill a form while the profile still has the example's values.</li>
-      <li><strong>For the skills that use a browser</strong> (filling applications, finding contacts), connect Claude in
-        Chrome: <span class="dim">${esc(NEEDS.chrome[1])}</span></li>
+      <li><strong>Put your resume and docs in <code>reference/</code>.</strong> The skills use only facts from there:
+        <ul class="doc-list">
+          <li><strong>Brag doc</strong>: your wins, with numbers.</li>
+          <li><strong>Career summary</strong>: each role and its projects.</li>
+          <li><strong>Behavioral stories</strong>: situation, action, result.</li>
+          <li><strong>Project write-ups</strong>: the problem, your part, the outcome.</li>
+        </ul>
+        Markdown, PDF, .txt or .docx; see <code>examples/reference/</code>.</li>
+      <li><strong>For skills that use Chrome</strong>, connect your agent to Chrome and sign in to LinkedIn and the
+        job sites there.</li>
     </ol>
-    <p class="dim small">Everything personal stays in your job-search folder (<code>reference/</code>,
-      <code>applications/</code> and <code>tracker.csv</code>), which the kit's .gitignore keeps out of git. To use the
-      skills from any folder, the kit's README shows how to link them into <code>~/.claude/skills</code>.
-      Source: <a href="${SOURCE}" target="_blank" rel="noopener">jobs/job-search</a>.</p>
   </section>`;
 }
+
+// ---------------------------------------------------------------- skill cards
 
 function field(s, f, apps) {
   const v = values[s.id][f.id] ?? "";
@@ -54,8 +121,13 @@ function field(s, f, apps) {
     const opts = apps.map((a) => `<option value="${esc(a.key)}" ${values[s.id].app === a.key ? "selected" : ""}>${esc(a.company)} · ${esc(a.position || "position not stated")} · ${esc(a.status)}</option>`);
     return `<label class="field" for="${id}"><span>${esc(f.label)}</span>
       <select id="${id}" data-field="${f.id}" ${apps.length ? "" : "disabled"}>
-        <option value="">${apps.length ? "None: type the company below" : "No applications yet (see Tracker)"}</option>${opts.join("")}
+        <option value="">${apps.length ? "None" : "No applications yet"}</option>${opts.join("")}
       </select></label>`;
+  }
+  if (f.kind === "select") {
+    const cur = v || f.options[0][0];
+    return `<label class="field" for="${id}"><span>${esc(f.label)}</span><select id="${id}" data-field="${f.id}">
+      ${f.options.map(([o, l]) => `<option value="${esc(o)}" ${o === cur ? "selected" : ""}>${esc(l)}</option>`).join("")}</select></label>`;
   }
   const input = f.kind === "textarea"
     ? `<textarea id="${id}" data-field="${f.id}" rows="4" placeholder="${esc(f.placeholder)}">${esc(v)}</textarea>`
@@ -67,23 +139,21 @@ function promptArea(s) {
   const v = values[s.id];
   const text = s.prompt(v);
   const batch = s.batch?.(v) || "";
-  const missing = { "job-apply": "Add at least one job link.", "job-answers": "Add at least one question.",
+  const missingText = { "job-apply": "Add at least one job link.", "job-answers": "Add at least one question.",
     "job-contacts": "Add the company.", "interview-prep": "Pick an application or add the company." }[s.id];
-  return `<div class="sub-label">Prompt for Claude Code</div>
-    ${text ? copyBlock(text, "prompt") : `<div class="empty-prompt">${esc(missing)}</div>`}
+  return `<div class="sub-label">Prompt</div>
+    ${text ? copyBlock(text, "prompt") : `<div class="empty-prompt">${esc(missingText)}</div>`}
     ${v.contextNote ? `<p class="dim small">${esc(v.contextNote)}</p>` : ""}
-    ${batch ? `<div class="sub-label">Several links? Run them as a batch from the job-search folder instead</div>
+    ${s.after ? `<p class="dim small">${s.after}</p>` : ""}
+    ${batch ? `<div class="sub-label">Or run them as a batch, from the job-search folder</div>
       ${copyBlock(batch)}
-      <p class="dim small">The script runs each step (read, fill, contacts, log) as its own short agent, one at a time
-        because they share your Chrome, and checks the file each step leaves before moving on. Re-running skips what's done.</p>` : ""}`;
+      <p class="dim small">Each step runs as its own agent. Set <code>JOB_SEARCH_AGENT</code> first (see the kit's README). Re-running skips finished steps.</p>` : ""}`;
 }
 
 function card(s, apps) {
   return `<article class="skill-card" id="skill-${s.id}" data-skill="${s.id}">
-    <header><h2>${esc(s.title)}</h2><code class="skill-name">/${s.id}</code></header>
+    <header><h2>${esc(s.title)}</h2>${s.browser ? '<span class="chip">Uses Chrome</span>' : ""}<code class="skill-name">/${s.id}</code></header>
     <p>${esc(s.does)}</p>
-    <div class="sub-label">Before you start</div>
-    <ul class="needs">${s.needs.map((k) => `<li><strong>${esc(NEEDS[k][0])}</strong><span>${esc(NEEDS[k][1])}</span></li>`).join("")}</ul>
     <div class="fields">${s.fields.map((f) => field(s, f, apps)).join("")}</div>
     <div class="prompt-area">${promptArea(s)}</div>
   </article>`;
@@ -103,50 +173,84 @@ async function pickApp(key, apps) {
   const same = apps.filter((x) => x.company === a.company);
   try {
     v.context = await py("prep_context", { applications: same, messages: await allMessages() });
-    v.contextNote = "Includes the applications and the newest emails at this company, with sender addresses removed. Read it before you paste it.";
+    v.contextNote = "Adds your latest emails from this company, without addresses. Check it before you paste it.";
   } catch (err) {
     v.context = "";
     v.contextNote = `Couldn't read the emails: ${err.message}`;
   }
 }
 
-// focus: a skill id to scroll to. params (from the tracker's links): company, role, and app (an
-// application's key, which interview-prep reads the emails for).
+// focus: a skill id to scroll to. params (from the tracker's and Job finder's links): company, role,
+// links (job-apply), and app (an application's key, which interview-prep reads the emails for).
 export async function renderSkills(focus, params = new URLSearchParams()) {
   const apps = (await getKV("apps", [])) ?? [];
+  const profile = { ...((await getKV("profile", {})) ?? {}) };
   const target = skill(focus);
   if (target) {
-    for (const f of ["company", "role"]) {
+    for (const f of ["company", "role", "links"]) {
       if (params.has(f) && target.fields.some((x) => x.id === f)) values[target.id][f] = params.get(f);
     }
     const appKey = params.get("app");
     if (target.id === "interview-prep" && appKey && apps.some((a) => a.key === appKey)) await pickApp(appKey, apps);
   }
   const root = mount(`${topnav("skills")}<main class="page jobs">
-    <h1>Claude skills for the job search</h1>
-    <p class="lead">Four Claude Code skills that do the busywork of applying. This page doesn't run them: fill in the
-      details, copy the prompt and paste it into Claude Code, which runs the skill on your computer, with your Claude
-      plan and, for forms and LinkedIn, your own Chrome. Nothing is submitted or sent for you.</p>
-    ${setupSection()}
+    <div class="privacy-banner" role="note">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+      <div><strong>Your profile stays in this browser.</strong> It only goes into the zip you download.</div>
+    </div>
+
+    <h1>AI skills</h1>
+    <p class="lead">Skills your AI agent runs on your computer. Copy a prompt into it; nothing is submitted or sent for you.</p>
+    ${profileSection(profile)}
+    ${beforeSection()}
     <div class="skill-list">${SKILLS.map((s) => card(s, apps)).join("")}</div>
     <section class="panel">
-      <h2>Ground rules the skills follow</h2>
+      <h2>What the skills never do</h2>
       <ul class="rules">
-        <li>They never click the final Submit button, and never tick terms, privacy-policy or attestation boxes. You do those.</li>
-        <li>They never send LinkedIn requests or messages.</li>
-        <li>When your profile or resume doesn't answer a question, they leave it blank and list it for you instead of guessing.</li>
-        <li>Questions with an anti-AI instruction ("start your answer with the word kiwi") get a draft, but you type those in yourself.</li>
-        <li>Written answers use only facts from your own material, and keep employer-confidential detail out.</li>
+        <li>Click Submit, or accept terms, privacy policies or attestations.</li>
+        <li>Send LinkedIn requests or messages.</li>
+        <li>Guess. A question your profile doesn't answer is left blank and listed for you.</li>
+        <li>Type answers to questions with anti-AI instructions. They draft those, and you enter them.</li>
+        <li>Use facts that aren't in your own docs, or employer-confidential detail.</li>
       </ul>
+      <p class="dim small">Your files stay in the job-search folder, out of git. Source: ${link(SOURCE, "jobs/job-search")}.</p>
     </section>
   </main>`);
   bindCopy(root);
 
+  // Profile: saved as you type, a moment after you stop.
+  const missingEl = root.querySelector("#profile-missing");
+  let timer = null;
+  const save = () => setKV("profile", profile).catch((err) => toast(`Couldn't save your profile: ${err.message}`, "bad"));
+  const saveSoon = () => { clearTimeout(timer); timer = setTimeout(save, 300); };
+  const formEl = root.querySelector(".profile-form");
+  formEl.addEventListener("input", (e) => {
+    const el = e.target.closest("[data-pf]");
+    if (!el) return;
+    profile[el.dataset.pf] = el.type === "checkbox" ? el.checked : el.value;
+    missingEl.textContent = missingNote(profile);
+    saveSoon();
+  });
+  root.querySelector("[data-download]").onclick = (e) => {
+    clearTimeout(timer);
+    save();
+    downloadKit(profile, e.currentTarget);
+  };
+  root.querySelector("[data-clear-profile]").onclick = async () => {
+    if (!confirm("Clear your profile from this browser?")) return;
+    clearTimeout(timer);
+    for (const f of FIELDS) delete profile[f.key];
+    await setKV("profile", {});
+    formEl.innerHTML = profileGroups(profile);
+    missingEl.textContent = missingNote(profile);
+  };
+
+  // Skill cards
   const refresh = (s) => { root.querySelector(`[data-skill="${s.id}"] .prompt-area`).innerHTML = promptArea(s); };
-  root.addEventListener("input", (e) => {
+  root.querySelector(".skill-list").addEventListener("input", (e) => {
     const el = e.target.closest("[data-field]");
     const s = skill(el?.closest("[data-skill]")?.dataset.skill);
-    if (!s || el.tagName === "SELECT") return;
+    if (!s || el.dataset.field === "app") return; // the application picker is handled on change
     values[s.id][el.dataset.field] = el.value;
     refresh(s);
   });

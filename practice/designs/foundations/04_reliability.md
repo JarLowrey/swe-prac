@@ -1,6 +1,6 @@
 # Reliability and correctness
 
-How systems stay correct and available when parts of them fail: timeouts, retries, idempotency, delivery guarantees, distributed transactions, concurrency control, overload protection, observability, safe rollouts and disaster recovery. The theme throughout is to assume everything fails, limit the damage, and make repeated or reordered work harmless.
+Staying correct and available when parts fail: assume everything fails, limit the damage, and make repeated work harmless.
 
 This is where senior candidates separate themselves. A useful habit: for every arrow on your diagram, ask what happens if that call is slow, fails, or happens twice, and say the answer before the interviewer asks.
 

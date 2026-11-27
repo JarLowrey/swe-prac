@@ -1,6 +1,6 @@
 # How to approach a problem
 
-The loop that turns a problem statement into working, tested code in 30 to 45 minutes, and what the interviewer is listening for at each step. One small problem runs through every section, so you can see each step done.
+The loop from problem statement to tested code in 30 to 45 minutes, and what the interviewer listens for at each step.
 
 ## The interview loop
 

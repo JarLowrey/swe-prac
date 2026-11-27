@@ -1,6 +1,6 @@
 # Networking and APIs
 
-How a request travels from a user's device to your servers and back, which protocol to draw on each arrow, and how to design APIs that are safe to retry, page through and change. Every section gives the costs and the trade-off to say out loud, with reference material on TCP, HTTP and TLS at the end for when an interviewer pushes further.
+How a request reaches your servers and back, which protocol to draw on each arrow, and APIs that are safe to retry, page and change.
 
 ## Life of a request
 

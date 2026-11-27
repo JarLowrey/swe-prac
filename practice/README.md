@@ -2,7 +2,7 @@
 
 Live site: https://jarlowrey.github.io/swe-prac/practice/ (the whole app: your code runs in the browser)
 
-This is the practice section of the repo. The site's other section, the job tracker and Claude
+This is the practice section of the repo. The site's other section, the job tracker and AI
 skills, is in [../jobs/](../jobs/README.md); [the root README](../README.md) covers both and the
 build. Commands below run from this folder (`cd practice`), with the virtual environment at the
 repo root (`..\.venv`).
@@ -23,7 +23,7 @@ into four levels. Each level adds requirements to the same class, and you only s
 passing the one before it. Pace matters, and so does a design that still holds up when the later
 levels arrive.
 
-Practising in a plain editor leaves out most of that pressure: the clock, levels you can't read
+Practicing in a plain editor leaves out most of that pressure: the clock, levels you can't read
 ahead, and tests you can't see. This app recreates those conditions in your browser. Afterwards it
 shows where your time went against a pacing target for each level.
 
@@ -42,7 +42,7 @@ To add your own, see [Developing](#developing).
 
 ### Algorithms
 
-The algorithms section practises the classic data structures and algorithms round. You get one
+The algorithms section practices the classic data structures and algorithms round. You get one
 problem and write a Python `Solution` class. The clock is 20 minutes for Easy, 30 for Medium and
 40 for Hard. **Run** checks your code against the examples. **Submit** adds hidden tests, from edge
 cases to inputs big enough that only an efficient algorithm finishes in time. So a correct brute
@@ -74,7 +74,7 @@ to edit them.
 
 ### System design
 
-The system design section practises the 45-minute design round. You get one deliberately vague
+The system design section practices the 45-minute design round. You get one deliberately vague
 prompt and work through seven timed steps: requirements, estimates, API, data model, high-level
 design, deep dives and wrap-up. Each step has its own notes tab, and a diagram tab lets you draw
 boxes and arrows. Nothing is auto-graded. Afterwards you compare your notes with a reference design
@@ -128,7 +128,7 @@ browser downloads about 25 MB for them; after that they come from its cache.
 
 ### Running a local copy
 
-To practise offline, or to see content changes before you push them, build the site and serve
+To practice offline, or to see content changes before you push them, build the site and serve
 it. It needs Python 3.12 or newer. From the repo root:
 
 ```
@@ -351,7 +351,7 @@ Before the app moved into the browser, a local server kept history in `data/prac
 
 ## Architecture
 
-**While you practise.** The app is a set of static files, and everything runs in the browser tab:
+**While you practice.** The app is a set of static files, and everything runs in the browser tab:
 the sessions, the clock, the scoring, your code and ruff.
 
 ![Architecture: the static files load into a browser tab, where backend.js keeps sessions in localStorage, lint.js runs ruff in WebAssembly, and python.js runs each job in a fresh Web Worker with Pyodide](docs/diagrams/architecture.svg)
@@ -436,7 +436,7 @@ docs/                README screenshots, architecture diagrams (SVG, edit them d
 
 The hidden tests are in `problems/<pid>/tests.json` and `algorithms/<id>/tests.json`, the
 reference solutions are in `reference/` and `algorithms/<id>/solution.py`, and the reference
-designs are in `designs/<qid>/reference.md`. Don't open them before you've practised.
+designs are in `designs/<qid>/reference.md`. Don't open them before you've practiced.
 
 ## Developing
 

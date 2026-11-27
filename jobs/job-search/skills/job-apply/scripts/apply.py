@@ -3,8 +3,8 @@
 
 Doing several applications in one conversation lets steps slip: the model
 fills the forms and forgets the LinkedIn contacts. This script takes that
-decision away. It runs each step of each application as its own short
-`claude -p` agent, then checks the files the step must leave behind. A step
+decision away. It runs each step of each application as its own short,
+headless agent run, then checks the files the step must leave behind. A step
 that left nothing is retried, then reported as FAILED. Tracker rows are written
 by the script itself, never left to an agent.
 
@@ -27,6 +27,12 @@ Usage:
   apply.py backfill               run the missing steps for existing
                                   applications (default: contacts and log)
 
+The agent: set JOB_SEARCH_AGENT to the command that runs your AI agent
+non-interactively, with access to your Chrome, as a JSON list such as
+["my-agent", "--headless"]. The step's prompt goes to it on stdin, or in place
+of a "{prompt}" argument if the command has one. The agent must print its final
+answer on stdout, ending with the JSON object the prompt asks for.
+
 Nothing here submits an application or contacts anyone; the agents are told
 the same rules as the skills.
 """
@@ -38,6 +44,7 @@ import datetime as dt
 import json
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -84,7 +91,6 @@ class App:
     needs_you: list[str] = field(default_factory=list)
     results: dict = field(default_factory=dict)  # phase -> short outcome text
     failed: list[str] = field(default_factory=list)
-    cost: float = 0.0
     skipped: bool = False
 
     @property
@@ -253,14 +259,14 @@ Rules (the same as the job-apply skill's):
 - Don't edit tracker.csv. The driver logs the application.
 - Nobody can answer questions. If you are blocked (sign-in page, CAPTCHA, a permission you don't have), stop this step, write down what you finished and why you stopped, and return that in your final answer.
 - The job-search folder is {root}. Application folders are {root}/applications/<YYYY-MM-DD>-<company>-<role>/ (lowercase, hyphens, under about 60 characters).
-- Skill files: {skills}/<skill-name>/SKILL.md. Load the skill with the Skill tool, or read that file if the tool can't find it.
+- Skill files: {skills}/<skill-name>/SKILL.md. Read the skill's SKILL.md and follow it.
 """
 
 PROMPTS = {
     "read": """\
 STEP: READ THE POSTING (job-apply skill, step 1 only; do not open the application form).
 Job link: {url}
-1. Open the link in Claude in Chrome and read it with get_page_text. Pull out company, job title, team, location(s), workplace type, pay range and the full description.
+1. Open the link in the user's Chrome and read the page text. Pull out company, job title, team, location(s), workplace type, pay range and the full description.
 2. Compare the location with location.acceptable_locations in reference/profile.yaml. If none match, set outcome to "skipped-location" (you must still do step 3). If it is unclear, continue and say so in notes.
 3. Create the application folder and write job.md in it: a header (company, title, location, workplace type, pay range, URL, date read) followed by the posting text copied word for word. Do not paraphrase; postings vanish when roles close.
 Return the outcome ("continue" or "skipped-location"), company, role, location, the absolute path of the folder, and notes on anything the user should know (role below their target level, unclear location, poor fit against the resume).
@@ -338,53 +344,79 @@ def apply_result(app: App, phase: str, out: dict) -> None:
 _last_linkedin = 0.0
 
 
-def agent_command(args) -> list[str]:
-    override = os.environ.get("JOB_APPLY_AGENT_CMD")  # JSON list; lets tests stub the agent
-    if override:
-        return json.loads(override)
-    exe = shutil.which("claude")
-    if not exe:
-        sys.exit("The `claude` command isn't on PATH. Install Claude Code first.")
-    return [exe]
+AGENT_ENV = "JOB_SEARCH_AGENT"
+AGENT_HELP = (f"Set {AGENT_ENV} to the command that runs your AI agent non-interactively, with access to "
+              'your Chrome, as a JSON list such as ["my-agent", "--headless"]. It gets the prompt on stdin, '
+              'or in place of a "{prompt}" argument, and must print its final answer on stdout.')
+ANSWER_FORMAT = ("\nWhen you are done, end your reply with one JSON object, and nothing after it, "
+                 "matching this JSON Schema:\n{schema}\n")
+
+
+def agent_command(prompt: str) -> tuple[list[str], str | None]:
+    """The agent's argv from $JOB_SEARCH_AGENT, and the text for its stdin (None when the prompt is an argument)."""
+    spec = os.environ.get(AGENT_ENV, "").strip()
+    if not spec:
+        sys.exit(f"No agent to run. {AGENT_HELP}")
+    try:
+        argv = json.loads(spec) if spec.startswith("[") else shlex.split(spec)
+    except (json.JSONDecodeError, ValueError) as exc:
+        sys.exit(f"Can't read {AGENT_ENV} ({exc}). {AGENT_HELP}")
+    if not argv or not all(isinstance(a, str) and a for a in argv):
+        sys.exit(f"{AGENT_ENV} must be a non-empty list of strings. {AGENT_HELP}")
+    argv[0] = shutil.which(argv[0]) or argv[0]  # finds my-agent.cmd on Windows too
+    if any("{prompt}" in a for a in argv):
+        return [a.replace("{prompt}", prompt) for a in argv], None
+    return argv, prompt
+
+
+def last_json(text: str, required: list[str], depth: int = 0) -> dict | None:
+    """The last JSON object in an agent's output that has every required key. Looks inside
+    wrappers too, such as {"result": "...text ending in the JSON..."}."""
+    if depth > 3 or not isinstance(text, str):
+        return None
+    decoder = json.JSONDecoder()
+    found, i = None, text.find("{")
+    while i != -1:
+        try:
+            obj, end = decoder.raw_decode(text, i)
+        except json.JSONDecodeError:
+            i = text.find("{", i + 1)
+            continue
+        hit = _with_keys(obj, required, depth)
+        if hit is not None:
+            found = hit
+        i = text.find("{", end)
+    return found
+
+
+def _with_keys(obj, required: list[str], depth: int) -> dict | None:
+    if isinstance(obj, dict):
+        if all(k in obj for k in required):
+            return obj
+        for value in reversed(list(obj.values())):
+            hit = _with_keys(value, required, depth + 1) if isinstance(value, dict) else last_json(value, required, depth + 1)
+            if hit is not None:
+                return hit
+    return None
 
 
 def run_agent(app: App, phase: str, prompt: str, args) -> tuple[dict | None, str]:
-    """One `claude -p` call. Returns (structured answer or None, error text)."""
-    cmd = agent_command(args) + [
-        "-p", "--output-format", "json", "--json-schema", json.dumps(SCHEMAS[phase]),
-        "--permission-mode", args.permission_mode, "--permission-prompts", "none",
-        "--max-budget-usd", str(args.budget), "-n", f"job-apply {phase}: {app.label}"[:80],
-    ]
-    if not args.no_chrome:
-        cmd.append("--chrome")
-    if args.model:
-        cmd += ["--model", args.model]
-    if args.effort:
-        cmd += ["--effort", args.effort]
+    """One headless agent run. Returns (structured answer or None, error text)."""
+    schema = SCHEMAS[phase]
+    argv, stdin = agent_command(prompt + ANSWER_FORMAT.format(schema=json.dumps(schema)))
     env = {**os.environ, "JOB_SEARCH_DIR": str(root()), "PIPELINE_PHASE": phase}
     try:
-        proc = subprocess.run(cmd, input=prompt, capture_output=True, text=True, encoding="utf-8",
+        proc = subprocess.run(argv, check=False, input=stdin, capture_output=True, text=True, encoding="utf-8",
                               errors="replace", cwd=root(), env=env, timeout=args.timeout * 60)
+    except FileNotFoundError:
+        return None, f"agent command not found: {argv[0]}. {AGENT_HELP}"
     except subprocess.TimeoutExpired:
         return None, f"timed out after {args.timeout} minutes"
-    try:
-        data = json.loads(proc.stdout)
-    except json.JSONDecodeError:
+    out = last_json(proc.stdout, schema["required"])
+    error = f"agent exited {proc.returncode}" if proc.returncode else ""
+    if out is None:
         tail = (proc.stderr or proc.stdout or "").strip()[-300:]
-        return None, f"claude exited {proc.returncode} without a JSON result: {tail}"
-    app.cost += float(data.get("total_cost_usd") or 0)
-    error = ""
-    if data.get("is_error"):
-        error = str(data.get("result") or data.get("subtype") or "agent reported an error")[:300]
-    denials = data.get("permission_denials") or []
-    if denials:
-        error = (error + " " if error else "") + "permission denied: " + json.dumps(denials)[:300]
-    out = data.get("structured_output")
-    if out is None and isinstance(data.get("result"), str):
-        try:
-            out = json.loads(data["result"])
-        except json.JSONDecodeError:
-            pass
+        error = (f"{error}: " if error else "") + f"no JSON answer in its output: {tail}"
     return out, error
 
 
@@ -419,7 +451,7 @@ def run_phase(app: App, phase: str, args) -> bool:
                 problems.append(str(exc))
             except KeyError as exc:
                 problems.append(f"agent's answer is missing the field {exc}")
-        say(f"    done in {time.monotonic() - start:.0f}s, ${app.cost:.2f} so far")
+        say(f"    done in {time.monotonic() - start:.0f}s")
         failed_checks = GATES[phase](app)
         if not failed_checks:  # the files are what count, not what the agent says
             if problems:
@@ -537,8 +569,7 @@ def finish(apps: list[App], args) -> int:
         return 0
     say("\n" + "=" * 60)
     incomplete = [a for a in apps if a.failed]
-    total = sum(a.cost for a in apps)
-    say(f"{len(apps) - len(incomplete)} of {len(apps)} applications complete. Agent cost ${total:.2f}.")
+    say(f"{len(apps) - len(incomplete)} of {len(apps)} applications complete.")
     for a in incomplete:
         say(f"  INCOMPLETE {a.label}: {', '.join(a.failed)}")
     if incomplete:
@@ -660,20 +691,14 @@ def build_parser() -> argparse.ArgumentParser:
     common.add_argument("--only", help=f"comma-separated steps to run ({', '.join(PHASES)})")
     common.add_argument("--retries", type=int, default=1, help="extra attempts per step (default 1)")
     common.add_argument("--timeout", type=int, default=40, help="minutes per agent call (default 40)")
-    common.add_argument("--budget", type=float, default=5.0, help="max USD per agent call (default 5)")
     common.add_argument("--linkedin-delay", type=int, default=45,
                         help="seconds between LinkedIn searches (default 45)")
-    common.add_argument("--model", help="model alias or name for the agents")
-    common.add_argument("--effort", choices=["low", "medium", "high", "xhigh", "max"])
-    common.add_argument("--permission-mode", default="auto",
-                        choices=["acceptEdits", "auto", "bypassPermissions", "dontAsk"],
-                        help="permission mode for the agents (default auto)")
-    common.add_argument("--no-chrome", action="store_true", help="don't pass --chrome to the agents")
     common.add_argument("--dry-run", action="store_true", help="show which steps would run and stop")
     common.add_argument("--force", action="store_true",
                         help="re-run skipped or already-sent applications too")
 
-    parser = argparse.ArgumentParser(description="Run every job-apply step for every application.")
+    parser = argparse.ArgumentParser(description="Run every job-apply step for every application.",
+                                     epilog=AGENT_HELP)
     sub = parser.add_subparsers(dest="command", required=True)
     p = sub.add_parser("run", parents=[common], help="apply to job links, all steps")
     p.add_argument("urls", nargs="*")

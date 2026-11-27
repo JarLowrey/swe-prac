@@ -1,6 +1,6 @@
 # Research briefs
 
-Four briefs, one `Agent` call each (subagent_type `general-purpose`), all four in ONE message so they run in parallel. Each prompt = the shared preamble + one brief, with every `{placeholder}` filled:
+Four briefs, one research agent (sub-agent) each, all four started at once so they run in parallel. If you can't start sub-agents, work through the briefs yourself, one after another. Each prompt = the shared preamble + one brief, with every `{placeholder}` filled:
 
 - `{company}`: the company as people search for it ("Northwind Traders", not "northwind").
 - `{role}`: the role title from the prompt ("Senior Software Development Engineer").
@@ -20,7 +20,7 @@ You are researching how {company} interviews software engineers, for a candidate
 
 Ground rules
 - Search queries name only the company, the role, the level and the team. Never add a person's name or other personal details.
-- Open every page you cite (WebFetch). A search-result snippet is not a source. If a site blocks fetching (Glassdoor, Blind and LinkedIn often do), say so and use what other pages quote from it, labelled as such.
+- Open every page you cite. A search-result snippet is not a source. If a site blocks fetching (Glassdoor, Blind and LinkedIn often do), say so and use what other pages quote from it, labelled as such.
 - Prefer, in order: the company's own pages (careers site, interview guide, engineering blog, values page); then dated candidate reports (the discussion forums of public coding-practice sites, Blind, Glassdoor, Reddit, levels.fyi, personal blogs, YouTube descriptions).
 - Date every claim: when the page was published or when the candidate interviewed. Mark anything from before {cutoff_year} as possibly out of date.
 - Count independent reports. One post is one report; say "1 report". Never present a single anecdote as a pattern.

@@ -1,6 +1,6 @@
 # Problem patterns
 
-The fifteen techniques behind most interview problems. For each one: the signals in the problem statement that point to it, the idea, a short Python template, a diagram of it at work, its cost, the usual bugs, and the problems to practise it on.
+The fifteen techniques behind most problems: the signals for each, a Python template, and problems to practice on.
 
 Most problems are one of these patterns, or two of them glued together. To find it, start from the
 [brute force](#/algo/learn/approach/brute-force-first) and ask what work it keeps redoing: the

@@ -16,7 +16,7 @@ export async function api(method, path, body) {
 window.addEventListener("swe-storage", (e) => toast(e.detail, "bad"));
 
 // Shown in a session's results while a run waits for Python to load (python.js).
-export const STARTING_PYTHON = "Starting Python… The first run in this browser downloads it (about 13 MB); after that it loads from the cache.";
+export const STARTING_PYTHON = "Starting Python… (the first run downloads about 13 MB)";
 
 // ruff's syntax errors and pyflakes findings (undefined names...) are errors; the rest warnings.
 export function lintSeverity(monaco, code) {
@@ -27,8 +27,7 @@ export function lintSeverity(monaco, code) {
 // The history page's export and import. History is kept in this browser only.
 export function historyBackupSection() {
   return `<h2 class="section-title">Your history file</h2>
-    <p class="dim">Your attempts are saved in this browser only. Export them to keep a copy or to move
-      them to another browser; importing a file adds its attempts to the ones here.</p>
+    <p class="dim">Saved in this browser only. Export to keep a copy or move browsers; importing adds to what's here.</p>
     <div class="random-row">
       <button data-export-history>Export history</button>
       <button data-import-history>Import history…</button>
@@ -54,7 +53,7 @@ export function bindHistoryBackup(rerender) {
     try {
       const { added } = await api("POST", "/api/backup", JSON.parse(await file.text()));
       const total = Object.values(added).reduce((a, b) => a + b, 0);
-      toast(total ? `Imported ${plural(total, "attempt")}` : "Nothing new: those attempts are already here", total ? "good" : "");
+      toast(total ? `Imported ${plural(total, "attempt")}` : "Nothing new to import", total ? "good" : "");
       await rerender();
     } catch (err) {
       toast(err instanceof SyntaxError ? "That file isn't valid JSON." : err.message, "bad");
@@ -136,10 +135,10 @@ export function modal({ title, body, actions }) {
 export function chooseMode(minutes, firstView, title = `Start a ${minutes}-minute session?`) {
   return modal({
     title,
-    body: `<p>The timer starts immediately and you'll see ${firstView}. Choose a timer mode:</p>
+    body: `<p>The timer starts now and you'll see ${firstView}.</p>
       <ul class="mode-help">
-        <li><strong>Strict</strong> &mdash; no pausing. Like the real thing: the clock keeps running even if you close the tab.</li>
-        <li><strong>Pausable</strong> &mdash; pause any time. While paused, the question and your work are hidden. Every pause is recorded.</li>
+        <li><strong>Strict</strong> &mdash; no pausing; the clock runs even if you close the tab.</li>
+        <li><strong>Pausable</strong> &mdash; your work is hidden while paused, and every pause is recorded.</li>
       </ul>`,
     actions: [
       { label: "Cancel", value: null, kind: "ghost" },
@@ -154,8 +153,7 @@ export function chooseMode(minutes, firstView, title = `Start a ${minutes}-minut
 export function confirmSpoil(title, what) {
   return modal({
     title: "This will spoil it",
-    body: `<p>You haven't attempted <strong>${esc(title)}</strong> yet. Reading its ${what} now means
-      you won't get a fresh, honest timed run at it.</p>`,
+    body: `<p>You haven't attempted <strong>${esc(title)}</strong>. Reading its ${what} now spoils a fresh timed run.</p>`,
     actions: [
       { label: "Show it anyway", value: true },
       { label: "Cancel", value: false, kind: "primary" },

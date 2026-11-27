@@ -31,8 +31,8 @@ Run the tracker by its absolute path so it works from either shell: `python <thi
 ## Setup check (once per session)
 
 1. Read `reference/profile.yaml`. If it doesn't exist, tell the user to copy `examples/reference/profile.yaml` to `reference/profile.yaml` in the job-search folder and fill it in, then stop. If anything this run needs still says `TODO` or still has the example's fake values (the name "Jordan Example", an `@example.com` email), list those fields and ask the user for them before touching any form. Offer to write their answers into the profile so they only answer once.
-2. Read the resume at `resume.path` (the Read tool handles PDFs). Blank `background` fields in the profile come from it: current employer and title are the most recent role, plus education and years of experience. If the file is missing, ask the user to save it there.
-3. Load the Chrome tools in one ToolSearch call: `select:mcp__claude-in-chrome__tabs_context_mcp,mcp__claude-in-chrome__tabs_create_mcp,mcp__claude-in-chrome__navigate,mcp__claude-in-chrome__get_page_text,mcp__claude-in-chrome__read_page,mcp__claude-in-chrome__find,mcp__claude-in-chrome__form_input,mcp__claude-in-chrome__computer,mcp__claude-in-chrome__file_upload`. Then call `tabs_context_mcp` and work in new tabs, one per application.
+2. Read the resume at `resume.path`. Blank `background` fields in the profile come from it: current employer and title are the most recent role, plus education and years of experience. If the file is missing, ask the user to save it there.
+3. Check that you can use the user's own signed-in Chrome. If you can't, tell the user to connect their agent to Chrome, then stop. Work in new tabs, one per application, and leave the user's other tabs alone.
 
 ## For each job link
 
@@ -41,7 +41,7 @@ Work through links one at a time, since they share one browser.
 ### 1. Read the posting and check fit
 
 - Check the tracker first: `tracker.py find --url "<link>"`. If it's already submitted or ready for review, tell the user and skip it unless they say otherwise.
-- Open the link and read it with `get_page_text`. Pull out company, job title, team, location(s), workplace type (onsite / hybrid / remote), pay range if listed, and the full description.
+- Open the link and read the page text. Pull out company, job title, team, location(s), workplace type (onsite / hybrid / remote), pay range if listed, and the full description.
 - Location fit, against `location.acceptable_locations`: a posting is fine if any of its locations matches one of the user's options. If none do (say, hybrid in a city the user didn't list, or remote only in another country), don't fill anything: tell the user why, log it with status `skipped-location`, and move on. If it's unclear ("Multiple locations", "Remote – Americas"), continue and raise it in the summary.
 - If the role is clearly below the level in `preferences.target_roles` (for example intern, new grad or junior when the user wants senior roles), mention it before filling.
 - Create the application folder and write `job.md`: a header (company, title, location, workplace type, pay range, URL, date read) followed by the posting text. Postings vanish when roles close, and the answer drafts and later interview prep both need the text.
@@ -55,14 +55,14 @@ Work through links one at a time, since they share one browser.
 
 Profile values that have a fixed set of answers are stored as keys (`not_a_protected_veteran`, `us_citizen`, `decline`), not as form wording; the allowed keys are in `profile.schema.json` at the repo root. Answer with the form option that means the same thing, since every employer words these differently: `true` / `false` become Yes / No; `decline` becomes the form's decline option ("Decline to self-identify", "I don't wish to answer", "Prefer not to say"); `eeo.other_self_id_questions: ask` means leave that question blank and list it. If no option on the form has the meaning, leave it blank and list it rather than picking the nearest-sounding one.
 
-Go section by section. Get field refs with `read_page` (filter `interactive`), set plain inputs, textareas, native selects and checkboxes with `form_input`, and use `computer` clicks and typing for custom dropdowns and button groups. Re-read each section afterwards to confirm the values stuck, because custom widgets often ignore values set programmatically.
+Go section by section. Find the section's form fields, set plain inputs, textareas, native selects and checkboxes directly, and click and type for custom dropdowns and button groups. Re-read each section afterwards to confirm the values stuck, because custom widgets often ignore values set programmatically.
 
 | The form asks for | Answer with |
 |---|---|
 | Name, email, phone, LinkedIn, GitHub, website | `identity.*`; skip optional fields left blank in the profile. If the phone has a separate country-code dropdown, pick the code for `location.country`. |
 | Location, city, address | `location.*`; for a single-line location field use "`<city>`, `<state>`" |
 | Current employer / title, years of experience, education | `background.*`, or the resume where those are blank |
-| Resume / CV | `file_upload` of `resume.path` (absolute) onto the file input (find it with `find` or `read_page`). Don't click the upload button: it opens a native file picker you can't operate. If the upload is rejected, ask the user to attach the file and name the exact button. |
+| Resume / CV | Upload `resume.path` (absolute) straight to the form's file input. Don't click the upload button: it opens a native file picker you can't operate. If the upload is rejected, ask the user to attach the file and name the exact button. |
 | Cover letter | If optional, leave it empty unless the user asked for one. If required, draft it with `job-answers`. |
 | Authorized to work / need sponsorship now or later / citizenship | `work_authorization.*` |
 | Security clearance | Holds one: `work_authorization.security_clearance`. Willing or able to obtain one: `work_authorization.willing_to_obtain_clearance`. |

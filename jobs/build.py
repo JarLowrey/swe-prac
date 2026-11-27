@@ -2,8 +2,9 @@
 
     python jobs/build.py --out site/jobs
 
-It copies the page (web/), the tracker's Python (tracker/, which the page runs in Pyodide) and
-zips the Claude Code skills kit (job-search/) into job-search.zip for visitors to download. The
+It copies the page (web/), the tracker's Python (tracker/, which the page runs in Pyodide), the
+sample postings the Job finder can load (the kit's examples/postings.json), and
+zips the AI skills kit (job-search/) into job-search.zip for visitors to download. The
 page loads Pyodide from ../practice/vendor/, so build the practice section next to it.
 
 The zip takes only the kit's tracked parts, named below, so a reference/ or applications/ folder
@@ -21,10 +22,11 @@ HERE = Path(__file__).resolve().parent
 WEB = HERE / "web"
 TRACKER = HERE / "tracker"
 KIT = HERE / "job-search"
+SAMPLE_POSTINGS = KIT / "examples" / "postings.json"
 
 TRACKER_FILES = ("job_tracker.py", "gmail_message.py", "tracker_api.py")
 # Everything the zip holds, relative to the kit. Folders are taken whole, less SKIP.
-KIT_PARTS = (".claude/skills", "examples", ".vscode/settings.json", ".gitignore", "README.md", "profile.schema.json")
+KIT_PARTS = ("skills", "examples", ".vscode/settings.json", ".gitignore", "README.md", "profile.schema.json")
 SKIP_DIRS = {"__pycache__", ".pytest_cache", ".ruff_cache"}
 SKIP_NAMES = {"settings.local.json", ".DS_Store", "Thumbs.db"}
 
@@ -66,6 +68,7 @@ def build(out: Path) -> None:
     (out / "py").mkdir()
     for name in TRACKER_FILES:
         shutil.copy(TRACKER / name, out / "py" / name)
+    shutil.copy(SAMPLE_POSTINGS, out / "sample-postings.json")
     write_kit(out / "job-search.zip")
 
 
