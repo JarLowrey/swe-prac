@@ -1,0 +1,2 @@
+# PDFs without compressed streams look like text to git; line-ending conversion would corrupt them.
+*.pdf binary
