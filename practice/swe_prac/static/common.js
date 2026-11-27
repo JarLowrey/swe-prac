@@ -174,6 +174,8 @@ export function topnav(active) {
       ${link("tech", "#/tech", "Tech")}
       ${link("history", "#/history", "History")}
     </nav>
+    <span class="nav-spacer"></span>
+    <a class="nav-out" href="../jobs/">Job search →</a>
   </header>`;
 }
 

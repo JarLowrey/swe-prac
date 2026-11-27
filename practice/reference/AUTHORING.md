@@ -21,7 +21,7 @@ reference/<pid>/
   mutants/*.py            deliberately buggy copies of solution.py
 ```
 
-Build and verify: `.venv/Scripts/python tools/build_problem.py <pid>` (or `--all`). It must print `OK`.
+Build and verify, from `practice/`: `../.venv/Scripts/python tools/build_problem.py <pid>` (or `--all`). It must print `OK`.
 
 ## problem.json
 

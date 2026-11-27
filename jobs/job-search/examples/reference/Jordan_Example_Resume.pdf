@@ -1,0 +1,73 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 5 0 R /F2 6 0 R /F3 7 0 R >> >> /Contents 4 0 R >>
+endobj
+4 0 obj
+<< /Length 2446 >>
+stream
+BT /F2 20 Tf 54 732 Td (Jordan Example) Tj ET
+BT /F1 9 Tf 54 706 Td (Denver, CO  |  jordan@example.com  |  303-555-0142  |  linkedin.com/in/example-jordan  |  github.com/example-jordan) Tj ET
+BT /F2 11 Tf 54 684 Td (EXPERIENCE) Tj ET
+0.6 G 0.5 w 54 680 m 558 680 l S 0 G
+BT /F2 10 Tf 54 666 Td (Contoso  -  Senior Software Engineer, Payments Platform) Tj ET
+BT /F1 10 Tf 472.4 666 Td (Mar 2021 - Present) Tj ET
+BT /F1 9.5 Tf 66 651 Td (-  Led the migration of the payments ledger from shared database tables to an event-sourced ledger) Tj ET
+BT /F1 9.5 Tf 66 638 Td (   service with no downtime; month-end reconciliation went from about 3 days to about 4 hours.) Tj ET
+BT /F1 9.5 Tf 66 625 Td (-  Designed idempotent handling for card-network callbacks, ending recurring duplicate-charge incidents.) Tj ET
+BT /F1 9.5 Tf 66 612 Td (-  Redesigned on-call alerting for 6 services with SLO-based alerts; pages per week fell from ~40 to ~8.) Tj ET
+BT /F1 9.5 Tf 66 599 Td (-  Mentored 4 engineers through on-call and design reviews; two have since been promoted to senior.) Tj ET
+BT /F2 10 Tf 54 580 Td (Fabrikam  -  Software Engineer, Order Management) Tj ET
+BT /F1 10 Tf 469.1 580 Td (Jul 2017 - Feb 2021) Tj ET
+BT /F1 9.5 Tf 66 565 Td (-  Built the order-routing service \(Go, PostgreSQL, Kafka\), handling ~2M orders a day at holiday peak.) Tj ET
+BT /F1 9.5 Tf 66 552 Td (-  Moved CI to containerized pipelines, cutting median build time from 22 to 7 minutes.) Tj ET
+BT /F1 9.5 Tf 66 539 Td (-  Redesigned the backend interview loop around a practical design exercise; used for ~60 hires.) Tj ET
+BT /F2 11 Tf 54 520 Td (EDUCATION) Tj ET
+0.6 G 0.5 w 54 516 m 558 516 l S 0 G
+BT /F2 10 Tf 54 502 Td (B.S. Computer Science, Example State University) Tj ET
+BT /F1 10 Tf 535.8 502 Td (2017) Tj ET
+BT /F2 11 Tf 54 481 Td (SKILLS) Tj ET
+0.6 G 0.5 w 54 477 m 558 477 l S 0 G
+BT /F1 9.5 Tf 54 463 Td (Languages: Go, Java, Python, SQL) Tj ET
+BT /F1 9.5 Tf 54 450 Td (Systems: PostgreSQL, Kafka, Redis, AWS, Kubernetes, Terraform) Tj ET
+BT /F1 9.5 Tf 54 437 Td (Areas: payments and ledgers, distributed systems, zero-downtime migrations, observability and on-call) Tj ET
+BT /F2 11 Tf 54 418 Td (COMMUNITY) Tj ET
+0.6 G 0.5 w 54 414 m 558 414 l S 0 G
+BT /F1 9.5 Tf 54 400 Td (Co-organizer, Denver Gophers meetup \(2022 - present\)) Tj ET
+BT /F3 7.5 Tf 54 36 Td (Fictional example resume for the job-search repo. Person, employers and school are made up.) Tj ET
+endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+6 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>
+endobj
+7 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Oblique /Encoding /WinAnsiEncoding >>
+endobj
+8 0 obj
+<< /Title (Jordan Example - Resume \(fictional\)) /Author (Example) /Producer (job-search examples) >>
+endobj
+xref
+0 9
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000121 00000 n 
+0000000267 00000 n 
+0000002765 00000 n 
+0000002862 00000 n 
+0000002964 00000 n 
+0000003069 00000 n 
+trailer
+<< /Size 9 /Root 1 0 R /Info 8 0 R >>
+startxref
+3187
+%%EOF

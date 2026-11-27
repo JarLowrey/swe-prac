@@ -1,8 +1,11 @@
 """Build the site: the whole app, which runs in the browser with no server behind it.
 
-    python tools/build_static.py            # writes site/
+    python tools/build_static.py            # writes site/ (in practice/)
     python tools/build_static.py --serve    # ...then serves it at http://127.0.0.1:8765/
     python tools/build_static.py --out dist
+
+The repo root's build.py calls build() for site/practice/, next to the Jobs section, which
+loads Pyodide from this section's vendor/.
 
 The output is static files: the frontend (swe_prac/static/), data.json (every question, study
 page and review text, pre-rendered), each problem's tests, the test runner, and the two

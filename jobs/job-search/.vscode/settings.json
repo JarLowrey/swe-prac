@@ -1,0 +1,7 @@
+{
+  // Validates the profile and its example against profile.schema.json, with
+  // dropdowns for the enum fields. Needs the "YAML" extension (redhat.vscode-yaml).
+  "yaml.schemas": {
+    "./profile.schema.json": ["**/reference/profile.yaml"]
+  }
+}

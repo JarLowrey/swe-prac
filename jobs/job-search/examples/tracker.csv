@@ -1,0 +1,4 @@
+id,date_added,company,role,location,url,ats,status,date_updated,folder,notes
+1,2026-11-20,Northwind Traders,"Senior Backend Engineer, Payments Platform","Denver, CO (hybrid) or Remote (US)",https://boards.example.com/northwind/jobs/4000001,Greenhouse,ready-for-review,2026-11-20,applications/2026-11-20-northwind-senior-backend-engineer,"2026-11-20: Salary left blank (posted $165k-$205k); 2 draft answers to review"
+2,2026-11-20,Tailspin Toys,Senior Software Engineer,"Hybrid - New York, NY",https://boards.example.com/tailspin/jobs/77,Lever,skipped-location,2026-11-20,,2026-11-20: Hybrid in New York only; no remote option
+3,2026-11-12,Wide World Importers,"Staff Engineer, Platform",Remote (US),https://boards.example.com/wideworld/jobs/123,Ashby,interviewing,2026-11-21,,2026-11-12: Ready for review | 2026-11-14: Submitted | 2026-11-21: Recruiter screen booked for Dec 2

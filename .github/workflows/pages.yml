@@ -1,6 +1,6 @@
 name: Deploy site
 
-# Builds the app (it runs entirely in the browser), tests it, and publishes it to GitHub Pages.
+# Builds the site (it runs entirely in the browser), tests it, and publishes it to GitHub Pages.
 # One-time setup: repo Settings > Pages > Build and deployment > Source: "GitHub Actions".
 
 on:
@@ -34,12 +34,19 @@ jobs:
       # Pyodide and ruff for the browser, downloaded by the build at the versions it pins.
       - uses: actions/cache@v4
         with:
-          path: .cache
-          key: runtimes-${{ hashFiles('tools/build_static.py') }}
-      - run: pip install -r requirements.txt
-      - run: python tools/build_static.py
+          path: practice/.cache
+          key: runtimes-${{ hashFiles('practice/tools/build_static.py') }}
+      - run: pip install -r practice/requirements.txt
+      - run: python build.py
+      # The practice tests import swe_prac from practice/, and the browser tests use the built site.
       - run: python -m unittest discover -s tests
+        working-directory: practice
       - run: node --test "tests/js/*.test.mjs"
+        working-directory: practice
+        env:
+          SWE_PRAC_SITE: ${{ github.workspace }}/site/practice
+      - run: python -m unittest discover -s jobs/tests
+      - run: node --test "jobs/tests/js/*.test.mjs"
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

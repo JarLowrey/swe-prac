@@ -1,0 +1,135 @@
+# Job application profile (EXAMPLE: every value here is fictional)
+# -----------------------------------------------------------------------------
+# Copy this file to reference/profile.yaml at the repo root and replace the
+# values with your own. reference/ is gitignored, so your copy (and your resume
+# and docs next to it) stay on your machine.
+#
+# Read by the job-apply, job-answers and job-contacts skills. Leave optional
+# fields as "" if you don't want them used. The skills refuse to fill forms
+# while the profile still has these example values.
+#
+# Relative paths (resume, reference folder) are relative to the repo root.
+
+identity:
+  first_name: "Jordan"
+  last_name: "Example"
+  preferred_name: ""            # only if different from first name
+  pronouns: "they/them"         # he/him | she/her | they/them | other | "" (leave out)
+  email: "jordan@example.com"
+  phone: "303-555-0142"         # without country code; country comes from location.country
+  linkedin_url: "https://www.linkedin.com/in/example-jordan"
+  github_url: "https://github.com/example-jordan"
+  portfolio_url: ""
+  languages: "English (fluent), Spanish (conversational)"
+
+location:
+  city: "Denver"
+  state: "CO"
+  zip: "80202"
+  country: "United States"
+  street_address: ""            # only used when a form requires it
+  open_to_relocation: false
+  # Jobs that don't match one of these are flagged and skipped before any
+  # form is filled. Edit freely.
+  acceptable_locations:
+    - "Denver area, onsite or hybrid (Denver, Boulder, Aurora, Lakewood, Englewood)"
+    - "Remote within the US"
+
+# Fields with a fixed set of answers hold a key, not the wording a form uses; the
+# skill picks the form option with the same meaning. The allowed keys are listed
+# below and in profile.schema.json at the repo root (the source of truth, and
+# what your editor validates against). Yes/no answers are true / false.
+work_authorization:
+  # us_citizen | us_permanent_resident | work_visa | other
+  citizenship: us_citizen
+  authorized_to_work_in_us: true
+  requires_sponsorship_now: false
+  requires_sponsorship_future: false
+  # none | public_trust | confidential | secret | top_secret | top_secret_sci
+  security_clearance: none
+  willing_to_obtain_clearance: true
+
+eeo:
+  # Voluntary self-identification. "decline" is always a valid answer and maps to
+  # whatever the form calls it ("Prefer not to say", "I don't wish to answer").
+  #   gender:              man | woman | non_binary | other | decline
+  #   pronouns:            he/him | she/her | they/them | other | decline
+  #   hispanic_or_latino:  hispanic_or_latino | not_hispanic_or_latino | decline
+  #   race:                american_indian_or_alaska_native | asian |
+  #                        black_or_african_american |
+  #                        native_hawaiian_or_pacific_islander | white |
+  #                        two_or_more | decline
+  #   veteran_status:      not_a_protected_veteran | protected_veteran | decline
+  #   disability_status:   no_disability | has_disability | decline
+  #   sexual_orientation:  heterosexual | gay_or_lesbian | bisexual | pansexual |
+  #                        asexual | queer | other | decline
+  #   transgender:         transgender | not_transgender | decline
+  #   lgbtqia:             lgbtqia | not_lgbtqia | decline
+  #   other_self_id_questions: decline | ask (leave blank and ask you)
+  gender: decline
+  pronouns: they/them
+  hispanic_or_latino: decline
+  race: decline
+  veteran_status: decline
+  disability_status: decline
+  sexual_orientation: decline
+  transgender: decline
+  lgbtqia: decline
+  # Any self-ID question not covered above
+  other_self_id_questions: decline
+
+# Screening questions about military connection (not the same as veteran status).
+military:
+  military_spouse: false
+  national_guard_or_reserves: false
+
+# Standing answers to routine consent questions. true = you agree; see
+# profile.schema.json. Privacy policies, terms and attestations are still left
+# for you to accept. The example keeps these false so nothing is consented to
+# until you choose.
+consents:
+  sms_contact: false
+  ai_application_review: false
+
+background:
+  # Blank fields are taken from the resume: current employer and title are the
+  # most recent role on it; education and years of experience come from it too.
+  # Fill one in here only to override what the resume says.
+  current_title: ""
+  current_employer: ""
+  years_of_experience: ""
+  education: []
+
+preferences:
+  # The level and kind of role being applied for. Postings clearly below this
+  # are flagged, and answers are pitched at this level.
+  target_roles: "Senior or staff backend / infrastructure software engineer"
+  # Salary changes by job: leave salary fields blank and ask the user for each
+  # application, showing the posted pay range if there is one.
+  salary_expectation: "ask-per-job"
+  earliest_start: "Two weeks after an offer"
+  heard_about_default: "Company careers page"
+
+resume:
+  # Uploaded as-is, so employers see this filename.
+  path: "reference/Jordan_Example_Resume.pdf"
+  # Optional: a Google Doc version, read for text when drafting answers.
+  google_doc_url: ""
+
+# Local reference material: every file in this folder (other than this
+# profile and the resume) is read when drafting answers. PDF, Markdown (.md), .txt and .docx all work; descriptive filenames
+# help ("payments-ledger-migration-design.md"). See examples/reference/.
+reference_folder: "reference"
+
+reference_docs:
+  # Google Drive docs, also read when drafting. Remove an entry if you
+  # download that doc into reference_folder, so it isn't read twice.
+  - url: "https://docs.google.com/document/d/EXAMPLE_DOC_ID/edit"
+    use_for: "On-call and alerting redesign: the proposal, the rollout plan, and before/after page volume"
+
+contacts:
+  count: 3
+  # Schools and past employers come from the resume. A shared background is
+  # the strongest reason a stranger replies. Add extras here (clubs, bootcamps).
+  shared_background:
+    - "Denver Gophers meetup (co-organizer)"

@@ -1,4 +1,4 @@
-# The history database of the old local server (tools/export_history.py reads it)
+# The history database of the old local server (practice/tools/export_history.py reads it)
 data/
 
 .venv/
@@ -7,8 +7,16 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 
-# Output of tools/build_static.py (deployed to GitHub Pages)
+# Output of build.py (deployed to GitHub Pages), and of practice/tools/build_static.py
 site/
 
 # Downloaded runtimes (Pyodide, ruff) kept between builds
 .cache/
+
+# Personal job-search data, if the tracker's command line or the skills are run inside this repo.
+# (jobs/job-search/.gitignore also keeps out its reference/, applications/, guides/ and tracker.csv.)
+.env
+emails*.json
+applications*.json
+overrides.json
+job-tracker-*.json

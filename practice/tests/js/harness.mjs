@@ -1,5 +1,6 @@
-// Shared setup for the JavaScript tests: they run the built site (site/, from
-// `python tools/build_static.py`) in Node, so what they check is exactly what ships.
+// Shared setup for the JavaScript tests: they run the built site in Node, so what they check is
+// exactly what ships. That's site/practice/ at the repo root (from `python build.py`), or
+// practice/site/ (from `python tools/build_static.py`), or $SWE_PRAC_SITE.
 //
 // The browser pieces Node lacks are stood in for here: Web Workers (python.js starts one per
 // run; node-worker.mjs gives it the worker's globals over worker_threads) and `window`, which
@@ -11,10 +12,12 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { Worker as ThreadWorker } from "node:worker_threads";
 
 export const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
-export const SITE = resolve(process.env.SWE_PRAC_SITE ?? join(REPO, "site"));
+const built = (dir) => existsSync(join(dir, "vendor", "pyodide", "pyodide.mjs"));
+const candidates = [join(REPO, "..", "site", "practice"), join(REPO, "site")];
+export const SITE = resolve(process.env.SWE_PRAC_SITE ?? candidates.find(built) ?? candidates[0]);
 
-if (!existsSync(join(SITE, "vendor", "pyodide", "pyodide.mjs"))) {
-  throw new Error(`No built site at ${SITE}. Run: python tools/build_static.py`);
+if (!built(SITE)) {
+  throw new Error(`No built site at ${SITE}. Run: python build.py (at the repo root)`);
 }
 
 export const siteUrl = (path) => pathToFileURL(join(SITE, path)).href;

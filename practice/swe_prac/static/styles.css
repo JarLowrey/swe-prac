@@ -83,6 +83,10 @@ button.small { padding: 3px 8px; font-size: 12px; }
 .topnav nav { display: flex; gap: 4px; }
 .topnav nav a { color: var(--text-dim); padding: 6px 12px; border-radius: 6px; }
 .topnav nav a.active, .topnav nav a:hover { color: var(--text); background: var(--bg-elev-2); text-decoration: none; }
+/* the link across to the site's other section (practice <-> jobs), at the right of the bar */
+.nav-spacer { flex: 1; }
+.nav-out { color: var(--text-dim); white-space: nowrap; }
+.nav-out:hover { color: var(--text); }
 
 .page { max-width: 1100px; margin: 0 auto; padding: 32px 24px 64px; }
 .page h1 { font-size: 26px; margin-bottom: 6px; }
@@ -628,4 +632,5 @@ svg.ds { display: block; max-width: 100%; height: auto; overflow: visible; }
   .brand { flex: none; }
   .topnav nav { min-width: 0; overflow-x: auto; scrollbar-width: none; }
   .topnav nav a { white-space: nowrap; padding: 6px 8px; }
+  .nav-out, .nav-spacer { display: none; }
 }

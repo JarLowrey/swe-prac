@@ -1,0 +1,213 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Job application profile",
+  "description": "Schema for reference/profile.yaml. Fields with a fixed set of answers are enums: the profile stores a stable key (for example \"not_a_protected_veteran\"), and the job-apply skill picks the form option with the same meaning, since every employer words these differently. Yes/no answers are real booleans. Free-text fields (names, addresses, target roles) are plain strings.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["identity", "location", "work_authorization", "eeo", "preferences", "resume", "reference_folder"],
+  "properties": {
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["first_name", "last_name", "email", "phone"],
+      "properties": {
+        "first_name": { "type": "string", "minLength": 1 },
+        "last_name": { "type": "string", "minLength": 1 },
+        "preferred_name": { "type": "string", "description": "Only if different from first_name." },
+        "pronouns": {
+          "enum": ["", "he/him", "she/her", "they/them", "other"],
+          "description": "Shown on forms that ask for pronouns. \"\" means don't fill it in."
+        },
+        "email": { "type": "string", "minLength": 1 },
+        "phone": { "type": "string", "minLength": 1, "description": "Without country code; the country comes from location.country." },
+        "linkedin_url": { "$ref": "#/$defs/optionalUrl" },
+        "github_url": { "$ref": "#/$defs/optionalUrl" },
+        "portfolio_url": { "$ref": "#/$defs/optionalUrl" },
+        "languages": { "type": "string", "description": "Free text, e.g. \"English (fluent), Spanish (conversational)\"." }
+      }
+    },
+
+    "location": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["city", "state", "country", "acceptable_locations"],
+      "properties": {
+        "city": { "type": "string", "minLength": 1 },
+        "state": { "type": "string", "minLength": 1 },
+        "zip": { "type": "string" },
+        "country": { "type": "string", "minLength": 1 },
+        "street_address": { "type": "string", "description": "Only used when a form requires it." },
+        "open_to_relocation": { "type": "boolean" },
+        "acceptable_locations": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Jobs that match none of these are flagged and skipped before any form is filled."
+        }
+      }
+    },
+
+    "work_authorization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "citizenship",
+        "authorized_to_work_in_us",
+        "requires_sponsorship_now",
+        "requires_sponsorship_future",
+        "security_clearance",
+        "willing_to_obtain_clearance"
+      ],
+      "properties": {
+        "citizenship": {
+          "enum": ["us_citizen", "us_permanent_resident", "work_visa", "other"],
+          "description": "work_visa covers H-1B, L-1, TN, OPT/CPT and similar."
+        },
+        "authorized_to_work_in_us": { "type": "boolean" },
+        "requires_sponsorship_now": { "type": "boolean" },
+        "requires_sponsorship_future": { "type": "boolean" },
+        "security_clearance": {
+          "enum": ["none", "public_trust", "confidential", "secret", "top_secret", "top_secret_sci"],
+          "description": "The highest clearance currently held and active."
+        },
+        "willing_to_obtain_clearance": { "type": "boolean" }
+      }
+    },
+
+    "eeo": {
+      "type": "object",
+      "description": "Voluntary self-identification. \"decline\" is always a valid answer and maps to whatever the form calls it (\"Decline to self-identify\", \"I don't wish to answer\", \"Prefer not to say\").",
+      "additionalProperties": false,
+      "required": [
+        "gender",
+        "pronouns",
+        "hispanic_or_latino",
+        "race",
+        "veteran_status",
+        "disability_status",
+        "sexual_orientation",
+        "transgender",
+        "lgbtqia",
+        "other_self_id_questions"
+      ],
+      "properties": {
+        "gender": { "enum": ["man", "woman", "non_binary", "other", "decline"] },
+        "pronouns": { "enum": ["he/him", "she/her", "they/them", "other", "decline"] },
+        "hispanic_or_latino": { "enum": ["hispanic_or_latino", "not_hispanic_or_latino", "decline"] },
+        "race": {
+          "enum": [
+            "american_indian_or_alaska_native",
+            "asian",
+            "black_or_african_american",
+            "native_hawaiian_or_pacific_islander",
+            "white",
+            "two_or_more",
+            "decline"
+          ],
+          "description": "Forms with a combined option such as \"White (Not Hispanic or Latino)\" are matched using hispanic_or_latino as well."
+        },
+        "veteran_status": { "enum": ["not_a_protected_veteran", "protected_veteran", "decline"] },
+        "disability_status": { "enum": ["no_disability", "has_disability", "decline"] },
+        "sexual_orientation": {
+          "enum": ["heterosexual", "gay_or_lesbian", "bisexual", "pansexual", "asexual", "queer", "other", "decline"]
+        },
+        "transgender": { "enum": ["transgender", "not_transgender", "decline"] },
+        "lgbtqia": { "enum": ["lgbtqia", "not_lgbtqia", "decline"] },
+        "other_self_id_questions": {
+          "enum": ["decline", "ask"],
+          "description": "How to handle a self-ID question not covered above: choose the form's decline option, or leave it blank and ask the user."
+        }
+      }
+    },
+
+    "military": {
+      "type": "object",
+      "description": "Employer screening questions about military connection that are not the same as veteran_status. Leave out to be asked each time.",
+      "additionalProperties": false,
+      "properties": {
+        "military_spouse": { "type": "boolean" },
+        "national_guard_or_reserves": { "type": "boolean" }
+      }
+    },
+
+    "consents": {
+      "type": "object",
+      "description": "Standing yes/no answers to routine consent questions on applications. true means the user agrees; the job-apply skill answers only these two kinds of question from here and leaves privacy policies, terms and attestations for the user. Leave a field out to be asked each time.",
+      "additionalProperties": false,
+      "properties": {
+        "sms_contact": { "type": "boolean", "description": "Agree to be contacted by SMS about the application." },
+        "ai_application_review": { "type": "boolean", "description": "Agree to AI/automated tools reviewing the application (false means opt out where the form offers it)." }
+      }
+    },
+
+    "background": {
+      "type": "object",
+      "description": "Blank fields are taken from the resume. Fill one in only to override it.",
+      "additionalProperties": false,
+      "properties": {
+        "current_title": { "type": "string" },
+        "current_employer": { "type": "string" },
+        "years_of_experience": { "type": ["string", "integer"] },
+        "education": { "type": "array", "items": { "type": ["string", "object"] } }
+      }
+    },
+
+    "preferences": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target_roles", "salary_expectation"],
+      "properties": {
+        "target_roles": { "type": "string", "minLength": 1, "description": "The level and kind of role being applied for." },
+        "salary_expectation": {
+          "type": "string",
+          "minLength": 1,
+          "description": "\"ask-per-job\" to be asked for each application, or a fixed answer such as \"$180,000\"."
+        },
+        "earliest_start": { "type": "string" },
+        "heard_about_default": { "type": "string" }
+      }
+    },
+
+    "resume": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1, "description": "Uploaded as-is, so employers see this filename." },
+        "google_doc_url": { "$ref": "#/$defs/optionalUrl" }
+      }
+    },
+
+    "reference_folder": { "type": "string", "minLength": 1 },
+
+    "reference_docs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["url", "use_for"],
+        "properties": {
+          "url": { "type": "string", "pattern": "^https?://" },
+          "use_for": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+
+    "contacts": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "count": { "type": "integer", "minimum": 1 },
+        "shared_background": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+      }
+    }
+  },
+
+  "$defs": {
+    "optionalUrl": {
+      "type": "string",
+      "pattern": "^(https?://\\S+)?$",
+      "description": "A full URL, or \"\" to leave it out."
+    }
+  }
+}
