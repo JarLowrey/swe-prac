@@ -3,10 +3,12 @@
 // solution), the problem and study pages, and the history table. Pages return their cleanup.
 
 import {
-  $app, STARTING_PYTHON, api, esc, fmtClock, plural, fmtDate, storage, toast, modal, chooseMode,
-  confirmSpoil, topnav, dragGutter, resizableSplit, lintSeverity,
+  $app, api, esc, fmtClock, plural, fmtDate, storage, toast, modal, chooseMode,
+  confirmSpoil, topnav, dragGutter, resizableSplit, lintSeverity, MONACO_LANGUAGE, languageLabel,
+  languageNote, lintText, onRunnerStatus, loadErrorHtml,
 } from "./common.js";
 import { coolDown, warmUp } from "./backend.js";
+import { show as literal } from "./judge.js";
 import { foundationsSection } from "./learn.js";
 
 const DIFFICULTIES = ["Easy", "Medium", "Hard"];
@@ -36,7 +38,9 @@ function py(value) {
   return String(value);
 }
 
-const argsText = (params, args) => args.map((a, i) => `${params[i] ?? `arg${i + 1}`} = ${py(a)}`).join(", ");
+// Test data as the session's language writes it: Python's repr, else [1, 2], "text", null, true.
+const valueText = (language, value) => (language === "python" ? py(value) : literal(value));
+const argsText = (language, params, args) => args.map((a, i) => `${params[i] ?? `arg${i + 1}`} = ${valueText(language, a)}`).join(", ");
 
 function resultLabel(part, limit) {
   if (part.solved) return '<span class="pass">✓ Solved</span>';
@@ -60,13 +64,13 @@ function confirmEnd() {
 }
 
 async function startSession(body, minutes) {
-  const mode = await chooseMode(
-    minutes ?? "timed", "the problem statement",
-    minutes ? undefined : "Start a random problem?",
-  );
-  if (!mode) return;
+  const choice = await chooseMode(minutes ?? "timed", "the problem statement", {
+    title: minutes ? undefined : "Start a random problem?",
+    languages: true,
+  });
+  if (!choice) return;
   try {
-    const s = await api("POST", "/api/algo/sessions", { ...body, mode });
+    const s = await api("POST", "/api/algo/sessions", { ...body, mode: choice.mode, language: choice.language });
     location.hash = `#/algo/session/${s.id}`;
   } catch (err) { toast(err.message, "bad"); }
 }
@@ -83,8 +87,8 @@ export async function algoTrackCard() {
     : `<span class="faint">${attempts ? `${plural(attempts, "attempt")} · ${solved} solved` : "No attempts yet"}</span>`;
   return `<a class="track-card" href="#/algo">
     <div class="track-head"><span class="track-mark algo">{ }</span><h2>Algorithms</h2></div>
-    <p>Classic interview problems in Python. Hidden tests include inputs only an efficient algorithm
-      finishes in time. Explanations and foundations pages follow.</p>
+    <p>Classic interview problems in Python, Java or C++. Hidden tests include inputs only an
+      efficient algorithm finishes in time. Explanations and foundations pages follow.</p>
     <ul class="track-facts"><li>${plural(problems.length, "problem")}</li><li>${minutes.Easy}–${minutes.Hard} min</li><li>auto-graded</li></ul>
     <div class="track-foot">${status}<span class="track-cta">Open →</span></div>
   </a>`;
@@ -295,9 +299,12 @@ export async function renderAlgoSession(sessionId) {
     if (err.status === 410) { location.hash = `#/algo/review/${sessionId}`; return undefined; }
     throw err;
   }
-  warmUp(); // load Python and ruff now, so the first Run doesn't wait for them
+  const language = session.language;
+  const files = session.files;
+  warmUp(language); // load Python and ruff (or the compiler) now, so the first Run doesn't wait
   const monaco = await window.monacoReady;
   const examples = Object.fromEntries(session.examples.map((e) => [e.id, e]));
+  const args = (values) => argsText(language, session.params, values);
   const st = {
     timer: { ...session.timer, syncedAt: performance.now() },
     solvedAt: session.solved_at,
@@ -330,8 +337,10 @@ export async function renderAlgoSession(sessionId) {
       <section class="statement-pane" data-blur>
         <div class="scroll">
           <div class="statement">
-            <div class="level-meta">#${p.number} · ${p.minutes}-minute session · implement <code>Solution.${esc(p.method)}</code></div>
+            <div class="level-meta">#${p.number} · ${p.minutes}-minute session · implement
+              <code>${esc(session.signature ?? `Solution.${p.method}`)}</code> in class <code>Solution</code></div>
             <h2>${esc(p.title)}</h2>
+            ${languageNote(language, "Hints and the explained solution are")}
             <div class="md">${session.statement_html}</div>
           </div>
         </div>
@@ -340,12 +349,12 @@ export async function renderAlgoSession(sessionId) {
       <section class="code-pane" data-blur>
         <div class="editor-toolbar">
           <div class="file-tabs">
-            <button class="file-tab active" data-file="solution">solution.py</button>
-            <button class="file-tab" data-file="scratch" title="Your experiments, for Run scratch">scratch.py</button>
+            <button class="file-tab active" data-file="solution">${esc(files.solution)}</button>
+            <button class="file-tab" data-file="scratch" title="Your experiments, for Run scratch">${esc(files.scratch)}</button>
           </div>
           <span class="save-state" data-save-state></span>
-          <button data-format title="Format with ruff (Shift+Alt+F)">Format</button>
-          <button data-scratch title="Run scratch.py">Run scratch</button>
+          <button data-format title="Format with ruff (Shift+Alt+F)" class="${language === "python" ? "" : "hidden"}">Format</button>
+          <button data-scratch title="Run ${esc(files.scratch)}">Run scratch</button>
           <button data-run title="Run the examples (Ctrl+Enter)">▶ Run <kbd>Ctrl+↵</kbd></button>
           <button data-submit class="primary" title="Run the examples and the hidden tests (Ctrl+Shift+Enter)">Submit <kbd style="color:#dfe8ff;border-color:#9bb8ff">Ctrl+⇧+↵</kbd></button>
         </div>
@@ -363,8 +372,8 @@ export async function renderAlgoSession(sessionId) {
   const workspace = q("[data-workspace]");
 
   // ----- editors
-  const solutionModel = monaco.editor.createModel(session.code, "python");
-  const scratchModel = monaco.editor.createModel(session.scratch, "python");
+  const solutionModel = monaco.editor.createModel(session.code, MONACO_LANGUAGE[language]);
+  const scratchModel = monaco.editor.createModel(session.scratch, MONACO_LANGUAGE[language]);
   const editor = monaco.editor.create(q("[data-editor-host]"), {
     model: solutionModel,
     theme: "vs-dark",
@@ -434,12 +443,12 @@ export async function renderAlgoSession(sessionId) {
   }
   function setLint(lint) {
     st.lint = lint;
-    monaco.editor.setModelMarkers(solutionModel, "ruff", lint.issues.map((i) => ({
+    monaco.editor.setModelMarkers(solutionModel, "lint", lint.issues.map((i) => ({
       startLineNumber: i.row, startColumn: i.col, endLineNumber: i.end_row,
       endColumn: Math.max(i.end_col, i.col + 1),
       message: `${i.message} (${i.code})`,
       severity: lintSeverity(monaco, i.code),
-      source: "ruff",
+      source: lintText(language).head,
     })));
     renderResultTabs();
     if (st.resultsTab === "lint") renderResults();
@@ -568,7 +577,7 @@ export async function renderAlgoSession(sessionId) {
   function renderExamples() {
     const intro = "<kbd>Ctrl+↵</kbd> <strong>Run</strong> checks these examples in full. <kbd>Ctrl+⇧+↵</kbd> <strong>Submit</strong> adds the hidden tests (counts only); pass them all to solve it.";
     const rows = session.examples.map((e) => `<tr><td>${esc(e.name)}</td>
-      <td class="call">${esc(argsText(session.params, e.args))}</td><td>${esc(py(e.expect))}</td></tr>`).join("");
+      <td class="call">${esc(args(e.args))}</td><td>${esc(valueText(language, e.expect))}</td></tr>`).join("");
     return `<p class="faint" style="margin:0 0 10px">${intro}</p>
       <table class="steps"><tr><th>Example</th><th>Input</th><th>Expected</th></tr>${rows}</table>`;
   }
@@ -588,10 +597,7 @@ export async function renderAlgoSession(sessionId) {
     } else if (r.kind === "run" && r.all_passed) {
       parts.push('<div class="callout info">All examples pass. <strong>Submit</strong> to run the hidden tests.</div>');
     }
-    if (r.import_error) {
-      parts.push(`<div class="callout bad"><strong>Your code failed to load</strong><pre>${esc(r.import_error)}</pre>
-        ${r.import_stdout ? `<div class="block-label">Output</div><pre>${esc(r.import_stdout)}</pre>` : ""}</div>`);
-    }
+    parts.push(loadErrorHtml(r));
     if (r.crashed) parts.push(`<div class="callout bad"><strong>Test process crashed</strong><pre>${esc(r.crashed)}</pre></div>`);
     if (r.timed_out) parts.push('<div class="callout bad"><strong>Timed out.</strong> Unfinished tests count as failed.</div>');
     if (r.stopped) {
@@ -612,8 +618,8 @@ export async function renderAlgoSession(sessionId) {
         <div class="body">
           ${t.error ? `<div class="callout bad"><pre>${esc(t.error)}</pre></div>` : ""}
           <table class="steps">
-            <tr><th>Input</th><td class="call">${esc(argsText(session.params, ex?.args ?? []))}</td></tr>
-            <tr><th>Expected</th><td>${esc(py(ex?.expect))}</td></tr>
+            <tr><th>Input</th><td class="call">${esc(args(ex?.args ?? []))}</td></tr>
+            <tr><th>Expected</th><td>${esc(valueText(language, ex?.expect))}</td></tr>
             <tr class="${t.passed ? "" : "bad"}"><th>Got</th><td>${t.ran ? esc(t.actual ?? "") : '<span class="faint">not run</span>'}</td></tr>
           </table>
           ${t.stdout ? `<div class="block-label">stdout</div><pre class="out">${esc(t.stdout)}</pre>` : ""}
@@ -628,8 +634,9 @@ export async function renderAlgoSession(sessionId) {
   function renderLint() {
     const { issues, error } = st.lint;
     if (error) return `<div class="callout bad"><pre>${esc(error)}</pre></div>`;
-    if (!issues.length) return '<div class="empty">✓ No lint issues (ruff).</div>';
-    return `<p class="faint" style="margin-top:0;font-size:12px">ruff · informational. Click an issue to jump to it.</p>
+    const text = lintText(language);
+    if (!issues.length) return `<div class="empty">${text.none}</div>`;
+    return `<p class="faint" style="margin-top:0;font-size:12px">${text.head} · informational. Click an issue to jump to it.</p>
       <ul class="lint-list">${issues.map((i, n) => `<li data-issue="${n}">
         <span class="pos">${i.row}:${i.col}</span><span class="code">${esc(i.code)}</span>
         <span>${esc(i.message)}${i.fixable ? ' <span class="faint">(auto-fixable)</span>' : ""}</span></li>`).join("")}</ul>`;
@@ -649,10 +656,10 @@ export async function renderAlgoSession(sessionId) {
   function renderScratch() {
     const o = st.scratchOut;
     if (!o) {
-      return `<div class="empty"><code>scratch.py</code> calls your method on the first example.
+      return `<div class="empty"><code>${esc(files.scratch)}</code> calls your method on the first example.
         Add inputs and prints, then <strong>Run scratch</strong>.</div>`;
     }
-    return `<div class="summary-row"><strong>scratch.py</strong>
+    return `<div class="summary-row"><strong>${esc(files.scratch)}</strong>
         <span class="chip ${o.exit_code === 0 ? "good" : "bad"}">${o.timed_out ? "timed out" : o.crashed ? "crashed" : `exit ${o.exit_code}`}</span>
         <span class="faint">${o.ms} ms</span></div>
       <div class="block-label">stdout</div><pre class="out">${esc(o.stdout) || '<span class="faint">(empty)</span>'}</pre>
@@ -668,13 +675,13 @@ export async function renderAlgoSession(sessionId) {
     q("[data-format]").disabled = st.timer.paused;
   }
 
-  // While a run waits for Python to load (the first one in this browser downloads it), say so.
-  const onPython = (e) => {
+  // While a run waits (to load Python or a compiler, the first time in this browser, or to
+  // compile), say so.
+  const offRunner = onRunnerStatus(({ text }) => {
     if (!st.busy) return;
-    st.busyText = e.detail.state === "loading" ? STARTING_PYTHON : "Running…";
+    st.busyText = text;
     renderResults();
-  };
-  window.addEventListener("swe-python", onPython);
+  });
 
   async function doRun(kind) {
     if (st.busy || st.timer.paused) return;
@@ -776,7 +783,7 @@ export async function renderAlgoSession(sessionId) {
     clearInterval(autosave); clearInterval(tick); clearInterval(resync); clearTimeout(lintTimer);
     window.removeEventListener("beforeunload", beforeUnload);
     window.removeEventListener("keydown", keyHandler);
-    window.removeEventListener("swe-python", onPython);
+    offRunner();
     coolDown();
     subs.forEach((s) => s.dispose());
     formatProvider.dispose();
@@ -807,7 +814,7 @@ export async function renderAlgoReview(sessionId) {
   $app.innerHTML = `${topnav("")}<main class="page">
     <p class="faint" style="margin:0 0 4px"><a href="#/history">← History</a> · <a href="#/algo/problem/${esc(p.id)}">Problem overview</a></p>
     <h1>${esc(p.title)}</h1>
-    <p class="lead">${diffChip(p.difficulty)} <span class="faint">${data.mode === "strict" ? "Strict" : "Pausable"} session · ${fmtDate(data.started_at)} ·
+    <p class="lead">${diffChip(p.difficulty)} <span class="faint">${data.mode === "strict" ? "Strict" : "Pausable"} session · ${languageLabel(data.language)} · ${fmtDate(data.started_at)} ·
       ${p.patterns.map(esc).join(", ")}</span></p>
     <div class="stat-grid">
       <div class="stat"><div class="label">Timed result</div>
@@ -853,7 +860,7 @@ export async function renderAlgoReview(sessionId) {
       if (current !== key || !panel.isConnected) return;
       viewer = monaco.editor.create(panel, {
         value: data.code,
-        language: "python", theme: "vs-dark", readOnly: true, domReadOnly: true, automaticLayout: true,
+        language: MONACO_LANGUAGE[data.language], theme: "vs-dark", readOnly: true, domReadOnly: true, automaticLayout: true,
         minimap: { enabled: false }, fontSize: 13, scrollBeyondLastLine: false,
       });
       return;
@@ -899,6 +906,7 @@ function historyTable(sessions, withProblem = true) {
     return `<tr class="clickable" data-href="${href}">
       <td>${fmtDate(s.started_at)}</td>
       ${withProblem ? `<td>${esc(s.problem_title)}</td><td>${s.difficulty ? diffChip(s.difficulty) : ""}</td>` : ""}
+      <td>${languageLabel(s.language)}</td>
       <td>${s.mode}</td>
       <td>${active ? '<span class="chip">in progress</span>' : resultLabel(s.timed)}${s.timed.solved ? ` <span class="faint">${fmtClock(s.solved_at)}</span>` : ""}</td>
       <td>${active ? "—" : s.final.solved && !s.timed.solved ? '<span class="warn">✓ in overtime</span>' : resultLabel(s.final)}</td>
@@ -906,7 +914,7 @@ function historyTable(sessions, withProblem = true) {
       <td>${s.pauses.count ? `${s.pauses.count} (${fmtClock(s.pauses.total_seconds)})` : "—"}</td>
     </tr>`;
   }).join("");
-  return `<table class="table"><tr><th>Date</th>${withProblem ? "<th>Problem</th><th>Difficulty</th>" : ""}<th>Mode</th><th>Timed result</th><th>Incl. overtime</th><th>Time</th><th>Pauses</th></tr>${rows}</table>`;
+  return `<table class="table"><tr><th>Date</th>${withProblem ? "<th>Problem</th><th>Difficulty</th>" : ""}<th>Language</th><th>Mode</th><th>Timed result</th><th>Incl. overtime</th><th>Time</th><th>Pauses</th></tr>${rows}</table>`;
 }
 
 function bindRows() {

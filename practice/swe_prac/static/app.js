@@ -4,9 +4,10 @@
 // projects' file browser in files.js, shared helpers in common.js.
 
 import {
-  $app, $modalRoot, STARTING_PYTHON, api, esc, fmtClock, fmtDelta, plural, fmtDate, storage, toast,
+  $app, $modalRoot, api, esc, fmtClock, fmtDelta, plural, fmtDate, storage, toast,
   modal, chooseMode, confirmSpoil, topnav, levelDots, dragGutter, resizableSplit, watchDiagrams,
-  lintSeverity, historyBackupSection, bindHistoryBackup,
+  lintSeverity, historyBackupSection, bindHistoryBackup, MONACO_LANGUAGE, languageLabel, languageNote,
+  lintText, onRunnerStatus, loadErrorHtml,
 } from "./common.js";
 import { coolDown, warmUp } from "./backend.js";
 import {
@@ -86,7 +87,7 @@ async function renderHome() {
     <div class="track-grid">
       <a class="track-card" href="#/coding">
         <div class="track-head"><span class="track-mark">&lt;/&gt;</span><h2>Coding assessment</h2></div>
-        <p>One Python problem in four levels. Pass every shown and hidden test to unlock the next.</p>
+        <p>One problem in four levels, in Python, Java or C++. Pass every shown and hidden test to unlock the next.</p>
         <ul class="track-facts"><li>${plural(coding.problems.length, "problem")}</li><li>${coding.time_limit / 60} min</li><li>auto-graded</li></ul>
         <div class="track-foot">${status}<span class="track-cta">Open →</span></div>
       </a>
@@ -147,11 +148,11 @@ async function renderCodingHome() {
   unseenBox.addEventListener("change", () => storage("swe-prac-prefer-unseen", unseenBox.checked ? "1" : "0"));
 
   const start = async (problemId) => {
-    const mode = await chooseMode(90, "Level 1 only");
-    if (!mode) return;
+    const choice = await chooseMode(90, "Level 1 only", { languages: true });
+    if (!choice) return;
     try {
       const s = await api("POST", "/api/sessions", {
-        problem_id: problemId, mode, prefer_unseen: unseenBox.checked,
+        problem_id: problemId, mode: choice.mode, language: choice.language, prefer_unseen: unseenBox.checked,
       });
       location.hash = `#/session/${s.id}`;
     } catch (err) { toast(err.message, "bad"); }
@@ -189,7 +190,9 @@ async function renderSession(sessionId) {
     if (err.status === 410) { location.hash = `#/review/${sessionId}`; return; }
     throw err;
   }
-  warmUp(); // load Python and ruff now, so the first Run doesn't wait for them
+  const language = session.language;
+  const files = session.files;
+  warmUp(language); // load Python and ruff (or the compiler) now, so the first Run doesn't wait
   const monaco = await window.monacoReady;
 
   const st = {
@@ -228,13 +231,13 @@ async function renderSession(sessionId) {
       <section class="code-pane" data-blur>
         <div class="editor-toolbar">
           <div class="file-tabs">
-            <button class="file-tab active" data-file="solution">solution.py</button>
-            <button class="file-tab" data-file="scratch">scratch.py</button>
-            <button class="file-tab" data-file="tests" title="The shown tests for your unlocked levels. Submit also runs hidden tests.">tests.py <span class="ro">read-only</span></button>
+            <button class="file-tab active" data-file="solution">${esc(files.solution)}</button>
+            <button class="file-tab" data-file="scratch">${esc(files.scratch)}</button>
+            <button class="file-tab" data-file="tests" title="The shown tests for your unlocked levels. Submit also runs hidden tests.">${esc(files.tests)} <span class="ro">read-only</span></button>
           </div>
           <span class="save-state" data-save-state></span>
-          <button data-format title="Format with ruff (Shift+Alt+F)">Format</button>
-          <button data-scratch title="Run scratch.py">Run scratch</button>
+          <button data-format title="Format with ruff (Shift+Alt+F)" class="${language === "python" ? "" : "hidden"}">Format</button>
+          <button data-scratch title="Run ${esc(files.scratch)}">Run scratch</button>
           <button data-run title="Run shown tests (Ctrl+Enter)">▶ Run <kbd>Ctrl+↵</kbd></button>
           <button data-submit class="primary" title="Run shown + hidden tests (Ctrl+Shift+Enter)">Submit <kbd style="color:#dfe8ff;border-color:#9bb8ff">Ctrl+⇧+↵</kbd></button>
         </div>
@@ -252,9 +255,9 @@ async function renderSession(sessionId) {
   const workspace = q("[data-workspace]");
 
   // ----- editors
-  const solutionModel = monaco.editor.createModel(session.code, "python");
-  const scratchModel = monaco.editor.createModel(session.scratch, "python");
-  const testsModel = monaco.editor.createModel(session.tests_source, "python");
+  const solutionModel = monaco.editor.createModel(session.code, MONACO_LANGUAGE[language]);
+  const scratchModel = monaco.editor.createModel(session.scratch, MONACO_LANGUAGE[language]);
+  const testsModel = monaco.editor.createModel(session.tests_source, MONACO_LANGUAGE[language]);
   const editor = monaco.editor.create(q("[data-editor-host]"), {
     model: solutionModel,
     theme: "vs-dark",
@@ -329,12 +332,12 @@ async function renderSession(sessionId) {
   }
   function setLint(lint) {
     st.lint = lint;
-    monaco.editor.setModelMarkers(solutionModel, "ruff", lint.issues.map((i) => ({
+    monaco.editor.setModelMarkers(solutionModel, "lint", lint.issues.map((i) => ({
       startLineNumber: i.row, startColumn: i.col, endLineNumber: i.end_row,
       endColumn: Math.max(i.end_col, i.col + 1),
       message: `${i.message} (${i.code})`,
       severity: lintSeverity(monaco, i.code),
-      source: "ruff",
+      source: lintText(language).head,
     })));
     renderResultTabs();
     if (st.resultsTab === "lint") renderResults();
@@ -456,12 +459,13 @@ async function renderSession(sessionId) {
       <div class="statement">
         <h2>Level ${info.level}: ${esc(info.title)}</h2>
         <div class="level-meta">Pacing target: done by ${fmtClock(target)} · Class <code>${esc(st.session.problem.class_name)}</code></div>
+        ${languageNote(language, "Hints and the reference solution are")}
         ${info.statement_html}
         ${doneNote}
         <div class="stub-box">
           <header><span>Level ${info.level} method stubs</span>
             <span><button class="small" data-copy-stubs>Copy</button>
-            <button class="small" data-insert-stubs title="Insert at the cursor in solution.py">Insert at cursor</button></span></header>
+            <button class="small" data-insert-stubs title="Insert at the cursor in ${esc(files.solution)}">Insert at cursor</button></span></header>
           <pre>${esc(info.stubs)}</pre>
         </div>
       </div>`;
@@ -482,7 +486,7 @@ async function renderSession(sessionId) {
 
   // ----- files
   const models = { solution: solutionModel, scratch: scratchModel, tests: testsModel };
-  // tests.py is never editable; the other files lock while the session is paused.
+  // The tests file is never editable; the other files lock while the session is paused.
   function syncReadOnly() {
     editor.updateOptions({ readOnly: st.timer.paused || st.file === "tests" });
     q("[data-format]").disabled = st.file === "tests";
@@ -534,7 +538,7 @@ async function renderSession(sessionId) {
     if (st.resultsTab === "scratch") { el.innerHTML = renderScratch(); return; }
     const r = st.lastResult;
     if (!r) {
-      el.innerHTML = `<div class="empty"><kbd>Ctrl+↵</kbd> Run checks the shown tests (<code>tests.py</code>) in full.
+      el.innerHTML = `<div class="empty"><kbd>Ctrl+↵</kbd> Run checks the shown tests (<code>${esc(files.tests)}</code>) in full.
         <kbd>Ctrl+⇧+↵</kbd> Submit adds the hidden tests (counts only) and unlocks the next level when all pass.</div>`;
       return;
     }
@@ -555,10 +559,7 @@ async function renderSession(sessionId) {
     } else if (r.kind === "run" && r.all_passed) {
       parts.push(`<div class="callout info">All shown tests pass. <strong>Submit</strong> to run the hidden tests.</div>`);
     }
-    if (r.import_error) {
-      parts.push(`<div class="callout bad"><strong>Your code failed to load</strong><pre>${esc(r.import_error)}</pre>
-        ${r.import_stdout ? `<div class="block-label">Output</div><pre>${esc(r.import_stdout)}</pre>` : ""}</div>`);
-    }
+    parts.push(loadErrorHtml(r));
     if (r.crashed) parts.push(`<div class="callout bad"><strong>Test process crashed</strong><pre>${esc(r.crashed)}</pre></div>`);
     if (r.timed_out) parts.push(`<div class="callout bad"><strong>Timed out.</strong> Unfinished tests count as failed.</div>`);
 
@@ -602,8 +603,9 @@ async function renderSession(sessionId) {
   function renderLint() {
     const { issues, error } = st.lint;
     if (error) return `<div class="callout bad"><pre>${esc(error)}</pre></div>`;
-    if (!issues.length) return '<div class="empty">✓ No lint issues (ruff).</div>';
-    return `<p class="faint" style="margin-top:0;font-size:12px">ruff · informational, never blocks a level. Click an issue to jump to it.</p>
+    const text = lintText(language);
+    if (!issues.length) return `<div class="empty">${text.none}</div>`;
+    return `<p class="faint" style="margin-top:0;font-size:12px">${text.head} · informational, never blocks a level. Click an issue to jump to it.</p>
       <ul class="lint-list">${issues.map((i, n) => `<li data-issue="${n}">
         <span class="pos">${i.row}:${i.col}</span><span class="code">${esc(i.code)}</span>
         <span>${esc(i.message)}${i.fixable ? ' <span class="faint">(auto-fixable)</span>' : ""}</span></li>`).join("")}</ul>`;
@@ -622,8 +624,8 @@ async function renderSession(sessionId) {
 
   function renderScratch() {
     const o = st.scratchOut;
-    if (!o) return `<div class="empty">Experiment in <code>scratch.py</code> (it imports your solution), then <strong>Run scratch</strong>.</div>`;
-    return `<div class="summary-row"><strong>scratch.py</strong>
+    if (!o) return `<div class="empty">Experiment in <code>${esc(files.scratch)}</code> (it uses your solution), then <strong>Run scratch</strong>.</div>`;
+    return `<div class="summary-row"><strong>${esc(files.scratch)}</strong>
         <span class="chip ${o.exit_code === 0 ? "good" : "bad"}">${o.timed_out ? "timed out" : o.crashed ? "crashed" : `exit ${o.exit_code}`}</span>
         <span class="faint">${o.ms} ms</span></div>
       <div class="block-label">stdout</div><pre class="out">${esc(o.stdout) || '<span class="faint">(empty)</span>'}</pre>
@@ -637,13 +639,13 @@ async function renderSession(sessionId) {
     q("[data-run]").disabled = q("[data-submit]").disabled = q("[data-scratch]").disabled = busy || st.timer.paused;
   }
 
-  // While a run waits for Python to load (the first one in this browser downloads it), say so.
-  const onPython = (e) => {
+  // While a run waits (to load Python or a compiler, the first time in this browser, or to
+  // compile), say so.
+  const offRunner = onRunnerStatus(({ text }) => {
     if (!st.busy) return;
-    st.busyText = e.detail.state === "loading" ? STARTING_PYTHON : "Running…";
+    st.busyText = text;
     renderResults();
-  };
-  window.addEventListener("swe-python", onPython);
+  });
 
   async function doRun(kind) {
     if (st.busy || st.timer.paused) return;
@@ -754,7 +756,7 @@ async function renderSession(sessionId) {
     clearInterval(autosave); clearInterval(tick); clearInterval(resync); clearTimeout(lintTimer);
     window.removeEventListener("beforeunload", beforeUnload);
     window.removeEventListener("keydown", keyHandler);
-    window.removeEventListener("swe-python", onPython);
+    offRunner();
     coolDown();
     subs.forEach((s) => s.dispose());
     formatProvider.dispose();
@@ -793,7 +795,7 @@ async function renderReview(sessionId) {
   $app.innerHTML = `${topnav("")}<main class="page">
     <p class="faint" style="margin:0 0 4px"><a href="#/history">← History</a></p>
     <h1>${esc(data.problem.title)}</h1>
-    <p class="lead">${data.mode === "strict" ? "Strict" : "Pausable"} session · ${fmtDate(data.started_at)}</p>
+    <p class="lead">${data.mode === "strict" ? "Strict" : "Pausable"} session · ${languageLabel(data.language)} · ${fmtDate(data.started_at)}</p>
     <div class="stat-grid">
       <div class="stat"><div class="label">Timed result</div>
         <div class="value">${r.timed.levels_completed}/4 ${levelDots(r.timed.levels_completed)}</div>
@@ -819,7 +821,7 @@ async function renderReview(sessionId) {
   const tabs = [
     ["analysis", "Solution analysis"],
     ["hints", "Design hints"],
-    ["reference", "Reference solution"],
+    ["reference", data.language === "python" ? "Reference solution" : "Reference solution (Python)"],
     ["yours", "Your code"],
     ["statement", "Full problem"],
     ["timeline", "Timeline"],
@@ -838,10 +840,11 @@ async function renderReview(sessionId) {
       panel.className = "review-panel code";
       panel.innerHTML = "";
       const code = key === "reference" ? (data.reference_code ?? "# No reference solution available.") : data.code;
+      const language = key === "reference" ? "python" : MONACO_LANGUAGE[data.language];
       const monaco = await window.monacoReady;
       if (current !== key) return;
       viewer = monaco.editor.create(panel, {
-        value: code, language: "python", theme: "vs-dark", readOnly: true, domReadOnly: true, automaticLayout: true,
+        value: code, language, theme: "vs-dark", readOnly: true, domReadOnly: true, automaticLayout: true,
         minimap: { enabled: false }, fontSize: 13, scrollBeyondLastLine: false,
       });
       return;
@@ -932,6 +935,7 @@ async function renderHistory() {
   const rows = sessions.map((s) => `<tr class="clickable" data-href="${s.status === "active" ? `#/session/${s.id}` : `#/review/${s.id}`}">
       <td>${fmtDate(s.started_at)}</td>
       <td>${esc(s.problem_title)}</td>
+      <td>${languageLabel(s.language)}</td>
       <td>${s.mode}</td>
       <td>${s.status === "active" ? '<span class="chip">in progress</span>' : `${levelDots(s.timed_levels)} ${s.timed_levels}/4`}</td>
       <td>${s.status === "active" ? "—" : `${s.final_levels}/4`}</td>
@@ -942,7 +946,7 @@ async function renderHistory() {
     <h1>History</h1>
     <p class="lead">Every attempt, newest first. Open one to review it.</p>
     <h2 class="section-title">Coding</h2>
-    ${sessions.length ? `<table class="table"><tr><th>Date</th><th>Problem</th><th>Mode</th><th>Timed levels</th><th>Incl. overtime</th><th>Time</th><th>Pauses</th></tr>${rows}</table>`
+    ${sessions.length ? `<table class="table"><tr><th>Date</th><th>Problem</th><th>Language</th><th>Mode</th><th>Timed levels</th><th>Incl. overtime</th><th>Time</th><th>Pauses</th></tr>${rows}</table>`
       : '<p class="dim">No coding attempts yet. <a href="#/coding">Start one</a>.</p>'}
     <h2 class="section-title">Algorithms</h2>
     ${algoTable}

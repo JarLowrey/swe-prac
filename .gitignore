@@ -10,7 +10,7 @@ __pycache__/
 # Output of build.py (deployed to GitHub Pages), and of practice/tools/build_static.py
 site/
 
-# Downloaded runtimes (Pyodide, ruff) kept between builds
+# Downloaded runtimes, and the precompiled C++ headers, kept between builds
 .cache/
 
 # Personal job-search data, if the tracker's command line or the skills are run inside this repo.

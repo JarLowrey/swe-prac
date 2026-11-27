@@ -11,3 +11,7 @@ extend-exclude = ["swe_prac/static", "data", "site", ".cache", "**/mutants"]
 
 [tool.ruff.lint]
 select = ["E", "W", "F", "I", "B", "UP", "SIM", "C4"]
+
+[tool.ruff.lint.per-file-ignores]
+# Java and C++ source templates, kept in those languages' own line lengths
+"swe_prac/langs.py" = ["E501"]

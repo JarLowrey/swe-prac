@@ -8,12 +8,14 @@ The repo root's build.py calls build() for site/practice/, next to the Jobs sect
 loads Pyodide from this section's vendor/.
 
 The output is static files: the frontend (swe_prac/static/), data.json (every question, study
-page and review text, pre-rendered), each problem's tests, the test runner, and the two
-WebAssembly runtimes the browser runs your code with: Pyodide (CPython) and ruff. GitHub Pages
-publishes it as it is; locally, --serve hands the files to the browser (it runs nothing itself).
+page and review text, pre-rendered), each problem's tests, the test runner, and the WebAssembly
+runtimes the browser runs your code with: Pyodide (CPython) and ruff for Python, javac and TeaVM
+for Java, clang for C++. GitHub Pages publishes it as it is; locally, --serve hands the files to
+the browser (it runs nothing itself).
 
 The runtimes come from npm at the versions pinned below, checked against their published
-SHA-512 and kept in .cache/ so later builds work offline.
+SHA-512 and kept in .cache/ so later builds work offline. The C++ standard headers are
+precompiled with that clang, in Node (tools/build_cpp_pch.mjs), and cached the same way.
 
 Everything the browser can run is in the output, so the hidden tests are too (tests/), as are
 the reference solutions and designs (data.json). The app shows hidden tests as counts only, but
@@ -27,11 +29,14 @@ import base64
 import contextlib
 import copy
 import functools
+import gzip
 import hashlib
 import http.server
 import io
 import json
+import re
 import shutil
+import subprocess
 import sys
 import tarfile
 import threading
@@ -43,7 +48,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from swe_prac import algorithms, config, designs, pages, problems, tech  # noqa: E402
+from swe_prac import algorithms, config, designs, langs, pages, problems, tech  # noqa: E402
 
 CACHE_DIR = ROOT / ".cache" / "vendor"
 
@@ -74,7 +79,47 @@ RUNTIMES = {
         "notice": "ruff {version} (https://github.com/astral-sh/ruff) compiled to WebAssembly,\n"
         "MIT licensed: see LICENSE. lint.js loads it for lint and Format.\n",
     },
+    "java": {
+        "package": "@live-codes/java-wasm",
+        "version": "0.1.0",
+        "integrity": "sha512-9eTN3tTKz368xMgHSeT7PcaXxw8APmi3yLq2QYdAI8QDdc2dK0a8gkk9F6bMK7Cv+"
+        "T/hNmJnrcp5Hi362/iPqw==",
+        # package path -> name in vendor/java/
+        "files": {
+            "dist/teavm/compiler.wasm": "compiler.wasm",
+            "dist/teavm/compiler.wasm-runtime.js": "compiler.wasm-runtime.js",
+            "dist/teavm/compile-classlib-teavm.bin": "compile-classlib-teavm.bin",
+            "dist/teavm/runtime-classlib-teavm.bin": "runtime-classlib-teavm.bin",
+            "LICENSE": "LICENSE",
+            "THIRD-PARTY-NOTICES.md": "THIRD-PARTY-NOTICES.md",
+        },
+        "notice": "@live-codes/java-wasm {version} (https://github.com/live-codes/java): javac\n"
+        "and the class library of OpenJDK 25 (GPL 2 with the Classpath Exception) and TeaVM 0.14\n"
+        "(Apache 2.0), compiled to WebAssembly. See LICENSE and THIRD-PARTY-NOTICES.md.\n"
+        "lang-compile.js loads it to compile Java, and lang-run.js runs the programs it builds.\n",
+    },
+    "clang": {
+        "package": "@yowasp/clang",
+        "version": "22.0.0-git20695-13",
+        "integrity": "sha512-nNIUdoQKrttdSEvO7gpkgczB1fhRtiWEqxYNJHloD9EBf0HBu1bvcYnkTYTmUacXDItR"
+        "GTFWnogWKnfSe+04Cg==",
+        "files": {
+            "gen/bundle.js": "bundle.js",
+            "gen/llvm.core.wasm": "llvm.core.wasm",
+            "gen/llvm.core2.wasm": "llvm.core2.wasm",
+            "gen/llvm.core3.wasm": "llvm.core3.wasm",
+            "gen/llvm.core4.wasm": "llvm.core4.wasm",
+            "gen/llvm-resources.tar": "llvm-resources.tar",
+        },
+        # Served as <name>.gz: GitHub Pages compresses .wasm and .js on the fly, but not these.
+        "gzip": ["llvm-resources.tar"],
+        "notice": "@yowasp/clang {version} (https://yowasp.org, ISC licensed): LLVM, clang and\n"
+        "lld (Apache 2.0 with the LLVM Exception) compiled to WebAssembly, with the wasi-libc and\n"
+        "libc++ of the wasm32-wasip1 target. lang-compile.js loads it to compile C++.\n",
+    },
 }
+# The C++ standard headers, precompiled with the app's flags (see tools/build_cpp_pch.mjs).
+CPP_PCH = "lang/cpp/all.h.pch.gz"
 
 
 # -- runtimes ----------------------------------------------------------------------------
@@ -99,15 +144,73 @@ def _tarball(spec: dict) -> bytes:
     return data
 
 
+def _package_files(spec: dict) -> dict[str, str]:
+    """{path in the package: name in vendor/<name>/}."""
+    files = spec["files"]
+    return files if isinstance(files, dict) else {f: f for f in files}
+
+
+def _gzipped(name: str, spec: dict, data: bytes) -> bytes:
+    """`data` gzipped, kept in .cache/ for this package version (compressing it is slow)."""
+    cached = CACHE_DIR / f"{spec['package'].rsplit('/', 1)[-1]}-{spec['version']}-{name}.gz"
+    if not cached.exists():
+        CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        cached.write_bytes(gzip.compress(data, compresslevel=9, mtime=0))
+    return cached.read_bytes()
+
+
 def write_runtime(name: str, out: Path) -> None:
     spec = RUNTIMES[name]
     dest = out / "vendor" / name
     dest.mkdir(parents=True, exist_ok=True)
     with tarfile.open(fileobj=io.BytesIO(_tarball(spec)), mode="r:gz") as tar:
-        for file in spec["files"]:
-            member = tar.extractfile(f"package/{file}")
-            (dest / file).write_bytes(member.read())
+        for source, target in _package_files(spec).items():
+            data = tar.extractfile(f"package/{source}").read()
+            if target in spec.get("gzip", ()):
+                (dest / f"{target}.gz").write_bytes(_gzipped(target, spec, data))
+            else:
+                (dest / target).write_bytes(data)
     (dest / "README.txt").write_text(spec["notice"].format(**spec), encoding="utf-8")
+
+
+def _clang_package() -> Path:
+    """@yowasp/clang unpacked in .cache/, for precompiling the headers in Node."""
+    spec = RUNTIMES["clang"]
+    dest = CACHE_DIR / f"clang-{spec['version']}"
+    if not (dest / "gen" / "bundle.js").exists():
+        with tarfile.open(fileobj=io.BytesIO(_tarball(spec)), mode="r:gz") as tar:
+            for source in _package_files(spec):
+                path = dest / source
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(tar.extractfile(f"package/{source}").read())
+    return dest
+
+
+def write_cpp_pch(out: Path) -> None:
+    """lang/cpp/all.h.pch.gz: the standard headers, precompiled with the app's C++ flags. It's
+    rebuilt (about half a minute, in Node) when clang, the header list or the flags change."""
+    header = (config.STATIC_DIR / "lang" / "cpp" / "include" / "bits" / "stdc++.h").read_bytes()
+    compilers = (config.STATIC_DIR / "compilers.js").read_text(encoding="utf-8")
+    flags = re.search(r"export const CPP_FLAGS = \[.*?\];", compilers, re.S).group(0)
+    script = ROOT / "tools" / "build_cpp_pch.mjs"
+    parts = [RUNTIMES["clang"]["version"].encode(), header, flags.encode(), script.read_bytes()]
+    key = hashlib.sha256(b"\0".join(parts)).hexdigest()[:16]
+    cached = CACHE_DIR / f"cpp-pch-{key}.pch.gz"
+    if not cached.exists():
+        node = shutil.which("node")
+        if node is None:
+            raise SystemExit("The build needs Node 22 or newer: it precompiles the C++ headers.")
+        print("Precompiling the C++ standard headers (about half a minute)")
+        raw = CACHE_DIR / f"cpp-pch-{key}.pch"
+        bundle = _clang_package() / "gen" / "bundle.js"
+        subprocess.run([node, str(script), str(bundle), str(raw)], check=True, cwd=ROOT)
+        for stale in CACHE_DIR.glob("cpp-pch-*.pch.gz"):
+            stale.unlink()  # built with other headers or flags
+        cached.write_bytes(gzip.compress(raw.read_bytes(), compresslevel=9, mtime=0))
+        raw.unlink()
+    target = out / CPP_PCH
+    target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy(cached, target)
 
 
 # -- lint settings -----------------------------------------------------------------------
@@ -170,6 +273,8 @@ def algo_bundle() -> dict:
                 "hints_html": algorithms.hints_html(p),
                 "explanation_html": algorithms.explanation_html(p),
                 "foundations": algorithms.foundation_links(p),
+                # Java and C++: the starter, scratch file and signature (the references stay Python)
+                "langs": langs.algo_bundle(langs.for_algo(p)),
             }
             for p in found
         ],
@@ -220,6 +325,11 @@ def bundle() -> dict:
                 "hints_html": problems.review_html(problem, "hints"),
                 "analysis_html": problems.review_html(problem, "analysis"),
                 "reference_code": problems.reference_code(problem),
+                # Java and C++: the starter, scratch file, and each level's stubs and tests view
+                "langs": langs.coding_bundle(
+                    langs.for_coding(problem),
+                    {lv: problems.tests(problem, lv, include_hidden=False) for lv in config.LEVELS},
+                ),
             }
         )
     return {
@@ -244,12 +354,18 @@ def test_files() -> dict[str, dict]:
     out = {}
     for problem in problems.list_problems():
         tests = problems.tests(problem, len(config.LEVELS), include_hidden=True)
-        out[f"tests/coding/{problem.id}.json"] = {"class_name": problem.class_name, "tests": tests}
+        out[f"tests/coding/{problem.id}.json"] = {
+            "class_name": problem.class_name,
+            "tests": tests,
+            # Java and C++: the files compiled with a solution, and each level's harness
+            "langs": langs.harness_files(langs.for_coding(problem)),
+        }
     for problem in algorithms.list_problems():
         out[f"tests/algo/{problem.id}.json"] = {
             "class_name": "Solution",
             "tests": algorithms.tests(problem, include_hidden=True),
             "options": problem.runner_options(),
+            "langs": langs.harness_files(langs.for_algo(problem)),
         }
     return out
 
@@ -260,7 +376,8 @@ def _write_json(path: Path, data) -> None:
 
 
 def build(out: Path, runtimes: bool = True) -> None:
-    """Write the site to `out`. runtimes=False leaves out Pyodide and ruff (tests use it)."""
+    """Write the site to `out`. runtimes=False leaves out the runtimes and the precompiled C++
+    headers (tests use it)."""
     if out.exists():
         shutil.rmtree(out)
     shutil.copytree(config.STATIC_DIR, out)
@@ -273,6 +390,7 @@ def build(out: Path, runtimes: bool = True) -> None:
     if runtimes:
         for name in RUNTIMES:
             write_runtime(name, out)
+        write_cpp_pch(out)
     (out / ".nojekyll").write_text("", encoding="utf-8")  # serve files as they are
 
 

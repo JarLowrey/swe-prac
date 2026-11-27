@@ -99,8 +99,11 @@ class LoaderTests(EnvCase):
         )
         self._rewrite_meta("x01_pair_sum", compare="validator")
         checker = "def check(args, expect, actual):\n    return True\n"
+        checker_js = "function check(args, expect, actual) {\n  return true;\n}\n"
         (config.ALGO_DIR / "x01_pair_sum" / "checker.py").write_text(checker, encoding="utf-8")
-        self.assertEqual(algorithms.get("x01_pair_sum").runner_options()["validator"], checker)
+        (config.ALGO_DIR / "x01_pair_sum" / "checker.js").write_text(checker_js, encoding="utf-8")
+        opts = algorithms.get("x01_pair_sum").runner_options()
+        self.assertEqual((opts["validator"], opts["validator_js"]), (checker, checker_js))
 
     def test_foundation_links_resolve_and_unknown_ones_are_dropped(self):
         links = algorithms.foundation_links(algorithms.get("x01_pair_sum"))

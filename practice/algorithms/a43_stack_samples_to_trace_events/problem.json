@@ -4,6 +4,10 @@
   "title": "Convert Stack Samples to Trace Events",
   "difficulty": "Medium",
   "patterns": ["Stacks", "Simulation"],
+  "records": {
+    "tuple[int, list[str]]": "Sample(timestamp, stack)",
+    "tuple[str, int, str]": "Event(kind, timestamp, name)"
+  },
   "signature": "def convert(self, samples: list[tuple[int, list[str]]]) -> list[tuple[str, int, str]]:",
   "foundations": [
     "data-structures/stacks-and-queues",

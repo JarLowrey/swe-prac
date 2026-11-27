@@ -49,6 +49,31 @@ function fakePython() {
   return py;
 }
 
+// A compiled language (compiled.js): runTests reports the build's warnings as its lint.
+function fakeCompiled() {
+  const c = {
+    calls: [],
+    async runTests(job) {
+      c.calls.push(job);
+      const results = {};
+      for (const t of job.tests) results[t.id] = { id: t.id, passed: true, steps: [], failed_step: null, error: null, stdout: "", ms: 1 };
+      return {
+        import_error: null, import_stdout: "", timed_out: false, crashed: null, stopped: null, results, ms: 5,
+        compile_error: false, lint: { issues: [{ code: "warning", message: "unused", row: 2, col: 1, end_row: 2, end_col: 2, fixable: false }], error: null },
+      };
+    },
+    async runScratch(job) {
+      c.calls.push(job);
+      return { stdout: "compiled scratch\n", stderr: "", exit_code: 0, timed_out: false, crashed: false, ms: 3 };
+    },
+    async lint(job) {
+      c.calls.push(job);
+      return { issues: [], error: null };
+    },
+  };
+  return c;
+}
+
 function fakeRuff() {
   const ruff = {
     calls: [],
@@ -70,6 +95,8 @@ function fakeRuff() {
 // One browser tab's backend. Tabs given the same storage share their history.
 function tab({ storage = memoryStorage(), clock = { now: 1_000_000 } } = {}) {
   const python = fakePython();
+  const java = fakeCompiled();
+  const cpp = fakeCompiled();
   const ruff = fakeRuff();
   const storageErrors = [];
   const backend = createBackend({
@@ -77,6 +104,8 @@ function tab({ storage = memoryStorage(), clock = { now: 1_000_000 } } = {}) {
     fetchText: readSiteText,
     storage,
     python,
+    java,
+    cpp,
     ruff,
     clock: () => clock.now,
     random: () => 0,
@@ -84,7 +113,7 @@ function tab({ storage = memoryStorage(), clock = { now: 1_000_000 } } = {}) {
   });
   return {
     api: (method, path, body) => backend.handle(method, path, body),
-    python, ruff, storage, clock, storageErrors,
+    python, java, cpp, ruff, storage, clock, storageErrors,
     advance(seconds) { clock.now += seconds; },
   };
 }
@@ -395,6 +424,77 @@ describe("system design sessions", () => {
     assert.deepEqual(review.score, { done: 3, total, checklist: 2, key_points: 1 });
     const listed = (await t.api("GET", "/api/design/questions")).questions.find((q) => q.id === DESIGN);
     assert.equal(listed.best.done, 3);
+  });
+});
+
+describe("Java and C++ sessions", () => {
+  test("a coding session in Java gets its files, and each run calls the current level's harness", async () => {
+    const t = tab();
+    const item = data.problems[0];
+    const file = await testsFile("coding", CODING);
+    let s = await t.api("POST", "/api/sessions", { problem_id: CODING, mode: "strict", language: "java" });
+    assert.equal(s.language, "java");
+    assert.deepEqual(s.files, { solution: item.langs.java.file, scratch: "Scratch.java", tests: "Tests.java" });
+    assert.equal(s.code, item.langs.java.starter_code);
+    assert.equal(s.scratch, item.langs.java.scratch_starter);
+    assert.equal(s.tests_source, item.langs.java.tests_source["1"]);
+    assert.equal(s.levels[0].stubs, item.langs.java.stubs["1"]);
+
+    const run = await t.api("POST", `/api/sessions/${s.id}/run`, { code: "class X {}" });
+    const job = t.java.calls.at(-1);
+    assert.equal(job.code, "class X {}");
+    assert.equal(job.lang.harness, file.langs.java.harness["1"]);
+    assert.deepEqual(job.lang.files, file.langs.java.files);
+    assert.equal(t.python.calls.length, 0);
+    assert.equal(t.ruff.calls.length, 0); // the compiler's warnings are the lint
+    assert.deepEqual(run.lint.issues.map((i) => i.code), ["warning"]);
+    assert.equal(run.compile_error, false);
+
+    s = (await t.api("POST", `/api/sessions/${s.id}/submit`, {})).session;
+    assert.equal(s.current_level, 2);
+    assert.equal(s.levels[1].stubs, item.langs.java.stubs["2"]);
+    assert.equal(s.tests_source, item.langs.java.tests_source["2"]);
+    await t.api("POST", `/api/sessions/${s.id}/run`, {});
+    assert.equal(t.java.calls.at(-1).lang.harness, file.langs.java.harness["2"]);
+
+    const scratch = await t.api("POST", `/api/sessions/${s.id}/scratch`, { scratch: "class Scratch {}" });
+    assert.equal(scratch.stdout, "compiled scratch\n");
+    assert.equal(t.java.calls.at(-1).scratch, "class Scratch {}");
+    await t.api("POST", `/api/sessions/${s.id}/lint`, { code: "y" });
+    assert.equal(t.java.calls.at(-1).code, "y");
+
+    await t.api("POST", `/api/sessions/${s.id}/end`, {});
+    const review = await t.api("GET", `/api/sessions/${s.id}/review`);
+    assert.equal(review.language, "java");
+    assert.equal(review.reference_code, item.reference_code); // the reference stays Python
+    assert.equal((await t.api("GET", "/api/history")).sessions[0].language, "java");
+  });
+
+  test("an algorithms session in C++ runs the problem's harness", async () => {
+    const t = tab();
+    const item = data.algo.problems[0];
+    const file = await testsFile("algo", ALGO);
+    const s = await t.api("POST", "/api/algo/sessions", { problem_id: ALGO, mode: "strict", language: "cpp" });
+    assert.equal(s.code, item.langs.cpp.starter_code);
+    assert.equal(s.signature, item.langs.cpp.signature);
+    assert.deepEqual(s.files, { solution: "solution.cpp", scratch: "scratch.cpp", tests: "tests.cpp" });
+    await t.api("POST", `/api/algo/sessions/${s.id}/submit`, { code: "int x;" });
+    const job = t.cpp.calls.at(-1);
+    assert.equal(job.lang.harness, file.langs.cpp.harness);
+    assert.deepEqual(job.options, file.options);
+    assert.equal(job.tests.length, file.tests.length);
+    await t.api("POST", `/api/algo/sessions/${s.id}/scratch`, {});
+    assert.deepEqual(t.cpp.calls.at(-1).lang, file.langs.cpp);
+    assert.equal((await t.api("GET", "/api/algo/history")).sessions[0].language, "cpp");
+  });
+
+  test("sessions are Python unless they say otherwise, and other languages are refused", async () => {
+    const t = tab();
+    await assert.rejects(t.api("POST", "/api/sessions", { problem_id: CODING, mode: "strict", language: "cobol" }), { status: 400 });
+    await assert.rejects(t.api("POST", "/api/algo/sessions", { problem_id: ALGO, mode: "strict", language: "c#" }), { status: 400 });
+    const s = await t.api("POST", "/api/sessions", { problem_id: CODING, mode: "strict" });
+    assert.equal(s.language, "python");
+    assert.equal(s.files.solution, "solution.py");
   });
 });
 

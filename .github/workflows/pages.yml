@@ -31,11 +31,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
-      # Pyodide and ruff for the browser, downloaded by the build at the versions it pins.
+      # The browser's runtimes (Python, ruff, Java, C++), downloaded by the build at the versions it
+      # pins, and the C++ headers it precompiles. An older cache still has the downloads.
       - uses: actions/cache@v4
         with:
           path: practice/.cache
-          key: runtimes-${{ hashFiles('practice/tools/build_static.py') }}
+          key: runtimes-${{ hashFiles('practice/tools/build_static.py', 'practice/tools/build_cpp_pch.mjs', 'practice/swe_prac/static/compilers.js', 'practice/swe_prac/static/lang/cpp/include/**') }}
+          restore-keys: runtimes-
       - run: pip install -r practice/requirements.txt
       - run: python build.py
       # The practice tests import swe_prac from practice/, and the browser tests use the built site.

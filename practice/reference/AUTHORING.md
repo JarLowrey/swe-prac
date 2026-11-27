@@ -37,6 +37,11 @@ Build and verify, from `practice/`: `../.venv/Scripts/python tools/build_problem
 
 Every public method of the reference class must appear in exactly one level.
 
+Java has no tuples, so a problem whose methods take or return one names a Java record for each
+tuple type: `"records": {"tuple[str, int]": "OrderLine(sku, qty)"}` makes Java's version use
+`record OrderLine(String sku, int qty)`. C++ uses `pair` and `tuple`. The build says when one is
+missing.
+
 ## Statements (`statement/levelN.md`)
 
 Markdown. The UI shows the level title and the shared conventions (`problems/conventions.md`)
@@ -56,7 +61,11 @@ itself, so do not repeat those. Rules:
 
 - One class named `class_name`, no-arg constructor, standard library only.
 - Public methods are exactly the problem.json methods. First parameter after `self` is `timestamp`;
-  other parameter names match the statement. Fully type-annotated.
+  other parameter names match the statement. Fully type-annotated, with types the Java and C++
+  versions can be generated from: `int`, `float`, `bool`, `str`, `list[...]`, `tuple[...]` and
+  `X | None`. The stubs carry the annotations, and the site writes each language's starter code,
+  stubs, tests view and harness from them (`swe_prac/langs.py`). An `int` becomes a 64-bit
+  `long` / `long long` only where a test value needs it.
 - Each public method has a one-line docstring describing its behaviour **using only information
   from that method's own level statement**. It is copied into the user's starter stubs.
 - Helpers are private (`_name`). Code should be clean, idiomatic and readable: it is shown to the
@@ -85,7 +94,8 @@ get_file_size(5, "/b") -> ?
   the user's final code too.
 
 Shown tests are public: the app renders them as the read-only `tests.py` tab (grouped by level, only
-for unlocked levels), and the first Level 1 shown test also seeds `scratch.py` as an example case.
+for unlocked levels; `Tests.java` and `tests.cpp` in the other languages), and the first Level 1
+shown test also seeds the scratch file as an example case.
 Nothing to author for that, but a shown test's name and calls are what the user reads, so keep
 names descriptive and keep shown tests free of anything the statements don't say.
 

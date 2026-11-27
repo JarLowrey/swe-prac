@@ -4,10 +4,13 @@
 //   sessions, timers, scoring    kept in localStorage (one key, all three tracks)
 //   questions and study pages    data.json, built by tools/build_static.py
 //   each problem's tests         tests/coding/<id>.json and tests/algo/<id>.json
-//   Run, Submit, Run scratch     Python in a Web Worker (python.js)
-//   lint and Format              ruff compiled to WebAssembly (lint.js)
+//   Run, Submit, Run scratch     Python in a Web Worker (python.js); Java and C++ compiled and
+//                                run in Web Workers (compiled.js)
+//   lint and Format              ruff compiled to WebAssembly (lint.js); for Java and C++, the
+//                                compiler's warnings (no Format)
 //
 // createBackend() takes those as dependencies so tests/js/ can drive it with fakes.
+import { cpp, java } from "./compiled.js";
 import * as python from "./python.js";
 import * as ruff from "./lint.js";
 
@@ -39,6 +42,8 @@ function browserDeps() {
       set: (text) => localStorage.setItem(STORAGE_KEY, text),
     },
     python,
+    java,
+    cpp,
     ruff,
     clock: () => Date.now() / 1000,
     random: Math.random,
@@ -197,6 +202,69 @@ export function createBackend(deps) {
 
   const tooSlow = (result) => Boolean(result && !result.passed && (result.error ?? "").startsWith("Too slow"));
 
+  // ---------------------------------------------------------------- languages
+  // A coding or algorithms session is in one language, picked when it starts. The problems are
+  // written in Python; data.json and the tests files carry each one's Java and C++ files too
+  // (swe_prac/langs.py). Sessions from before there was a choice are Python.
+  const LANGUAGES = ["python", "java", "cpp"];
+  const OTHER_FILES = {
+    python: { scratch: "scratch.py", tests: "tests.py" },
+    java: { scratch: "Scratch.java", tests: "Tests.java" },
+    cpp: { scratch: "scratch.cpp", tests: "tests.cpp" },
+  };
+  const languageOf = (s) => s.language ?? "python";
+
+  function checkLanguage(language) {
+    if (!LANGUAGES.includes(language)) {
+      throw new ApiError(`Language must be one of: ${LANGUAGES.join(", ")}.`, 400);
+    }
+    return language;
+  }
+
+  // A problem's starter code, stubs and tests views in `language`: data.json's entry for Python.
+  const inLanguage = (data, language) => (language === "python" ? data : data.langs[language]);
+
+  // The names of the session's files: solution, scratch and (coding) the read-only tests.
+  function fileNames(data, language) {
+    const solution = language === "python" ? "solution.py" : data.langs[language].file;
+    return { solution, ...OTHER_FILES[language] };
+  }
+
+  // Run `tests` against the solution. Python's lint is ruff's; a compiled language's is its
+  // compiler's warnings, from the build the run did. `level`: a coding session's current level,
+  // whose methods the harness calls.
+  async function runTestsIn(language, { code, file, tests, track, level }) {
+    if (language === "python") {
+      const job = { code, className: file.class_name, tests, ...(file.options && { options: file.options }) };
+      const run = await deps.python.runTests(job);
+      return { run, lint: await lintCode(code, track) };
+    }
+    const lang = file.langs[language];
+    const harness = track === "coding" ? lang.harness[String(level)] : lang.harness;
+    const run = await deps[language].runTests({ code, tests, options: file.options, lang: { ...lang, harness } });
+    return { run, lint: run.lint };
+  }
+
+  async function runScratchIn(language, { code, scratch, track, problemId }) {
+    if (language === "python") {
+      return track === "algo"
+        ? deps.python.runScratch({ code, scratch, files: { "helpers.py": await helpers() } })
+        : deps.python.runScratch({ code, scratch });
+    }
+    const file = await testsFile(track, problemId);
+    return deps[language].runScratch({ code, scratch, lang: file.langs[language] });
+  }
+
+  async function lintIn(language, { code, track, problemId }) {
+    if (language === "python") return lintCode(code, track);
+    try {
+      const file = await testsFile(track, problemId);
+      return await deps[language].lint({ code, lang: file.langs[language] });
+    } catch (err) {
+      return { issues: [], error: `Lint is unavailable: ${err.message}` };
+    }
+  }
+
   // ---------------------------------------------------------------- coding results
   // Pass counts for one level's own tests from the last submit (optionally before a time).
   function levelRatio(subs, level, before) {
@@ -299,20 +367,25 @@ export function createBackend(deps) {
   function sessionPayload(s) {
     const data = problemData(s.problem_id);
     const unlocked = Math.min(s.current_level, bundle.levels.length);
+    const language = languageOf(s);
+    const view = inLanguage(data, language);
     return {
       id: s.id,
       problem: data.problem,
       mode: s.mode,
       status: s.status,
+      language,
+      files: fileNames(data, language),
       current_level: s.current_level,
       all_levels_done: s.current_level > bundle.levels.length,
       levels: data.levels.slice(0, unlocked).map((lv) => ({
         ...lv,
+        stubs: language === "python" ? lv.stubs : view.stubs[String(lv.level)],
         completed_at: s.completions[lv.level] ?? null,
       })),
       code: s.code,
       scratch: s.scratch,
-      tests_source: data.tests_source[String(unlocked)],
+      tests_source: view.tests_source[String(unlocked)],
       timer: timerState(s),
       pacing: bundle.pacing,
       conventions_html: bundle.conventions_html,
@@ -381,9 +454,10 @@ export function createBackend(deps) {
       };
     },
 
-    start({ problem_id: problemId, mode, prefer_unseen: preferUnseen = true }) {
+    start({ problem_id: problemId, mode, prefer_unseen: preferUnseen = true, language = "python" }) {
       if (!bundle.problems.length) throw new ApiError("No problems are built. Run tools/build_problem.py --all.", 500);
       if (!["strict", "pausable"].includes(mode)) throw new ApiError("Mode must be 'strict' or 'pausable'.", 400);
+      checkLanguage(language);
       let data;
       if (problemId == null) {
         let pool = bundle.problems;
@@ -407,8 +481,9 @@ export function createBackend(deps) {
         paused_at: null,
         total_paused: 0,
         current_level: 1,
-        code: data.starter_code,
-        scratch: data.scratch_starter,
+        language,
+        code: inLanguage(data, language).starter_code,
+        scratch: inLanguage(data, language).scratch_starter,
         finished_at: null,
         final_elapsed: null,
         completions: {},
@@ -455,8 +530,7 @@ export function createBackend(deps) {
       const level = Math.min(s.current_level, bundle.levels.length);
       const file = await testsFile("coding", problemId);
       const tests = file.tests.filter((t) => t.level <= level && (kind === "submit" || t.visibility === "shown"));
-      const run = await deps.python.runTests({ code, className: file.class_name, tests });
-      const lint = await lintCode(code, "coding");
+      const { run, lint } = await runTestsIn(languageOf(s), { code, file, tests, track: "coding", level });
       const { shown, breakdown, allPassed } = summarizeCoding(tests, run);
 
       readState(); // the run took a while: build on what's stored now
@@ -477,6 +551,7 @@ export function createBackend(deps) {
         all_passed: allPassed,
         import_error: run.import_error,
         import_stdout: run.import_stdout,
+        compile_error: run.compile_error ?? false, // Java and C++: import_error is the compiler's
         crashed: run.crashed,
         timed_out: run.timed_out,
         ms: run.ms,
@@ -495,12 +570,13 @@ export function createBackend(deps) {
       const s = getSession(id);
       saveCode(s, body);
       persist();
-      return deps.python.runScratch({ code: s.code, scratch: s.scratch });
+      const { code, scratch, problem_id: problemId } = s;
+      return runScratchIn(languageOf(s), { code, scratch, track: "coding", problemId });
     },
 
     lint(id, body) {
-      getSession(id);
-      return lintCode(body?.code ?? "", "coding");
+      const s = getSession(id);
+      return lintIn(languageOf(s), { code: body?.code ?? "", track: "coding", problemId: s.problem_id });
     },
 
     async format(body) {
@@ -536,7 +612,9 @@ export function createBackend(deps) {
         levels: levelSummaries(data),
         hints_html: data.hints_html,
         analysis_html: data.analysis_html,
-        reference_code: data.reference_code,
+        reference_code: data.reference_code, // Python, whatever the session's language
+        language: languageOf(s),
+        files: fileNames(data, languageOf(s)),
         code: s.code,
         conventions_html: bundle.conventions_html,
       };
@@ -552,6 +630,7 @@ export function createBackend(deps) {
             problem_id: s.problem_id,
             problem_title: titles[s.problem_id] ?? s.problem_id,
             mode: s.mode,
+            language: languageOf(s),
             status: s.status,
             started_at: s.started_at,
             elapsed: res.elapsed,
@@ -900,11 +979,16 @@ export function createBackend(deps) {
 
   function algoPayload(s) {
     const data = algoData(s.problem_id);
+    const language = languageOf(s);
     return {
       id: s.id,
       problem: data.problem,
       mode: s.mode,
       status: s.status,
+      language,
+      files: fileNames(data, language),
+      // The method to write, in that language (Python's is in the starter code)
+      signature: language === "python" ? null : data.langs[language].signature,
       ...algoQuestion(data),
       code: s.code,
       scratch: s.scratch,
@@ -1026,8 +1110,9 @@ export function createBackend(deps) {
       };
     },
 
-    start({ problem_id: problemId, mode, prefer_unseen: preferUnseen = true, difficulty = null, pattern = null }) {
+    start({ problem_id: problemId, mode, prefer_unseen: preferUnseen = true, difficulty = null, pattern = null, language = "python" }) {
       if (!bundle.algo.problems.length) throw new ApiError("No algorithm problems are built. Run tools/build_algo.py.", 500);
+      checkLanguage(language);
       let data;
       if (problemId == null) {
         let pool = bundle.algo.problems.filter(({ problem }) => (difficulty == null || problem.difficulty === difficulty)
@@ -1054,8 +1139,9 @@ export function createBackend(deps) {
         time_limit: data.problem.minutes * 60,
         paused_at: null,
         total_paused: 0,
-        code: data.starter_code,
-        scratch: data.scratch_starter,
+        language,
+        code: inLanguage(data, language).starter_code,
+        scratch: inLanguage(data, language).scratch_starter,
         solved_at: null,
         finished_at: null,
         final_elapsed: null,
@@ -1099,8 +1185,7 @@ export function createBackend(deps) {
       const { code, problem_id: problemId } = s;
       const file = await testsFile("algo", problemId);
       const tests = file.tests.filter((t) => kind === "submit" || t.visibility === "shown");
-      const run = await deps.python.runTests({ code, className: file.class_name, tests, options: file.options });
-      const lint = await lintCode(code, "algo");
+      const { run, lint } = await runTestsIn(languageOf(s), { code, file, tests, track: "algo" });
       const { shown, counts, allPassed } = summarizeAlgo(tests, run);
 
       readState(); // the run took a while: build on what's stored now
@@ -1120,6 +1205,7 @@ export function createBackend(deps) {
         all_passed: allPassed,
         import_error: run.import_error,
         import_stdout: run.import_stdout,
+        compile_error: run.compile_error ?? false, // Java and C++: import_error is the compiler's
         crashed: run.crashed,
         timed_out: run.timed_out,
         stopped: run.stopped, // a test hit its time limit; the tests after it didn't run
@@ -1140,13 +1226,13 @@ export function createBackend(deps) {
       const s = getAlgoSession(id);
       saveCode(s, body);
       persist();
-      const { code, scratch } = s;
-      return deps.python.runScratch({ code, scratch, files: { "helpers.py": await helpers() } });
+      const { code, scratch, problem_id: problemId } = s;
+      return runScratchIn(languageOf(s), { code, scratch, track: "algo", problemId });
     },
 
     lint(id, body) {
-      getAlgoSession(id);
-      return lintCode(body?.code ?? "", "algo");
+      const s = getAlgoSession(id);
+      return lintIn(languageOf(s), { code: body?.code ?? "", track: "algo", problemId: s.problem_id });
     },
 
     end(id, body) {
@@ -1173,6 +1259,8 @@ export function createBackend(deps) {
         hints_html: data.hints_html,
         explanation_html: data.explanation_html,
         foundations: data.foundations,
+        language: languageOf(s),
+        files: fileNames(data, languageOf(s)),
         code: s.code,
       };
     },
@@ -1188,6 +1276,7 @@ export function createBackend(deps) {
             problem_title: data ? data.problem.title : s.problem_id,
             difficulty: data ? data.problem.difficulty : null,
             mode: s.mode,
+            language: languageOf(s),
             status: s.status,
             started_at: s.started_at,
             elapsed: res.elapsed,
@@ -1376,10 +1465,20 @@ export function handle(method, path, body) {
   return backend.handle(method, path, body);
 }
 
-// Start loading Python and ruff, so the first Run or lint doesn't wait for them (session pages).
-export function warmUp() {
-  python.warmUp().catch(() => { /* reported when a run needs it */ });
-  ruff.warmUp().catch(() => { /* reported by lint */ });
+// Start loading a session's language (Python and ruff, or a compiler), so the first Run or lint
+// doesn't wait for it (session pages).
+export function warmUp(language = "python") {
+  if (language === "python") {
+    python.warmUp().catch(() => { /* reported when a run needs it */ });
+    ruff.warmUp().catch(() => { /* reported by lint */ });
+  } else {
+    ({ java, cpp })[language].warmUp().catch(() => { /* reported when a run needs it */ });
+  }
 }
 
-export const coolDown = python.coolDown;
+// Free what warmUp() started (leaving a session page).
+export function coolDown() {
+  python.coolDown();
+  java.coolDown();
+  cpp.coolDown();
+}

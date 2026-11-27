@@ -60,8 +60,12 @@ export function coolDown() {
   spare = null;
 }
 
+// What a run is waiting on, for the session page: {state: "loading" | "running", text}
+// (compiled.js reports Java and C++ the same way).
+const STARTING = "Starting Python… (the first run downloads about 13 MB)";
 function status(state) {
-  window.dispatchEvent(new CustomEvent("swe-python", { detail: { state } }));
+  const text = state === "loading" ? STARTING : "Running…";
+  window.dispatchEvent(new CustomEvent("swe-runner", { detail: { state, text } }));
 }
 
 // A started worker for one job. Tells the page when it has to wait for Python to load.

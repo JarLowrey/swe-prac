@@ -133,8 +133,13 @@ def validate_meta(path: Path) -> dict:
     compare = meta.get("compare", "exact")
     if compare not in COMPARES:
         raise BuildError(f"compare must be one of {sorted(COMPARES)}")
-    if compare == "validator" and not (path / "checker.py").exists():
-        raise BuildError("compare 'validator' needs checker.py with check(args, expect, actual)")
+    if compare == "validator":
+        for name in ("checker.py", "checker.js"):
+            if not (path / name).exists():
+                raise BuildError(
+                    f"compare 'validator' needs {name}: checker.py and checker.js hold the same "
+                    "check(args, expect, actual), for Python and for Java and C++"
+                )
     return meta
 
 

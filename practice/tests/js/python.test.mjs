@@ -196,12 +196,12 @@ describe("scratch", () => {
     py.coolDown(); // no spare: this run starts its interpreter from scratch
     const states = [];
     const listen = (e) => states.push(e.detail.state);
-    window.addEventListener("swe-python", listen);
+    window.addEventListener("swe-runner", listen);
     try {
       const out = await py.runScratch({ code: "", scratch: "print('hi')\n" });
       assert.equal(out.stdout, "hi\n");
     } finally {
-      window.removeEventListener("swe-python", listen);
+      window.removeEventListener("swe-runner", listen);
     }
     assert.deepEqual(states, ["loading", "running"]);
   });

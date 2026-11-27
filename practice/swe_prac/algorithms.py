@@ -88,6 +88,8 @@ class Problem:
             opts["adapters"] = self.adapters
         if self.compare == "validator":
             opts["validator"] = (self.path / "checker.py").read_text(encoding="utf-8")
+            # The same check in JavaScript, for Java and C++ runs (static/judge.js).
+            opts["validator_js"] = (self.path / "checker.js").read_text(encoding="utf-8")
         return opts
 
 

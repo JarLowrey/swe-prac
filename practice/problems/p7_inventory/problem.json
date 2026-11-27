@@ -4,6 +4,7 @@
   "title": "Inventory and point of sale",
   "summary": "Build a store's stock and checkout system: add products, restock them and sell units.",
   "class_name": "Inventory",
+  "records": {"tuple[str, int]": "OrderLine(sku, qty)"},
   "levels": [
     {"level": 1, "title": "Stock and sales", "methods": ["add_product", "restock", "sell"]},
     {"level": 2, "title": "Multi-item orders", "methods": ["place_order", "top_sellers"]},

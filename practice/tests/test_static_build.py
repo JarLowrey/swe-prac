@@ -4,6 +4,7 @@ settings, and the pinned WebAssembly runtimes."""
 from __future__ import annotations
 
 import base64
+import gzip
 import hashlib
 import io
 import json
@@ -174,9 +175,41 @@ class StaticBuildTests(EnvCase):
         self.assertNotIn("N802", coding["lint"]["ignore"])
         self.assertEqual(algo["line-length"], coding["line-length"])
 
+    def test_the_bundle_has_each_problem_in_java_and_cpp(self):
+        data = self.data()
+        (item,) = data["problems"]
+        self.assertEqual(sorted(item["langs"]), ["cpp", "java"])
+        java = item["langs"]["java"]
+        self.assertEqual(java["file"], "Counter.java")
+        self.assertEqual(sorted(java["stubs"]), ["1", "2", "3", "4"])
+        self.assertEqual(sorted(java["tests_source"]), ["1", "2", "3", "4"])
+        for algo in data["algo"]["problems"]:
+            with self.subTest(problem=algo["problem"]["id"]):
+                self.assertEqual(sorted(algo["langs"]), ["cpp", "java"])
+                self.assertTrue(algo["langs"]["cpp"]["signature"])
+        # The harnesses load with the tests, not with every page.
+        self.assertNotIn("SweMain", json.dumps(data))
+
+    def test_each_tests_file_has_the_harness_for_java_and_cpp(self):
+        coding = json.loads((self.out / "tests/coding/p0_counter.json").read_text("utf-8"))
+        self.assertEqual(sorted(coding["langs"]["java"]["harness"]), ["1", "2", "3", "4"])
+        self.assertIn("Helpers.java", coding["langs"]["java"]["files"])
+        self.assertIn("swe_nodes.hpp", coding["langs"]["cpp"]["files"])
+        algo = json.loads((self.out / "tests/algo/x02_reverse_list.json").read_text("utf-8"))
+        self.assertIn("ListNode.java", algo["langs"]["java"]["files"])
+        self.assertIn('case "reverseList"', algo["langs"]["java"]["harness"])
+        self.assertIn('if (name == "reverseList")', algo["langs"]["cpp"]["harness"])
+
+    def test_the_shared_java_and_cpp_sources_ship(self):
+        for name in ("lang/java/SweRun.java", "lang/cpp/swe.hpp", "lang/cpp/helpers.hpp"):
+            self.assertTrue((self.out / name).exists(), name)
+        for name in ("compiled.js", "compilers.js", "lang-compile.js", "lang-run.js", "judge.js"):
+            self.assertTrue((self.out / name).exists(), name)
+
     def test_runtimes_are_left_out_when_asked(self):
-        self.assertFalse((self.out / "vendor" / "pyodide").exists())
-        self.assertFalse((self.out / "vendor" / "ruff").exists())
+        for name in build_static.RUNTIMES:
+            self.assertFalse((self.out / "vendor" / name).exists(), name)
+        self.assertFalse((self.out / build_static.CPP_PCH).exists())
 
 
 def _tgz(files: dict[str, bytes]) -> bytes:
@@ -220,6 +253,21 @@ class RuntimeTests(TempDirCase):
         self.assertEqual((dest / "run.wasm").read_bytes(), b"\0asm")
         self.assertEqual((dest / "README.txt").read_text(encoding="utf-8"), "Fake 1.0.0.\n")
 
+    def test_files_can_be_renamed_and_served_gzipped(self):
+        self.tarball = _tgz({"dist/run.js": b"js", "res.tar": b"tar" * 100})
+        (self.tmp_path / "cache" / "fake-1.0.0.tgz").write_bytes(self.tarball)
+        self.spec.update(
+            integrity=_integrity(self.tarball),
+            files={"dist/run.js": "run.js", "res.tar": "res.tar"},
+            gzip=["res.tar"],
+        )
+        build_static.write_runtime("fake", self.tmp_path / "site")
+        dest = self.tmp_path / "site" / "vendor" / "fake"
+        self.assertEqual(
+            sorted(p.name for p in dest.iterdir()), ["README.txt", "res.tar.gz", "run.js"]
+        )
+        self.assertEqual(gzip.decompress((dest / "res.tar.gz").read_bytes()), b"tar" * 100)
+
     def test_a_tarball_with_the_wrong_hash_is_refused(self):
         self.spec["integrity"] = _integrity(b"something else")
         with self.assertRaises(SystemExit) as caught:
@@ -235,6 +283,23 @@ class RuntimeTests(TempDirCase):
         self.assertIn("ruff_wasm_bg.wasm", build_static.RUNTIMES["ruff"]["files"])
         requirements = (config.PACKAGE_DIR.parent / "requirements.txt").read_text("utf-8")
         self.assertIn(f"ruff=={build_static.RUNTIMES['ruff']['version']}", requirements)
+
+        compile_worker = (config.STATIC_DIR / "lang-compile.js").read_text(encoding="utf-8")
+        compilers = (config.STATIC_DIR / "compilers.js").read_text(encoding="utf-8")
+        java = build_static._package_files(build_static.RUNTIMES["java"]).values()
+        clang = build_static._package_files(build_static.RUNTIMES["clang"]).values()
+        self.assertIn("./vendor/java/compiler.wasm-runtime.js", compile_worker)
+        self.assertIn("./vendor/clang/bundle.js", compile_worker)
+        for name in ("compiler.wasm", "compile-classlib-teavm.bin", "runtime-classlib-teavm.bin"):
+            self.assertIn(f"vendor/java/{name}", compilers)
+            self.assertIn(name, java)
+        self.assertIn("bundle.js", clang)
+        # The worker fetches <name>.gz for these and unzips it.
+        self.assertIn(r"const GZIPPED = /\.(tar|pch)$/;", compile_worker)
+        self.assertTrue(build_static.CPP_PCH.endswith(".pch.gz"))
+        self.assertIn(f'"{build_static.CPP_PCH.removesuffix(".gz")}"', compilers)
+        for name in build_static.RUNTIMES["clang"]["gzip"]:
+            self.assertRegex(name, r"\.(tar|pch)$")
 
 
 class RuffSettingsTests(TempDirCase):

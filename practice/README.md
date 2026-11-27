@@ -8,8 +8,8 @@ build. Commands below run from this folder (`cd practice`), with the virtual env
 repo root (`..\.venv`).
 
 Practice for three kinds of software engineering interview: 90-minute, four-level coding
-assessments in Python, classic algorithm problems against a 20 to 40-minute clock, and 45-minute
-system design rounds. The home page lets you pick one. The algorithms and system design sections
+assessments, classic algorithm problems against a 20 to 40-minute clock, and 45-minute system
+design rounds. You write code in Python, Java or C++. The home page lets you pick one. The algorithms and system design sections
 also have foundations pages to study from, with diagrams. A fourth section, tech investigations,
 studies one technology at a time through a small project you can run.
 
@@ -43,7 +43,7 @@ To add your own, see [Developing](#developing).
 ### Algorithms
 
 The algorithms section practices the classic data structures and algorithms round. You get one
-problem and write a Python `Solution` class. The clock is 20 minutes for Easy, 30 for Medium and
+problem and write a `Solution` class in Python, Java or C++. The clock is 20 minutes for Easy, 30 for Medium and
 40 for Hard. **Run** checks your code against the examples. **Submit** adds hidden tests, from edge
 cases to inputs big enough that only an efficient algorithm finishes in time. So a correct brute
 force still fails. Afterwards the review shows hints and an explanation with diagrams, which
@@ -123,13 +123,15 @@ the sections of the guide that explain it. Nothing is timed or graded.
 ## Start
 
 Open https://jarlowrey.github.io/swe-prac/practice/. There's nothing to install: the whole app runs in the
-browser. Opening a session starts loading Python and ruff in the background. The first time, the
-browser downloads about 25 MB for them; after that they come from its cache.
+browser. Opening a session starts loading its language in the background. The first time, the
+browser downloads about 25 MB for Python and ruff, 8 MB for Java or 40 MB for C++; after that
+they come from its cache.
 
 ### Running a local copy
 
 To practice offline, or to see content changes before you push them, build the site and serve
-it. It needs Python 3.12 or newer. From the repo root:
+it. It needs Python 3.12 or newer, and Node 22 or newer: the build precompiles the C++ standard
+headers with the same clang the browser runs. From the repo root:
 
 ```
 python -m venv .venv
@@ -141,9 +143,10 @@ That builds the whole site: the landing page, this section in `site/practice/` a
 section in `site/jobs/`. `--port 9000` and `--no-browser` change how it serves; without `--serve`
 it only builds `site/` (gitignored). `tools\build_static.py --serve`, run in this folder, builds
 and serves this section alone, in `practice/site/` (its "Job search" link has nothing to go to
-there). The first build downloads the two runtimes your code runs with in the browser, Pyodide
-(Python) and ruff, from the npm registry at pinned versions, checks them against their published
-hashes and keeps them in `practice/.cache/` for later builds. The local server only hands the
+there). The first build downloads the runtimes your code runs with in the browser, Pyodide
+(Python), ruff, javac with TeaVM (Java) and clang (C++), from the npm registry at pinned
+versions, checks them against their published hashes and keeps them in `practice/.cache/` for
+later builds, with the precompiled headers (about half a minute to make). The local server only hands the
 files to the browser and listens on 127.0.0.1. Any static file server would do, but opening
 `site/index.html` as a file won't work: browsers don't run its modules and workers from a
 `file://` page.
@@ -245,6 +248,9 @@ link to the section of the guide that explains it.
     the tab doesn't stop it.
   - **Pausable:** pausing blurs the problem and your code and makes the editor read-only.
     Every pause is recorded in your history.
+- **Pick a language:** Python, Java or C++ (the page remembers it). Each gets its own starter
+  code, stubs, tests view and scratch file. The hints, the solution analysis and the reference
+  solution stay in Python.
 - **Levels are revealed one at a time.** Level N+1 unlocks when *every* shown and hidden test for
   levels 1..N passes, so a regression in an earlier level blocks the unlock.
 - **Run** (`Ctrl+Enter`) runs the shown tests with full detail: each call, the expected value,
@@ -252,14 +258,17 @@ link to the section of the guide that explains it.
 - **Submit** (`Ctrl+Shift+Enter`) also runs the hidden tests. Hidden results are counts only, per level.
 - **Lint and format** use [ruff](https://docs.astral.sh/ruff/). Lint runs as you type and on every run,
   with markers in the editor and a Lint tab. It never blocks a level. **Format** (`Shift+Alt+F`)
-  reformats your code. The rules are in `swe_prac/user_ruff.toml`.
+  reformats your code. The rules are in `swe_prac/user_ruff.toml`. In Java and C++ the Lint tab
+  shows the compiler's warnings instead, and there is no Format.
 - **tests.py** is a read-only editor tab with the shown tests of every level you've unlocked, written
   as plain Python (`assert obj.method(...) == expected`). **Run** executes exactly these, and it
   grows when a level unlocks. Hidden tests aren't listed there; **Submit** runs them and reports
-  counts only.
+  counts only. In Java and C++ it's `Tests.java` or `tests.cpp`, written as `assertEquals(...)`
+  or `EXPECT_EQ(...)` calls.
 - **scratch.py** is another editor tab for quick experiments (`from solution import *`). It starts
   with an example test case, the first shown test of Level 1, plus a small `check(got, expected)`
-  helper. Copy it to try your own calls, then press **Run scratch**.
+  helper. Copy it to try your own calls, then press **Run scratch**. In Java and C++ it's
+  `Scratch.java` or `scratch.cpp`: a `main` that calls your class and prints with `show(...)`.
 - **At 0:00** your timed score is locked in. You can keep going untimed; anything finished after
   that is marked as overtime.
 - **End session** opens the review: timed and overtime results, time to each level against the
@@ -281,11 +290,34 @@ and so are `functools.cache` and `max`, `min`, `sum`, `any`, `all` and `sorted` 
 which the runner swaps for pure-Python versions in the browser. Recursion through others, such as
 `list(...)` over a generator, stops Python, and the result says why.
 
+Java and C++ are compiled in the browser too, to WebAssembly: Java with javac and TeaVM, C++
+with clang (C++20, with `#include <bits/stdc++.h>`), in a Web Worker that stays loaded, so a
+compile takes a second or two. Each run then gets a fresh worker, with the same 10 s stop. A
+compile error is the run's result, with the line marked in the editor. The time limits are a
+tenth of Python's: compiled code is that much faster, and a quadratic solution still fails them.
+A few things differ from your machine:
+
+- **Java:** a NullPointerException, an array index out of range or a stack overflow can't be
+  caught: it ends the test with that error. Other exceptions behave as usual. The class library
+  is TeaVM's, which has nearly everything interview code uses but not `StringJoiner`: use
+  `String.join` or `Collectors.joining`.
+- **C++:** exceptions are off, so `throw` doesn't compile, and a library call that would throw
+  (`.at()` out of range, for example) ends the test with what it would have thrown. The standard
+  library's debug checks are on, so `v[i]` out of range ends the test with a message instead of
+  reading past the end. The library is LLVM's libc++, not GCC's: `<bits/stdc++.h>` works, and so
+  do GCC's `__gcd` and `__lg`, but `pb_ds` doesn't, and `<regex>` needs its own `#include`. It's
+  C++20, so C++23 additions such as `std::print` aren't there.
+- **Both:** recursion goes a few thousand calls deep at most (Python's goes much deeper here).
+  Deeper than that, use a loop or an explicit stack.
+
+Whatever ends a test, the next one starts in a fresh copy of the program.
+
 ## How an algorithms session works
 
 - **Pick a problem** or a random one that matches the difficulty and pattern filters. You can
-  prefer problems you haven't tried yet. Then choose strict or pausable, as for coding. An
-  algorithms session can run alongside a coding or design session; only one of each can be active.
+  prefer problems you haven't tried yet. Then choose strict or pausable and the language, as for
+  coding. An algorithms session can run alongside a coding or design session; only one of each
+  can be active.
 - **The clock** is 20, 30 or 40 minutes by difficulty.
 - **Run** (`Ctrl+Enter`) runs the examples from the statement with full detail: the input, the
   expected answer, what you returned and your `print()` output.
@@ -296,8 +328,12 @@ which the runner swaps for pure-Python versions in the browser. Recursion throug
   0:00 it counts as overtime. You can keep tidying your code afterwards.
 - **scratch.py** starts with a call on the first example. For linked lists, trees and graphs it
   imports helpers that build them from plain lists and print them back. **Run scratch** runs it.
+  `Scratch.java` and `scratch.cpp` do the same, with `makeList`, `makeTree` and `makeGraph`.
 - **Lint and format** work as for coding, except that camelCase method names are allowed, because
   the problems use them. The rules are in `swe_prac/user_ruff_algo.toml`.
+- **In Java and C++** the statement shows the method's signature in that language, and lists,
+  trees and graphs are the usual `ListNode`, `TreeNode` and `Node` classes. The explanation and
+  its solution are in Python.
 - **End session** opens the review: the timed result and the result including overtime, then
   tabs for the explanation (with the commented solution), hints, your code, the problem and a timeline of
   runs and submits. Links at the top lead to the foundations sections the problem builds on.
@@ -354,7 +390,7 @@ Before the app moved into the browser, a local server kept history in `data/prac
 **While you practice.** The app is a set of static files, and everything runs in the browser tab:
 the sessions, the clock, the scoring, your code and ruff.
 
-![Architecture: the static files load into a browser tab, where backend.js keeps sessions in localStorage, lint.js runs ruff in WebAssembly, and python.js runs each job in a fresh Web Worker with Pyodide](docs/diagrams/architecture.svg)
+![Architecture: the static files load into a browser tab, where backend.js keeps sessions in localStorage, lint.js runs ruff in WebAssembly, python.js runs each job in a fresh Web Worker with Pyodide, and compiled.js compiles Java and C++ in a worker that stays loaded and runs each build in a fresh one](docs/diagrams/architecture.svg)
 
 - **There is no server.** The pages call `api()` (`common.js`), which lands in `backend.js`: it
   answers with the JSON the pages expect, and keeps the sessions, the clock, the level gating,
@@ -370,6 +406,17 @@ the sessions, the clock, the scoring, your code and ruff.
   browser it swaps the C code that recursive solutions recurse through for pure-Python versions,
   and keeps every test's linked lists and trees alive, because freeing a long one recurses in C
   past the small WebAssembly stack.
+- **Java and C++ compile in a worker that stays loaded.** `compiled.js` gives each the same
+  interface as `python.js`, and reuses a build while the code is unchanged. `lang-compile.js`
+  holds the compiler (`compilers.js`: javac and TeaVM, or clang with the precompiled headers).
+  `lang-run.js` runs each build in a fresh worker. The harness (`lang-job.js`) feeds the program the
+  tests as JSON and gets back what each call returned. `judge.js` compares that with the expected
+  answers and reports each test the way `runner.py` does, so the rest of the app treats every
+  language alike. A problem with its own validator has it in both `checker.py` and `checker.js`.
+- **The Java and C++ versions are generated.** The build reads the type annotations on each
+  problem's Python signatures (`langs.py`). From them it writes each language's starter code,
+  stubs, tests view and scratch file. It also writes the harness that decodes the test values
+  into typed arguments; `static/lang/` holds the parts every problem shares.
 - **Lint is ruff compiled to WebAssembly** (`lint.js`), with `user_ruff.toml` and
   `user_ruff_algo.toml` merged into `data.json` by the build.
 - **Hidden tests show as counts.** `backend.js` returns full detail for shown tests and only pass
@@ -408,10 +455,12 @@ random inputs, and runs both the reference and the empty starter code through th
 ## Layout
 
 ```
-swe_prac/static/     the app as the browser runs it: the pages, backend.js, python.js and
-                     lint.js (Monaco and Mermaid are bundled)
-swe_prac/            runner.py (runs the tests, in the browser and for the build tools), and the
-                     Python that renders the content into the site
+swe_prac/static/     the app as the browser runs it: the pages, backend.js, python.js, lint.js,
+                     compiled.js and the Java and C++ workers (Monaco and Mermaid are bundled)
+swe_prac/static/lang/  the Java and C++ sources every problem's harness shares
+swe_prac/            runner.py (runs the tests, in the browser and for the build tools), langs.py
+                     (the Java and C++ versions of each problem), and the Python that renders the
+                     content into the site
 problems/<pid>/      what the app reads: statements, review pages, built tests.json and stubs.json
 reference/<pid>/     SPOILERS: reference solution, test source, random generator, mutants
 algorithms/<id>/     algorithm problems: problem.json, statement.md, test inputs (cases.py) and
@@ -428,15 +477,17 @@ tech/<slug>/         the project it walks through, named after the page's slug, 
 tools/               build_static.py (build the site; --serve serves it), build_problem.py
                      (compile and verify problems), dsl.py (test format parser), build_algo.py
                      (build and verify algorithm problems), check_content.py (check the study
-                     pages' diagrams and links), export_history.py (old history to an import file)
+                     pages' diagrams and links), export_history.py (old history to an import file),
+                     build_cpp_pch.mjs (precompiles the C++ headers for build_static.py)
 tests/               the Python tests (unittest); tests/js/ the browser side, run in Node
 docs/                README screenshots, architecture diagrams (SVG, edit them directly) and
                      writing-content.md (how to write study pages and diagrams)
 ```
 
 The hidden tests are in `problems/<pid>/tests.json` and `algorithms/<id>/tests.json`, the
-reference solutions are in `reference/` and `algorithms/<id>/solution.py`, and the reference
-designs are in `designs/<qid>/reference.md`. Don't open them before you've practiced.
+reference solutions are in `reference/` and `algorithms/<id>/solution.py` (and some in Java and
+C++ in `tests/js/solutions/`), and the reference designs are in `designs/<qid>/reference.md`.
+Don't open them before you've practiced.
 
 ## Developing
 
@@ -444,7 +495,7 @@ designs are in `designs/<qid>/reference.md`. Don't open them before you've pract
 cd practice
 ..\.venv\Scripts\python -m unittest discover -s tests  # content, build, runner, every problem natively
 ..\.venv\Scripts\python ..\build.py                    # then the browser side, in Node 22 or newer:
-node --test "tests/js/*.test.mjs"                       # backend, every problem in Pyodide, ruff
+node --test "tests/js/*.test.mjs"                       # backend, every problem in Pyodide, ruff, Java, C++
 ..\.venv\Scripts\python tools\build_problem.py --all    # rebuild and verify all problems
 ..\.venv\Scripts\python tools\build_algo.py --check     # verify every algorithm problem (no writes)
 ..\.venv\Scripts\python tools\check_content.py          # diagrams and links in the study pages
@@ -460,7 +511,25 @@ so build it first; they test what ships. They run
 `backend.js` against the real `data.json` with fakes for Python and ruff, every reference solution
 against every test in Pyodide within the time limits the page enforces, `python.js` through its
 real worker script (a stand-in gives Node the browser's `Worker`), and ruff's WebAssembly build
-against native ruff.
+against native ruff. `java.test.mjs` and `cpp.test.mjs` compile with the site's own javac and
+clang: that solutions pass and fail as they should, that a crash fails only its test, the time
+limits, and that every problem's starter code builds without a warning and runs, at every level.
+They take a couple of minutes.
+
+`languages.test.mjs` is the quicker basic check of both languages, about a minute:
+
+- Correct solutions to 15 problems (`tests/js/solutions/<language>/<id>.java` or `.cpp`) must pass
+  every test, hidden ones included, at the page's time limits. Together they use every argument
+  and return type, adapter and answer comparison the problems have, and a test fails when a new
+  problem brings one they don't: then add a solution to it.
+- `tests/js/apis/Scratch.java` and `scratch.cpp` run the standard library and language features
+  interview code uses (collections, streams, records, ranges, `std::format` and more) as scratch
+  files that check themselves.
+- `StringJoiner` and `throw` still don't compile, so the notes above stay true.
+
+```
+node --test tests/js/languages.test.mjs
+```
 
 `build_problem.py` compiles `reference/<pid>/tests.txt` into `tests.json`. The build fails if any of these checks fail:
 - hand-written expectations must match the reference solution

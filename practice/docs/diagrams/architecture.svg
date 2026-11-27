@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1080" height="790" viewBox="0 0 1080 790" role="img" aria-labelledby="title desc">
   <title id="title">swe-prac architecture while you practice</title>
-  <desc id="desc">The app is static files, built by tools/build_static.py into site/ and served as they are by GitHub Pages or build_static.py --serve. Everything runs in one browser tab. The pages (app.js, algo.js, design.js) call api(), which is a function in backend.js, not a server: it keeps sessions, the timer, level unlocks and scoring, and stores your history in localStorage, which the History page can export and import as a JSON file. For Lint and Format, backend.js calls lint.js, which runs ruff compiled to WebAssembly on the page. For Run, Submit and Run scratch it calls python.js, which hands the job to a fresh Web Worker and ends the worker at 10 seconds, or at 1.5 times a test's own time limit. The worker, py-worker.js, runs Pyodide (CPython 3.14 compiled to WebAssembly), which runs runner.py for Run and Submit or scratch.py for Run scratch. A spare worker is started ahead of the next job.</desc>
+  <desc id="desc">The app is static files, built by tools/build_static.py into site/ and served as they are by GitHub Pages or build_static.py --serve. Everything runs in one browser tab. The pages (app.js, algo.js, design.js) call api(), which is a function in backend.js, not a server: it keeps sessions, the timer, level unlocks and scoring, and stores your history in localStorage, which the History page can export and import as a JSON file. For Python, Lint and Format go to lint.js, which runs ruff compiled to WebAssembly on the page, and Run, Submit and Run scratch go to python.js, which hands the job to a fresh Web Worker and ends the worker at 10 seconds, or at 1.5 times a test's own time limit. That worker, py-worker.js, runs Pyodide (CPython 3.14 compiled to WebAssembly), which runs runner.py for Run and Submit or scratch.py for Run scratch. A spare worker is started ahead of the next job. For Java and C++, every job and the lint go to compiled.js. It sends the sources to lang-compile.js, a worker that keeps javac and TeaVM, or clang, loaded between runs, then runs the build in a fresh lang-run.js worker, which it ends at 10 seconds, with a tenth of Python's time limits. judge.js there checks each call's result and reports each test the way runner.py does.</desc>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M0,0 L10,5 L0,10 z" fill="#9aa3b5"/>
@@ -23,12 +23,12 @@
 
   <!-- The built site -->
   <rect class="file" x="24" y="24" width="1032" height="92" rx="8"/>
-  <text x="44" y="52"><tspan class="t">Static files</tspan><tspan class="c" dx="10">site/</tspan>, built by <tspan class="c">tools/build_static.py</tspan></text>
+  <text x="44" y="52"><tspan class="t">Static files</tspan><tspan class="c" dx="10">site/</tspan>, built by <tspan class="c">tools/build_static.py</tspan>, served as they are by GitHub Pages or <tspan class="c">build_static.py --serve</tspan></text>
   <text x="44" y="76"><tspan class="c">index.html</tspan> and the pages' scripts · <tspan class="c">data.json</tspan>: questions, study pages, reviews · <tspan class="c">tests/</tspan>: every test</text>
-  <text x="44" y="98"><tspan class="c">py/runner.py</tspan> · <tspan class="c">vendor/</tspan>: Pyodide, ruff, Monaco · served as they are by GitHub Pages or <tspan class="c">build_static.py --serve</tspan></text>
+  <text x="44" y="98"><tspan class="c">vendor/</tspan>: Pyodide, ruff, javac and TeaVM, clang, Monaco · <tspan class="c">py/runner.py</tspan> · <tspan class="c">lang/</tspan>: the Java and C++ harness</text>
 
   <path class="edge" d="M540,116 V170" marker-end="url(#arrow)"/>
-  <text class="l" x="552" y="147">fetched by the page; Pyodide and ruff once, then from the browser's cache</text>
+  <text class="l" x="552" y="147">fetched by the page; each runtime once, then from the browser's cache</text>
 
   <!-- The browser tab -->
   <rect class="host" x="24" y="170" width="1032" height="350" rx="10"/>
@@ -54,55 +54,76 @@
   <text x="804" y="276">your history, under one key</text>
   <text x="804" y="298">Export / Import: a JSON file</text>
 
-  <!-- backend.js to the two runtimes -->
+  <!-- backend.js to the runtimes -->
   <path class="edge" d="M563,316 V348"/>
-  <path class="edge" d="M300,348 H830"/>
-  <path class="edge" d="M300,348 V380" marker-end="url(#arrow)"/>
-  <path class="edge" d="M830,348 V380" marker-end="url(#arrow)"/>
-  <text class="l" x="310" y="370">Run / Submit / Run scratch</text>
-  <text class="l" x="840" y="370">Lint / Format</text>
+  <path class="edge" d="M193,348 H887"/>
+  <path class="edge" d="M193,348 V380" marker-end="url(#arrow)"/>
+  <path class="edge" d="M540,348 V380" marker-end="url(#arrow)"/>
+  <path class="edge" d="M887,348 V380" marker-end="url(#arrow)"/>
+  <text class="l" x="203" y="370">Python: Run / Submit / Run scratch</text>
+  <text class="l" x="550" y="370">Java, C++: the same, and lint</text>
+  <text class="l" x="897" y="370">Python: Lint / Format</text>
 
-  <rect class="mod" x="150" y="380" width="300" height="114" rx="6"/>
-  <text class="m" x="166" y="408">python.js</text>
-  <text x="166" y="432">hands each job to a fresh worker</text>
-  <text x="166" y="454">and ends the worker at 10 s, or at</text>
-  <text x="166" y="476">1.5 × a test's own time limit</text>
+  <rect class="mod" x="48" y="380" width="290" height="114" rx="6"/>
+  <text class="m" x="64" y="408">python.js</text>
+  <text x="64" y="432">hands each job to a fresh worker</text>
+  <text x="64" y="454">and ends the worker at 10 s, or at</text>
+  <text x="64" y="476">1.5 × a test's own time limit</text>
 
-  <rect class="mod" x="680" y="380" width="300" height="114" rx="6"/>
-  <text class="m" x="696" y="408">lint.js</text>
-  <text x="696" y="432">ruff compiled to WebAssembly,</text>
-  <text x="696" y="454">on the page: lint as you type</text>
-  <text x="696" y="476">rules: <tspan class="c">swe_prac/user_ruff*.toml</tspan></text>
+  <rect class="mod" x="372" y="380" width="336" height="114" rx="6"/>
+  <text class="m" x="388" y="408">compiled.js</text>
+  <text x="388" y="432">compiles, then runs the build in a</text>
+  <text x="388" y="454">fresh worker: stopped at 10 s, with</text>
+  <text x="388" y="476">a tenth of Python's time limits</text>
 
-  <path class="edge" d="M300,494 V570" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
-  <text class="l" x="312" y="536">postMessage: the job in, the results out as each test ends</text>
+  <rect class="mod" x="742" y="380" width="290" height="114" rx="6"/>
+  <text class="m" x="758" y="408">lint.js</text>
+  <text x="758" y="432">ruff compiled to WebAssembly,</text>
+  <text x="758" y="454">on the page: lint as you type</text>
+  <text x="758" y="476">rules: <tspan class="c">swe_prac/user_ruff*.toml</tspan></text>
 
-  <!-- One worker per job -->
-  <rect class="proc" x="24" y="570" width="1032" height="156" rx="10"/>
-  <text x="44" y="598"><tspan class="t">Web Worker</tspan><tspan class="c" dx="10">py-worker.js</tspan><tspan dx="10">one per job, thrown away after it; a spare one is started ahead</tspan></text>
+  <path class="edge" d="M193,494 V570" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <text class="l" x="205" y="536">postMessage: the job in, the results out</text>
+  <text class="l" x="205" y="552">as each test ends</text>
+  <path class="edge" d="M640,494 V570" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <text class="l" x="652" y="536">the sources in, the build back;</text>
+  <text class="l" x="652" y="552">then the job, as for Python</text>
 
-  <rect class="mod" x="48" y="616" width="300" height="88" rx="6"/>
+  <!-- Python: one worker per job -->
+  <rect class="proc" x="24" y="570" width="508" height="156" rx="10"/>
+  <text x="44" y="598"><tspan class="t">Web Worker</tspan><tspan class="c" dx="10">py-worker.js</tspan><tspan dx="10">one per job; a spare is started ahead</tspan></text>
+
+  <rect class="mod" x="48" y="616" width="218" height="88" rx="6"/>
   <text class="m" x="64" y="644">Pyodide</text>
   <text x="64" y="668">CPython 3.14 in WebAssembly</text>
   <text x="64" y="690">no threads, a small C stack</text>
 
-  <path class="edge" d="M348,660 H390" marker-end="url(#arrow)"/>
+  <path class="edge" d="M266,660 H290" marker-end="url(#arrow)"/>
 
-  <rect class="mod" x="390" y="616" width="300" height="88" rx="6"/>
-  <text class="m" x="406" y="644">runner.py</text>
-  <text x="406" y="668">Run / Submit: a new instance of</text>
-  <text x="406" y="690">your class for each test</text>
+  <rect class="mod" x="290" y="616" width="218" height="88" rx="6"/>
+  <text class="m" x="306" y="644">runner.py · scratch.py</text>
+  <text x="306" y="668">Run / Submit: a new object</text>
+  <text x="306" y="690">per test; or Run scratch</text>
 
-  <path class="edge" d="M369,660 V712 H711 V660 H732" marker-end="url(#arrow)"/>
+  <!-- Java and C++: a compiler that stays loaded, a fresh worker per run -->
+  <rect class="proc" x="548" y="570" width="508" height="156" rx="10"/>
+  <text x="568" y="598"><tspan class="t">Web Workers</tspan><tspan dx="10">Java and C++</tspan></text>
 
-  <rect class="mod" x="732" y="616" width="300" height="88" rx="6"/>
-  <text class="m" x="748" y="644">scratch.py</text>
-  <text x="748" y="668">Run scratch, as a program beside</text>
-  <text x="748" y="690">your solution.py (and helpers.py)</text>
+  <rect class="mod" x="572" y="616" width="218" height="88" rx="6"/>
+  <text class="m" x="588" y="644">lang-compile.js</text>
+  <text x="588" y="668">javac and TeaVM, or clang,</text>
+  <text x="588" y="690">loaded once for every run</text>
+
+  <path class="edge" d="M790,660 H814" marker-end="url(#arrow)"/>
+
+  <rect class="mod" x="814" y="616" width="218" height="88" rx="6"/>
+  <text class="m" x="830" y="644">lang-run.js</text>
+  <text x="830" y="668">one per job: runs the build;</text>
+  <text x="830" y="690"><tspan class="c">judge.js</tspan> checks each call</text>
 
   <!-- Legend -->
   <rect class="proc" x="48" y="750" width="18" height="12" rx="2"/>
-  <text class="l" x="76" y="760">a Web Worker: its own thread and interpreter</text>
+  <text class="l" x="76" y="760">a Web Worker: its own thread</text>
   <rect class="mod" x="390" y="750" width="18" height="12" rx="2"/>
   <text class="l" x="418" y="760">a script or runtime</text>
   <rect class="file" x="620" y="750" width="18" height="12" rx="2"/>

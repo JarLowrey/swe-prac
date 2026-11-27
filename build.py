@@ -34,7 +34,7 @@ jobs = _load("jobs_build", ROOT / "jobs" / "build.py")
 
 
 def build(out: Path = SITE, runtimes: bool = True) -> None:
-    """Write the site to `out`. runtimes=False leaves out Pyodide and ruff (tests use it)."""
+    """Write the site to `out`. runtimes=False leaves out the runtimes (tests use it)."""
     if out.exists():
         shutil.rmtree(out)
     out.mkdir(parents=True)

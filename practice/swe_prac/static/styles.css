@@ -101,6 +101,10 @@ button.small { padding: 3px 8px; font-size: 12px; }
 }
 .mode-help { margin: 8px 0 0; padding-left: 20px; display: grid; gap: 8px; color: var(--text-dim); }
 .mode-help strong { color: var(--text); }
+.lang-picker { margin: 14px 0 0; padding: 0; border: 0; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+.lang-picker legend { float: left; margin-right: 4px; color: var(--text-dim); }
+.lang-picker label { display: flex; gap: 6px; align-items: center; cursor: pointer; }
+.lang-note { margin: 6px 0 12px; font-size: 12px; color: var(--text-dim); }
 .random-row {
   display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
   padding: 14px 16px; border: 1px dashed var(--border-strong); border-radius: var(--radius); margin-bottom: 14px;

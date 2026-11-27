@@ -15,13 +15,48 @@ export async function api(method, path, body) {
 // backend.js reports once when the browser won't store anything.
 window.addEventListener("swe-storage", (e) => toast(e.detail, "bad"));
 
-// Shown in a session's results while a run waits for Python to load (python.js).
-export const STARTING_PYTHON = "Starting Python… (the first run downloads about 13 MB)";
-
 // ruff's syntax errors and pyflakes findings (undefined names...) are errors; the rest warnings.
+// A compiler's issues (Java, C++) are coded "error" or "warning".
 export function lintSeverity(monaco, code) {
-  return code === "syntax" || code === "invalid-syntax" || code.startsWith("F") || code.startsWith("E9")
+  return code === "error" || code === "syntax" || code === "invalid-syntax" || code.startsWith("F") || code.startsWith("E9")
     ? monaco.MarkerSeverity.Error : monaco.MarkerSeverity.Warning;
+}
+
+// The languages a coding or algorithms session can be in, and Monaco's name for each.
+export const LANGUAGES = [["python", "Python"], ["java", "Java"], ["cpp", "C++"]];
+export const languageLabel = (language) => (LANGUAGES.find(([key]) => key === language) ?? LANGUAGES[0])[1];
+export const MONACO_LANGUAGE = { python: "python", java: "java", cpp: "cpp" };
+
+// Under a Java or C++ session's statement: what runs differently from Python. `study` names the
+// review material, which stays in Python.
+const LANGUAGE_NOTES = {
+  java: "Java: a NullPointerException, an array index out of range or a stack overflow ends the test (it can't be caught here).",
+  cpp: "C++20 with exceptions off: .at() out of range, a failed library check or a crash ends the test.",
+};
+export function languageNote(language, study) {
+  return LANGUAGE_NOTES[language] ? `<p class="lang-note">${LANGUAGE_NOTES[language]} ${study} in Python.</p>` : "";
+}
+
+// A session's lint: ruff's for Python, the compiler's warnings for Java and C++.
+export function lintText(language) {
+  return language === "python"
+    ? { none: "✓ No lint issues (ruff).", head: "ruff" }
+    : { none: "✓ No compiler warnings.", head: "Compiler warnings" };
+}
+
+// Results-pane text while a run waits: python.js and compiled.js send {state, text}.
+export function onRunnerStatus(handler) {
+  const listener = (e) => handler(e.detail);
+  window.addEventListener("swe-runner", listener);
+  return () => window.removeEventListener("swe-runner", listener);
+}
+
+// A failed load or compile, at the top of a run's results.
+export function loadErrorHtml(r) {
+  if (!r.import_error) return "";
+  const title = r.compile_error ? "Your code didn't compile" : "Your code failed to load";
+  return `<div class="callout bad"><strong>${title}</strong><pre>${esc(r.import_error)}</pre>
+    ${r.import_stdout ? `<div class="block-label">Output</div><pre>${esc(r.import_stdout)}</pre>` : ""}</div>`;
 }
 
 // The history page's export and import. History is kept in this browser only.
@@ -109,7 +144,8 @@ export function toast(message, kind = "") {
   setTimeout(() => el.remove(), 3500);
 }
 
-export function modal({ title, body, actions }) {
+// Resolves to the pressed action's value, or `read(dialog, value)` when given (to read inputs).
+export function modal({ title, body, actions, read }) {
   return new Promise((resolve) => {
     const wrap = document.createElement("div");
     wrap.className = "modal-backdrop";
@@ -120,7 +156,7 @@ export function modal({ title, body, actions }) {
       const btn = document.createElement("button");
       btn.textContent = action.label;
       if (action.kind) btn.className = action.kind;
-      btn.onclick = () => { wrap.remove(); resolve(action.value); };
+      btn.onclick = () => { wrap.remove(); resolve(read ? read(wrap, action.value) : action.value); };
       bar.appendChild(btn);
     }
     wrap.addEventListener("keydown", (e) => {
@@ -132,19 +168,32 @@ export function modal({ title, body, actions }) {
 }
 
 // Strict or pausable: there is no default, you pick by pressing one of the two Start buttons.
-export function chooseMode(minutes, firstView, title = `Start a ${minutes}-minute session?`) {
+// With `languages`, it also asks which language to code in (last time's is preselected) and
+// resolves to {mode, language}.
+export function chooseMode(minutes, firstView, { title = `Start a ${minutes}-minute session?`, languages = false } = {}) {
+  const saved = storage("swe-prac-language");
+  const current = LANGUAGES.some(([key]) => key === saved) ? saved : "python";
+  const picker = languages ? `<fieldset class="lang-picker"><legend>Language</legend>
+      ${LANGUAGES.map(([key, label]) => `<label><input type="radio" name="language" value="${key}" ${key === current ? "checked" : ""}> ${label}</label>`).join("")}
+    </fieldset>` : "";
   return modal({
     title,
     body: `<p>The timer starts now and you'll see ${firstView}.</p>
       <ul class="mode-help">
         <li><strong>Strict</strong> &mdash; no pausing; the clock runs even if you close the tab.</li>
         <li><strong>Pausable</strong> &mdash; your work is hidden while paused, and every pause is recorded.</li>
-      </ul>`,
+      </ul>${picker}`,
     actions: [
       { label: "Cancel", value: null, kind: "ghost" },
       { label: "Start strict", value: "strict", kind: "primary" },
       { label: "Start pausable", value: "pausable", kind: "primary" },
     ],
+    read: languages ? (dialog, mode) => {
+      if (!mode) return null;
+      const language = dialog.querySelector("input[name=language]:checked")?.value ?? "python";
+      storage("swe-prac-language", language);
+      return { mode, language };
+    } : undefined,
   });
 }
 
