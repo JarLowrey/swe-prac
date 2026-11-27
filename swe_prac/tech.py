@@ -1,10 +1,10 @@
-"""HTTP API for the tech investigations, mounted under /api/tech.
+"""The tech investigations, for the site build (tools/build_static.py publishes bundle()).
 
 An investigation is one study page, tech/NN_slug.md (read by pages.py, like the foundations
 pages), about a small project in the folder next to it named after the page's slug
 (tech/01_react_swapi.md explains tech/react-swapi/). The page shows the project's files with
-```include blocks, so what you read is the code that runs, and /files lists the whole finished
-project for the file browser. There are no sessions or spoilers: it's study material only.
+```include blocks, so what you read is the code that runs, and project() lists the whole
+finished project for the file browser. There are no sessions or spoilers: it's study material only.
 """
 
 from __future__ import annotations
@@ -13,11 +13,7 @@ import fnmatch
 import os
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException
-
 from . import config, pages
-
-router = APIRouter(prefix="/api/tech")
 
 # Never part of the source: installed packages, build output, caches. A project's own
 # .gitignore adds to this list.
@@ -147,34 +143,10 @@ def page_payload(slug: str) -> dict:
 
 
 def bundle() -> dict:
-    """What tools/build_static.py publishes for the static site: what this API would serve."""
+    """What tools/build_static.py publishes: the cards, each page, and each page's project."""
     found = pages.list_pages(pages_dir())
     return {
         "cards": [card(p) for p in found],
         "pages": {p.slug: page_payload(p.slug) for p in found},
         "projects": {p.slug: info for p in found if (info := project(p)) is not None},
     }
-
-
-@router.get("/pages")
-def list_pages() -> dict:
-    return {"pages": [card(p) for p in pages.list_pages(pages_dir())]}
-
-
-@router.get("/pages/{slug}")
-def get_page(slug: str) -> dict:
-    try:
-        return page_payload(slug)
-    except pages.PageNotFound:
-        raise HTTPException(404, f"Unknown page {slug!r}") from None
-
-
-@router.get("/pages/{slug}/files")
-def get_files(slug: str) -> dict:
-    try:
-        info = project(pages.get(pages_dir(), slug))
-    except pages.PageNotFound:
-        raise HTTPException(404, f"Unknown page {slug!r}") from None
-    if info is None:
-        raise HTTPException(404, f"Page {slug!r} has no project folder")
-    return info

@@ -5,8 +5,8 @@ solution.py (the reference solution), cases.py (the test inputs), checker.py (on
 answers are right) and tests.json, which tools/build_algo.py generates from cases.py and the
 reference. algorithms/README.md documents the format.
 
-Hidden tests never leave the server: sessions get the shown tests only, and Submit reports
-counts for the hidden ones.
+A session shows the shown tests only (the examples); Submit runs the hidden ones too and reports
+counts for them.
 """
 
 from __future__ import annotations

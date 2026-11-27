@@ -7,9 +7,8 @@ import re
 import subprocess
 import sys
 import unittest
-from contextlib import contextmanager
 
-from support import RealClientCase, TempDirCase
+from support import TempDirCase
 
 from swe_prac import execution, problems
 
@@ -79,74 +78,69 @@ class GeneratedTestsFileTests(TempDirCase):
                     self.assertIn("hidden tests", source)  # says where the other tests went
 
 
-class RealProblemApiTests(RealClientCase):
-    @contextmanager
-    def _session(self, problem, mode="strict"):
-        """Start a session and always end it, so one failing problem can't block the next."""
-        res = self.client.post("/api/sessions", json={"problem_id": problem.id, "mode": mode})
-        self.assertEqual(res.status_code, 200, res.text)
-        sid = res.json()["id"]
-        try:
-            yield sid
-        finally:
-            self.client.post(f"/api/sessions/{sid}/end")
+class RealProblemRunTests(TempDirCase):
+    """The reference passes every test and the starter fails cleanly, run natively here;
+    tests/js/ checks the same in the browser's Python."""
 
-    def test_reference_clears_all_levels_through_the_api(self):
+    def test_the_reference_passes_every_level_and_the_starter_fails_cleanly(self):
         for problem in REAL:
-            with self.subTest(problem=problem.id), self._session(problem) as sid:
-                self._clear_all_levels(problem, sid)
+            with self.subTest(problem=problem.id):
+                every = problems.tests(problem, 4, include_hidden=True)
+                ref = execution.run_tests(
+                    self.tmp_path / problem.id / "ref",
+                    problems.reference_code(problem),
+                    problem.class_name,
+                    every,
+                )
+                self.assertIsNone(ref.import_error)
+                self.assertFalse(ref.timed_out or ref.crashed or ref.stopped)
+                self.assertEqual(sorted(ref.results), sorted(t["id"] for t in every))
+                failed = [tid for tid, r in ref.results.items() if not r["passed"]]
+                self.assertEqual(failed, [])
+                for level in (1, 2, 3, 4):
+                    at = [t for t in every if t["level"] == level]
+                    self.assertGreaterEqual(sum(t["visibility"] == "hidden" for t in at), 8)
+                    self.assertGreaterEqual(sum(t["visibility"] == "shown" for t in at), 3)
 
-    def _clear_all_levels(self, problem, sid):
-        reference = problems.reference_code(problem)
-        raw_tests = json.loads((problem.path / "tests.json").read_text(encoding="utf-8"))["tests"]
-        hidden = [t for t in raw_tests if t["visibility"] == "hidden"]
-        session = self.client.get(f"/api/sessions/{sid}").json()
-        self.assertTrue(session["levels"][0]["statement_html"].strip())
+                # The starter imports cleanly and fails with NotImplementedError, not a crash.
+                shown = problems.tests(problem, 1, include_hidden=False)
+                starter = execution.run_tests(
+                    self.tmp_path / problem.id / "starter",
+                    problems.starter_code(problem),
+                    problem.class_name,
+                    shown,
+                )
+                self.assertIsNone(starter.import_error)
+                first = starter.results[shown[0]["id"]]
+                self.assertFalse(first["passed"])
+                self.assertIn("NotImplementedError", first["error"])
 
-        # The starter imports cleanly and fails with NotImplementedError, not a crash.
-        run = self.client.post(f"/api/sessions/{sid}/run", json={}).json()
-        self.assertIsNone(run["import_error"])
-        self.assertFalse(run["all_passed"])
-        self.assertIn("NotImplementedError", run["shown"][0]["error"])
-
-        for level in (1, 2, 3, 4):
-            res = self.client.post(f"/api/sessions/{sid}/submit", json={"code": reference})
-            body = res.json()
-            self.assertTrue(body["all_passed"], (level, body["breakdown"], body["import_error"]))
-            self.assertEqual(body["unlocked"]["completed"], level)
-            for t in hidden:  # hidden tests: never ids or names, only counts
-                self.assertNotIn(f'"{t["id"]}"', res.text)
-                self.assertTrue(t["name"] not in res.text or len(t["name"]) < 12)
-            counts = body["breakdown"][str(level)]
-            self.assertGreaterEqual(counts["hidden_total"], 8)
-            self.assertGreaterEqual(counts["shown_total"], 3)
-
-        self.assertEqual(self.client.post(f"/api/sessions/{sid}/end").status_code, 200)
-        review = self.client.get(f"/api/sessions/{sid}/review").json()
-        self.assertEqual(review["results"]["timed"]["levels_completed"], 4)
-        self.assertTrue(review["hints_html"].strip())
-        self.assertTrue(review["analysis_html"].strip())
-        self.assertTrue(all(lv["statement_html"].strip() for lv in review["levels"]))
+    def test_every_page_of_the_problem_has_text(self):
+        for problem in REAL:
+            with self.subTest(problem=problem.id):
+                for level in (1, 2, 3, 4):
+                    self.assertTrue(problems.statement_html(problem, level).strip())
+                for name in ("hints", "analysis"):
+                    self.assertTrue(problems.review_html(problem, name).strip())
 
     def test_scratch_example_passes_the_reference_and_fails_the_starter(self):
         for problem in REAL:
-            with self.subTest(problem=problem.id), self._session(problem) as sid:
-                scratch = self.client.get(f"/api/sessions/{sid}").json()["scratch"]
+            with self.subTest(problem=problem.id):
+                scratch = problems.scratch_starter(problem)
                 self.assertIn("class ExampleTest(unittest.TestCase)", scratch)
                 self.assertIn("from solution import *", scratch)
 
-                ok = self.client.post(
-                    f"/api/sessions/{sid}/scratch",
-                    json={"code": problems.reference_code(problem)},
-                ).json()
+                ok = execution.run_scratch(
+                    self.tmp_path / problem.id / "ok", problems.reference_code(problem), scratch
+                )
                 self.assertEqual(ok["exit_code"], 0, ok["stdout"] + ok["stderr"])
-                self.assertIn("test_example", ok["stdout"])
-                self.assertIn("OK", ok["stdout"])
+                self.assertIn("test_example", ok["stdout"] + ok["stderr"])
+                self.assertIn("OK", ok["stdout"] + ok["stderr"])
 
                 # On the fresh starter the example stops at the first unimplemented method.
-                starter = self.client.post(
-                    f"/api/sessions/{sid}/scratch", json={"code": problems.starter_code(problem)}
-                ).json()
+                starter = execution.run_scratch(
+                    self.tmp_path / problem.id / "starter", problems.starter_code(problem), scratch
+                )
                 self.assertNotEqual(starter["exit_code"], 0)
                 self.assertIn("NotImplementedError", starter["stdout"] + starter["stderr"])
 

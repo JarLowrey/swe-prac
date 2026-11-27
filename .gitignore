@@ -1,4 +1,4 @@
-# Your attempts: history database and session code
+# The history database of the old local server (tools/export_history.py reads it)
 data/
 
 .venv/
@@ -9,3 +9,6 @@ __pycache__/
 
 # Output of tools/build_static.py (deployed to GitHub Pages)
 site/
+
+# Downloaded runtimes (Pyodide, ruff) kept between builds
+.cache/

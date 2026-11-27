@@ -1,6 +1,3 @@
-fastapi==0.162.2
-uvicorn==0.54.0
+# For building the site (tools/) and checking content. The app itself runs in the browser.
 Markdown==3.11.3
 ruff==0.17.4
-# development
-httpx==0.28.1

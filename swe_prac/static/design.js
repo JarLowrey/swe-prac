@@ -221,11 +221,11 @@ export async function renderDesignSession(sessionId) {
     const el = q("[data-save-state]");
     if (el) el.textContent = st.dirty ? "Unsaved…" : st.lastSaved ? "Saved" : "";
   }
-  async function save({ keepalive = false } = {}) {
+  async function save() {
     if (!st.dirty || st.timer.paused) return;
     st.dirty = false;
     try {
-      const res = await api("PUT", `/api/design/sessions/${sessionId}/notes`, work(), { keepalive });
+      const res = await api("PUT", `/api/design/sessions/${sessionId}/notes`, work());
       st.lastSaved = Date.now();
       if (res?.timer) syncTimer(res.timer);
     } catch (err) {
@@ -235,7 +235,7 @@ export async function renderDesignSession(sessionId) {
     renderSaveState();
   }
   const autosave = setInterval(save, 3000);
-  const beforeUnload = () => { save({ keepalive: true }); };
+  const beforeUnload = () => { save(); };
   window.addEventListener("beforeunload", beforeUnload);
 
   // ----- timer
@@ -429,7 +429,7 @@ export async function renderDesignSession(sessionId) {
   applyPaused();
 
   return async () => {
-    await save({ keepalive: true });
+    await save();
     clearInterval(autosave); clearInterval(tick); clearInterval(resync);
     window.removeEventListener("beforeunload", beforeUnload);
     window.removeEventListener("keydown", keyHandler);

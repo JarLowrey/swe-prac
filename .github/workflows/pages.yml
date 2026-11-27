@@ -1,6 +1,6 @@
-name: Deploy static site
+name: Deploy site
 
-# Publishes the static copy of the app (code can't run there) to GitHub Pages.
+# Builds the app (it runs entirely in the browser), tests it, and publishes it to GitHub Pages.
 # One-time setup: repo Settings > Pages > Build and deployment > Source: "GitHub Actions".
 
 on:
@@ -28,8 +28,18 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      # Pyodide and ruff for the browser, downloaded by the build at the versions it pins.
+      - uses: actions/cache@v4
+        with:
+          path: .cache
+          key: runtimes-${{ hashFiles('tools/build_static.py') }}
       - run: pip install -r requirements.txt
       - run: python tools/build_static.py
+      - run: python -m unittest discover -s tests
+      - run: node --test "tests/js/*.test.mjs"
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

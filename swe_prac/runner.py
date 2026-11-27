@@ -1,12 +1,19 @@
-"""Standalone test harness, executed in a fresh subprocess for every Run/Submit.
+"""The test harness. It imports a solution file, then runs each test on a fresh instance of the
+class, reporting one event per test as it goes.
 
-Usage: python -I runner.py <solution.py> <ClassName> <tests.json> <results.jsonl>
+It runs in two places, and must stay self-contained (stdlib only, no package imports) for both:
 
-It imports the solution file, then runs each test on a fresh instance of the class.
-Results are appended to the results file as JSON lines and flushed after each event,
-so the parent process can recover partial results if this process is killed on timeout.
+* In the browser, for every Run and Submit: the app's Web Worker (static/py-worker.js) loads
+  this file into Pyodide, a fresh interpreter each time, and calls browser_tests(). Events go
+  to the page as they happen, so when the page stops a runaway run it still has the results of
+  the tests that finished. browser_scratch() runs scratch.py the same way.
+* Natively, in a subprocess, when tools/build_problem.py and tools/build_algo.py check a
+  problem (swe_prac/execution.py):
 
-This file must stay self-contained (stdlib only, no package imports): it runs with -I.
+      python -I runner.py <solution.py> <ClassName> <tests.json> <results.jsonl>
+
+  Events are appended to the results file as JSON lines and flushed after each one, so the
+  parent process can recover partial results if it kills this process on a timeout.
 
 The tests file may carry "options" (the algorithms track uses them; the coding track doesn't):
 
@@ -23,26 +30,31 @@ The tests file may carry "options" (the algorithms track uses them; the coding t
     validator       Python source defining check(args, expect, actual) -> bool | str, used when
                     several answers are right (any valid order, any longest palindrome...).
     normalize       Treat tuples in the result as lists.
-    deep_recursion  Run each call in a thread with a large stack and a high recursion limit, so
-                    recursive (top-down memoised) solutions work on large inputs.
+    deep_recursion  A high recursion limit, so recursive (top-down memoised) solutions work on
+                    large inputs. Natively each call also runs in a thread with a large stack.
 
 A test may also set "limit_ms": the call fails if it takes longer (a too-slow algorithm). A call
-still running at LIMIT_GRACE times its limit is abandoned and the run stops there ("stopped"
-event), since a thread can't be interrupted; tests after it are reported as not run.
+still running at LIMIT_GRACE times its limit is abandoned and the run stops there; tests after it
+are reported as not run. Natively the call runs in a thread, which can't be interrupted, so the
+runner reports a "stopped" event and exits. The browser has no threads: there the runner emits a
+"call" event just before the call and the page ends the worker if the call outlives its limit.
 """
 
 from __future__ import annotations
 
+import builtins
 import contextlib
 import copy
 import importlib.util
 import io
 import json
 import os
+import runpy
 import sys
 import threading
 import time
 import traceback
+import types
 from collections import deque
 
 MAX_STDOUT_CHARS = 20_000
@@ -51,6 +63,13 @@ MAX_NODES = 1_000_000
 DEEP_STACK_BYTES = 64 * 1024 * 1024
 DEEP_RECURSION_LIMIT = 200_000
 LIMIT_GRACE = 1.5
+MAX_SCRATCH_CHARS = 50_000
+MAX_TRACEBACK_FRAMES = 30
+# scratch.py runs natively with Python's default limit, 1000. In the browser the pure-Python
+# functools.cache (see install_browser_shims) takes two frames per level, so allow a little more.
+SCRATCH_RECURSION_LIMIT = 3_000
+# Pyodide can't start threads, so in the browser every call runs inline (see call()).
+THREADS = sys.platform != "emscripten"
 
 
 def decode(value):
@@ -295,10 +314,13 @@ def call(method, args, deep: bool, timeout: float | None = None, timing: dict | 
     With `timing`, timing["ms"] is set to how long the method itself ran. It's measured in the
     thread that runs it: starting a thread with a large stack can take tens of milliseconds on a
     busy machine, and that isn't the solution's time. (Thread.start() returns once the thread
-    runs, so `timeout` doesn't include it either.)"""
+    runs, so `timeout` doesn't include it either.)
+
+    Without threads (the browser) the call always runs inline: `deep` only raises the recursion
+    limit (run() does that), and the page enforces `timeout` by ending the worker."""
     if timing is None:
         timing = {}
-    if not deep and timeout is None:
+    if not THREADS or (not deep and timeout is None):
         started = time.perf_counter()
         try:
             return method(*args)
@@ -326,9 +348,21 @@ def call(method, args, deep: bool, timeout: float | None = None, timing: dict | 
 
 
 def user_traceback(exc: BaseException, solution_path: str) -> str:
-    """Format a traceback, keeping only frames from the user's solution file."""
-    frames = [f for f in traceback.extract_tb(exc.__traceback__) if f.filename == solution_path]
+    """Format a traceback, keeping only frames from the user's solution file, and only the last
+    MAX_TRACEBACK_FRAMES of those: a runaway recursion has 200,000, and formatting them all takes
+    seconds."""
+    mine = []
+    tb = exc.__traceback__
+    while tb is not None:
+        if tb.tb_frame.f_code.co_filename == solution_path:
+            mine.append(tb)
+        tb = tb.tb_next
+    hidden = max(0, len(mine) - MAX_TRACEBACK_FRAMES)
+    start = mine[hidden] if mine else None
+    frames = [f for f in traceback.extract_tb(start) if f.filename == solution_path]
     lines = ["Traceback (most recent call last):\n"]
+    if hidden:
+        lines.append(f"  ... {hidden:,} earlier calls not shown\n")
     lines += traceback.format_list(frames)
     lines += traceback.format_exception_only(type(exc), exc)
     # Show "solution.py" (the editor's file name), not the session's absolute path.
@@ -346,10 +380,13 @@ class LimitedBuffer(io.StringIO):
         return super().write(s)
 
 
-def main() -> int:
-    solution_path, class_name, tests_path, results_path = sys.argv[1:5]
-    with open(tests_path, encoding="utf-8") as fh:
-        data = decode(json.load(fh))
+def run(solution_path: str, class_name: str, data: dict, emit) -> str | None:
+    """Run data["tests"] against the solution, calling emit(event) for each event.
+
+    Returns why the run stopped early (a call past its time limit, still running in its thread),
+    or None. The events: "import_error"; per test "start", "call" (browser only, just before a
+    call that has a time limit) and "end"; then "stopped" or "done".
+    """
     tests, options = data["tests"], data.get("options") or {}
     adapters = options.get("adapters") or {}
     arg_kinds = adapters.get("args") or []
@@ -363,12 +400,8 @@ def main() -> int:
         checker = namespace["check"]
     if deep:
         sys.setrecursionlimit(DEEP_RECURSION_LIMIT)
-        threading.stack_size(DEEP_STACK_BYTES)
-    out = open(results_path, "a", encoding="utf-8")  # noqa: SIM115 - kept open for streaming
-
-    def emit(event: dict) -> None:
-        out.write(json.dumps(event) + "\n")
-        out.flush()
+        if THREADS:
+            threading.stack_size(DEEP_STACK_BYTES)
 
     buffer = LimitedBuffer()
     try:
@@ -386,7 +419,7 @@ def main() -> int:
                     "stdout": buffer.getvalue(),
                 }
             )
-            return 0
+            return None
     except BaseException as exc:  # SyntaxError, ImportError, SystemExit...
         if isinstance(exc, SyntaxError):
             err = "".join(traceback.format_exception_only(type(exc), exc)).replace(
@@ -395,7 +428,7 @@ def main() -> int:
         else:
             err = user_traceback(exc, solution_path)
         emit({"event": "import_error", "error": err, "stdout": buffer.getvalue()})
-        return 0
+        return None
 
     stop = None
     for test in tests:
@@ -438,6 +471,7 @@ def main() -> int:
                     adapt_arg(arg_kinds[i] if i < len(arg_kinds) else None, a, module)
                     for i, a in enumerate(copy.deepcopy(raw_args) if options else raw_args)
                 ]
+                keep(obj, args)
                 originals = (
                     {id(n) for n in graph_nodes(args[0])}
                     if result_kind == "graph" and arg_kinds[:1] == ["graph"]
@@ -446,6 +480,8 @@ def main() -> int:
                 limit = test.get("limit_ms")
                 stop_after = limit * LIMIT_GRACE / 1000 if limit else None
                 timing: dict = {}
+                if limit and not THREADS:
+                    emit({"event": "call", "id": test["id"], "limit_ms": limit})
                 try:
                     actual = call(method, args, deep, stop_after, timing)
                 except TooSlow:
@@ -467,6 +503,7 @@ def main() -> int:
                     error = user_traceback(exc, solution_path)
                     break
                 call_ms = timing["ms"]
+                keep(actual)
                 message = None
                 try:
                     if check_arg0:
@@ -517,14 +554,196 @@ def main() -> int:
             }
         )
     if stop:
-        # The slow call is still running in its thread and can't be interrupted: report what
-        # happened and leave without waiting for it.
         emit({"event": "stopped", "reason": stop})
-        out.close()
-        os._exit(0)
+        return stop
     emit({"event": "done"})
+    return None
+
+
+def main() -> int:
+    """Native entry point (a subprocess per run): events go to the results file."""
+    solution_path, class_name, tests_path, results_path = sys.argv[1:5]
+    with open(tests_path, encoding="utf-8") as fh:
+        data = decode(json.load(fh))
+    out = open(results_path, "a", encoding="utf-8")  # noqa: SIM115 - kept open for streaming
+
+    def emit(event: dict) -> None:
+        out.write(json.dumps(event) + "\n")
+        out.flush()
+
+    stop = run(solution_path, class_name, data, emit)
     out.close()
+    if stop:
+        # The slow call is still running in its thread and can't be interrupted: leave without
+        # waiting for it.
+        os._exit(0)
     return 0
+
+
+# -- the browser (Pyodide) ---------------------------------------------------------------
+# Recursion that passes through C code uses the JavaScript engine's stack, which in a Web Worker
+# overflows after a few hundred levels and takes the whole interpreter down with it. Natively,
+# deep_recursion gives each call a 64 MB thread stack instead, but the browser has no threads.
+# So in the browser, the C code that recursive solutions most often recurse through is swapped
+# for pure-Python equivalents, which recurse inside the interpreter, where only
+# sys.setrecursionlimit bounds them: functools.cache and lru_cache, and max, min, sum, any, all
+# and sorted when they are given a generator (`1 + max(depth(c) for c in node.children)`).
+_SHIMMED = ("max", "min", "sum", "any", "all", "sorted")
+_ORIGINAL = {name: getattr(builtins, name) for name in _SHIMMED}
+_GENERATOR = types.GeneratorType
+
+# Freeing has the same problem: CPython frees a long linked list or a deep tree by recursing in
+# C, which takes the interpreter down from about 10,000 nodes (CPython's own guard against this
+# measures a different stack under WebAssembly). So in the browser every test's arguments and
+# results are kept alive: the worker is thrown away after the run, so they never need freeing.
+_kept: list | None = None  # natively None: nothing is kept
+
+
+def keep(*objects) -> None:
+    if _kept is not None:
+        _kept.append(objects)
+
+
+def _drain(generator) -> list:
+    """The generator's items, consumed by Python's own loop instead of by C code."""
+    items = []
+    for item in generator:
+        items.append(item)
+    return items
+
+
+def _draining(name: str, alone: bool):
+    """The builtin `name`, but a generator first argument is drained in Python first. With
+    alone=True (max, min) only a lone positional argument is an iterable."""
+    original = _ORIGINAL[name]
+
+    def shim(*args, **kwargs):
+        if args and type(args[0]) is _GENERATOR and (len(args) == 1 or not alone):
+            args = (_drain(args[0]), *args[1:])
+        return original(*args, **kwargs)
+
+    shim.__name__ = shim.__qualname__ = name
+    shim.__doc__ = original.__doc__
+    return shim
+
+
+def _short_circuit(name: str, wanted: bool):
+    """any (wanted=True) or all (wanted=False), stopping at the first deciding item, as they do."""
+    original = _ORIGINAL[name]
+
+    def shim(iterable, /):
+        if type(iterable) is not _GENERATOR:
+            return original(iterable)
+        for item in iterable:
+            if bool(item) is wanted:
+                return wanted
+        return not wanted
+
+    shim.__name__ = shim.__qualname__ = name
+    shim.__doc__ = original.__doc__
+    return shim
+
+
+def pure_functools() -> types.ModuleType:
+    """A copy of functools built without its C accelerator, _functools: its lru_cache is the
+    standard library's own pure-Python one (PEP 399 requires that it exists)."""
+    spec = importlib.util.find_spec("functools")
+    saved = sys.modules.get("_functools")
+    sys.modules["_functools"] = None  # `from _functools import ...` now raises ImportError
+    try:
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+    finally:
+        if saved is None:
+            del sys.modules["_functools"]
+        else:
+            sys.modules["_functools"] = saved
+    return module
+
+
+def install_browser_shims() -> None:
+    """Swap in the pure-Python versions above. Only for the browser: it changes builtins."""
+    import functools
+
+    pure = pure_functools()
+    functools.lru_cache, functools.cache = pure.lru_cache, pure.cache
+    for name, alone in (("max", True), ("min", True), ("sum", False), ("sorted", False)):
+        setattr(builtins, name, _draining(name, alone))
+    builtins.any = _short_circuit("any", True)
+    builtins.all = _short_circuit("all", False)
+    sys.stdin = io.StringIO("")  # input() raises EOFError, as with a subprocess that has no input
+
+
+def browser_tests(solution_path: str, class_name: str, payload: str, post) -> None:
+    """Run the tests in `payload` (JSON: {"tests": [...], "options": {...}}) against the solution,
+    calling post(text) with each event as JSON. static/py-worker.js calls this."""
+    global _kept
+    install_browser_shims()
+    if _kept is None:  # never replaced: dropping the old list would free what it holds
+        _kept = []
+    run(solution_path, class_name, decode(json.loads(payload)), lambda e: post(json.dumps(e)))
+
+
+class _Stream(io.TextIOBase):
+    """sys.stdout or sys.stderr for scratch.py: hands text to the page in batches (at most every
+    50 ms, so a print loop doesn't flood it), up to MAX_SCRATCH_CHARS in all."""
+
+    def __init__(self, post):
+        self.post = post
+        self.left = MAX_SCRATCH_CHARS
+        self.pending: list[str] = []
+        self.flushed_at = time.perf_counter()
+
+    def writable(self) -> bool:
+        return True
+
+    def write(self, s: str) -> int:
+        if self.left > 0 and s:
+            chunk = s[: self.left]
+            self.left -= len(chunk)
+            self.pending.append(chunk)
+            if time.perf_counter() - self.flushed_at > 0.05:
+                self.flush()
+        return len(s)
+
+    def flush(self) -> None:
+        if self.pending:
+            self.post("".join(self.pending))
+            self.pending.clear()
+        self.flushed_at = time.perf_counter()
+
+
+def browser_scratch(workdir: str, script: str, post_out, post_err) -> int:
+    """Run `script` (scratch.py, in `workdir` beside solution.py) as a program; returns its exit
+    code. Its output goes to post_out / post_err as it's printed. static/py-worker.js calls this."""
+    install_browser_shims()
+    sys.setrecursionlimit(SCRATCH_RECURSION_LIMIT)
+    os.chdir(workdir)
+    sys.path.insert(0, workdir)
+    out, err = _Stream(post_out), _Stream(post_err)
+    sys.stdout, sys.stderr = out, err
+    code = 0
+    try:
+        runpy.run_path(script, run_name="__main__")
+    except SystemExit as exc:
+        if exc.code is None or isinstance(exc.code, int):
+            code = int(exc.code or 0)
+        else:
+            err.write(f"{exc.code}\n")
+            code = 1
+    except BaseException as exc:
+        # Like an uncaught error in a program: the traceback from the script's own frame on,
+        # with file names as the editor shows them.
+        tb = exc.__traceback__
+        while tb is not None and tb.tb_frame.f_code.co_filename != script:
+            tb = tb.tb_next
+        text = "".join(traceback.format_exception(type(exc), exc, tb))
+        err.write(text.replace(workdir.rstrip("/") + "/", ""))
+        code = 1
+    finally:
+        out.flush()
+        err.flush()
+    return code
 
 
 if __name__ == "__main__":

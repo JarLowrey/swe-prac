@@ -1,3 +1,1 @@
-"""SWE interview practice: timed, level-gated Python coding sessions run locally."""
-
-__version__ = "1.0.0"
+"""SWE interview practice: the content, the test runner and the browser app's source."""

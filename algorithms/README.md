@@ -177,6 +177,11 @@ def naive(values):
 - **Timing is noisy.** The build's timing warnings come from single runs, so they can appear
   when the machine is busy (for example while other builds run). Rerun the build before changing
   the sizes or limits.
+- **Solutions run in the browser.** The build checks the reference natively, but the app runs it
+  in Pyodide, which is up to about twice as slow (the tenth-of-the-limit margin covers that), has
+  no threads, and stops on recursion through built-in code past a few hundred levels (see the
+  README). After building, run `tools/build_static.py` and then
+  `node --test tests/js/references.test.mjs`, which runs every reference on every test there.
 - Single-argument cases need a trailing comma: `([1, 2, 3],)`.
 - `brute()` and `random_cases()` are optional but strongly recommended. `brute()` runs on every
   test without a `limit_ms`, so a large test without a limit needs a `brute()` that finishes on

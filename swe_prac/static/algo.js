@@ -3,9 +3,10 @@
 // solution), the problem and study pages, and the history table. Pages return their cleanup.
 
 import {
-  $app, STATIC, NEEDS_SERVER_NOTE, api, esc, fmtClock, plural, fmtDate, storage, toast, modal,
-  chooseMode, confirmSpoil, topnav, dragGutter, resizableSplit,
+  $app, STARTING_PYTHON, api, esc, fmtClock, plural, fmtDate, storage, toast, modal, chooseMode,
+  confirmSpoil, topnav, dragGutter, resizableSplit, lintSeverity,
 } from "./common.js";
+import { coolDown, warmUp } from "./backend.js";
 import { foundationsSection } from "./learn.js";
 
 const DIFFICULTIES = ["Easy", "Medium", "Hard"];
@@ -87,7 +88,6 @@ export async function algoTrackCard() {
       hidden tests include large inputs only an efficient algorithm finishes in time. Then a full
       explanation with diagrams, and foundations pages on the patterns behind them.</p>
     <ul class="track-facts"><li>${plural(problems.length, "problem")}</li><li>${minutes.Easy}–${minutes.Hard} min</li><li>auto-graded</li></ul>
-    ${STATIC ? '<p class="faint track-note">Code can\'t run on this static copy, so problems can\'t be solved here.</p>' : ""}
     <div class="track-foot">${status}<span class="track-cta">Open →</span></div>
   </a>`;
 }
@@ -123,10 +123,6 @@ export async function renderAlgoHome() {
       the examples; <strong>Submit</strong> adds hidden tests, from edge cases to inputs big enough that only an
       efficient algorithm finishes in time. The hints and an explanation with diagrams and the
       commented solution open when the session ends.</p>
-    ${STATIC ? `<div class="callout info"><strong>Static copy.</strong> The problems, the timer, review, the
-      explanations and the foundations pages all work here, and your sessions are saved in this browser.
-      Python can't run on this site, so Run, Submit and Run scratch are disabled. To solve problems,
-      <a href="https://github.com/JarLowrey/swe-prac">clone the repo</a> and start it locally.</div>` : ""}
     ${banner}
     ${foundations}
     <h2 class="section-title">Problems</h2>
@@ -303,6 +299,7 @@ export async function renderAlgoSession(sessionId) {
     if (err.status === 410) { location.hash = `#/algo/review/${sessionId}`; return undefined; }
     throw err;
   }
+  warmUp(); // load Python and ruff now, so the first Run doesn't wait for them
   const monaco = await window.monacoReady;
   const examples = Object.fromEntries(session.examples.map((e) => [e.id, e]));
   const st = {
@@ -311,6 +308,7 @@ export async function renderAlgoSession(sessionId) {
     file: "solution",
     resultsTab: "tests",
     busy: false,
+    busyText: "Running…",
     dirty: false,
     lastSaved: null,
     lastResult: null,
@@ -408,12 +406,12 @@ export async function renderAlgoSession(sessionId) {
     const el = q("[data-save-state]");
     if (el) el.textContent = st.dirty ? "Unsaved…" : st.lastSaved ? "Saved" : "";
   }
-  async function save({ keepalive = false } = {}) {
+  async function save() {
     if (!st.dirty || st.timer.paused) return;
     const body = { code: solutionModel.getValue(), scratch: scratchModel.getValue() };
     st.dirty = false;
     try {
-      const res = await api("PUT", `/api/algo/sessions/${sessionId}/code`, body, { keepalive });
+      const res = await api("PUT", `/api/algo/sessions/${sessionId}/code`, body);
       st.lastSaved = Date.now();
       if (res?.timer) syncTimer(res.timer);
     } catch (err) {
@@ -423,7 +421,7 @@ export async function renderAlgoSession(sessionId) {
     renderSaveState();
   }
   const autosave = setInterval(save, 3000);
-  const beforeUnload = () => { save({ keepalive: true }); };
+  const beforeUnload = () => { save(); };
   window.addEventListener("beforeunload", beforeUnload);
 
   // ----- lint (when idle, and with every run)
@@ -433,7 +431,7 @@ export async function renderAlgoSession(sessionId) {
     lintTimer = setTimeout(runLint, 1500);
   }
   async function runLint() {
-    if (st.timer.paused || STATIC) return;
+    if (st.timer.paused) return;
     try {
       setLint(await api("POST", `/api/algo/sessions/${sessionId}/lint`, { code: solutionModel.getValue() }));
     } catch { /* lint is best-effort */ }
@@ -444,8 +442,7 @@ export async function renderAlgoSession(sessionId) {
       startLineNumber: i.row, startColumn: i.col, endLineNumber: i.end_row,
       endColumn: Math.max(i.end_col, i.col + 1),
       message: `${i.message} (${i.code})`,
-      severity: i.code === "syntax" || i.code.startsWith("F") || i.code.startsWith("E9")
-        ? monaco.MarkerSeverity.Error : monaco.MarkerSeverity.Warning,
+      severity: lintSeverity(monaco, i.code),
       source: "ruff",
     })));
     renderResultTabs();
@@ -567,15 +564,13 @@ export async function renderAlgoSession(sessionId) {
   function renderResults() {
     const el = q("[data-results]");
     if (st.resultsTab === "lint") { el.innerHTML = renderLint(); bindLint(el); return; }
+    if (st.busy) { el.innerHTML = `<div class="empty">${esc(st.busyText)}</div>`; return; }
     if (st.resultsTab === "scratch") { el.innerHTML = renderScratch(); return; }
-    if (st.busy) { el.innerHTML = '<div class="empty">Running…</div>'; return; }
     el.innerHTML = st.lastResult ? renderTestResult(st.lastResult) : renderExamples();
   }
 
   function renderExamples() {
-    const intro = STATIC
-      ? "Code can't run on the static site, so there are no results here. You can still read the problem and write code (it autosaves in this browser)."
-      : "<kbd>Ctrl+↵</kbd> <strong>Run</strong> checks these examples with full details. <kbd>Ctrl+⇧+↵</kbd> <strong>Submit</strong> also runs the hidden tests (counts only); passing them all solves the problem.";
+    const intro = "<kbd>Ctrl+↵</kbd> <strong>Run</strong> checks these examples with full details. <kbd>Ctrl+⇧+↵</kbd> <strong>Submit</strong> also runs the hidden tests (counts only); passing them all solves the problem.";
     const rows = session.examples.map((e) => `<tr><td>${esc(e.name)}</td>
       <td class="call">${esc(argsText(session.params, e.args))}</td><td>${esc(py(e.expect))}</td></tr>`).join("");
     return `<p class="faint" style="margin:0 0 10px">${intro}</p>
@@ -662,7 +657,7 @@ export async function renderAlgoSession(sessionId) {
         Add your own inputs and prints, then press <strong>Run scratch</strong>.</div>`;
     }
     return `<div class="summary-row"><strong>scratch.py</strong>
-        <span class="chip ${o.exit_code === 0 ? "good" : "bad"}">${o.timed_out ? "timed out" : `exit ${o.exit_code}`}</span>
+        <span class="chip ${o.exit_code === 0 ? "good" : "bad"}">${o.timed_out ? "timed out" : o.crashed ? "crashed" : `exit ${o.exit_code}`}</span>
         <span class="faint">${o.ms} ms</span></div>
       <div class="block-label">stdout</div><pre class="out">${esc(o.stdout) || '<span class="faint">(empty)</span>'}</pre>
       ${o.stderr ? `<div class="block-label">stderr</div><pre class="out fail">${esc(o.stderr)}</pre>` : ""}`;
@@ -671,13 +666,21 @@ export async function renderAlgoSession(sessionId) {
   // ----- actions
   function setBusy(busy) {
     st.busy = busy;
-    const off = busy || st.timer.paused || STATIC;
+    st.busyText = "Running…";
+    const off = busy || st.timer.paused;
     for (const sel of ["[data-run]", "[data-submit]", "[data-scratch]"]) q(sel).disabled = off;
-    q("[data-format]").disabled = st.timer.paused || STATIC;
+    q("[data-format]").disabled = st.timer.paused;
   }
 
+  // While a run waits for Python to load (the first one in this browser downloads it), say so.
+  const onPython = (e) => {
+    if (!st.busy) return;
+    st.busyText = e.detail.state === "loading" ? STARTING_PYTHON : "Running…";
+    renderResults();
+  };
+  window.addEventListener("swe-python", onPython);
+
   async function doRun(kind) {
-    if (STATIC) { toast(NEEDS_SERVER_NOTE, "bad"); return; }  // reached via the keyboard shortcuts
     if (st.busy || st.timer.paused) return;
     setBusy(true);
     st.resultsTab = "tests";
@@ -708,9 +711,11 @@ export async function renderAlgoSession(sessionId) {
   }
 
   async function doScratch() {
-    if (STATIC) { toast(NEEDS_SERVER_NOTE, "bad"); return; }
     if (st.busy || st.timer.paused) return;
     setBusy(true);
+    st.resultsTab = "scratch";
+    renderResultTabs();
+    renderResults();
     try {
       st.scratchOut = await api("POST", `/api/algo/sessions/${sessionId}/scratch`, {
         code: solutionModel.getValue(), scratch: scratchModel.getValue(),
@@ -763,9 +768,6 @@ export async function renderAlgoSession(sessionId) {
   });
 
   // ----- first paint
-  if (STATIC) {
-    for (const sel of ["[data-run]", "[data-submit]", "[data-scratch]", "[data-format]"]) q(sel).title = NEEDS_SERVER_NOTE;
-  }
   renderResultTabs();
   renderResults();
   renderTimer();
@@ -774,10 +776,12 @@ export async function renderAlgoSession(sessionId) {
   if (!st.timer.paused) editor.focus();
 
   return async () => {
-    await save({ keepalive: true });
+    await save();
     clearInterval(autosave); clearInterval(tick); clearInterval(resync); clearTimeout(lintTimer);
     window.removeEventListener("beforeunload", beforeUnload);
     window.removeEventListener("keydown", keyHandler);
+    window.removeEventListener("swe-python", onPython);
+    coolDown();
     subs.forEach((s) => s.dispose());
     formatProvider.dispose();
     editor.dispose();

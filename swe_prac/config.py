@@ -16,12 +16,13 @@ ALGO_DIR = Path(os.environ.get("SWE_PRAC_ALGO", ROOT / "algorithms"))
 TECH_DIR = Path(os.environ.get("SWE_PRAC_TECH", ROOT / "tech"))
 STATIC_DIR = PACKAGE_DIR / "static"
 RUNNER_PATH = PACKAGE_DIR / "runner.py"
+# helpers.py beside scratch.py in an algorithms session: builds lists, trees and graphs.
+SCRATCH_HELPERS_PATH = PACKAGE_DIR / "scratch_helpers.py"
 USER_RUFF_CONFIG = PACKAGE_DIR / "user_ruff.toml"
 ALGO_RUFF_CONFIG = PACKAGE_DIR / "user_ruff_algo.toml"  # user_ruff.toml minus camelCase checks
 
-DATA_DIR = Path(os.environ.get("SWE_PRAC_DATA", ROOT / "data"))
-
-# The interpreter running the app (the project venv) also runs user code and ruff.
+# The interpreter that runs the build tools (the project venv) also runs their checks of each
+# problem's reference solution through the runner, and ruff (execution.py).
 PYTHON = sys.executable
 
 TIME_LIMIT_SECONDS = 90 * 60
@@ -36,6 +37,7 @@ ALGO_DIFFICULTIES = tuple(ALGO_MINUTES)
 # System design: one 45-minute slot, split by the seven framework steps in designs/framework.json.
 DESIGN_TIME_LIMIT_SECONDS = 45 * 60
 
+# Limits on a run. static/python.js applies the same ones in the browser.
 RUN_TIMEOUT_SECONDS = 10
 SCRATCH_TIMEOUT_SECONDS = 10
 MAX_SCRATCH_OUTPUT = 50_000

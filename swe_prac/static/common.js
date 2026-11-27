@@ -1,30 +1,67 @@
 // Helpers shared by every page: the API client, formatting, toasts, modals and the top nav.
+import { handle } from "./backend.js";
 
 export const $app = document.getElementById("app");
 export const $modalRoot = document.getElementById("modal-root");
 const $toastRoot = document.getElementById("toast-root");
 
-// On the static site (GitHub Pages) static-api.js defines window.SWE_STATIC and answers every API
-// call in the browser. Nothing can execute Python there, so the controls that need it are disabled.
-export const STATIC = Boolean(window.SWE_STATIC);
-export const NEEDS_SERVER_NOTE = "Disabled on the static site: running code needs the local server";
+// There is no server: api() calls backend.js, which answers in the browser (sessions in
+// localStorage, Python and ruff in WebAssembly). The method + path interface is kept so each
+// page reads like a client of an API.
+export async function api(method, path, body) {
+  return handle(method, path, body);
+}
 
-export async function api(method, path, body, opts = {}) {
-  if (STATIC) return window.SWE_STATIC.handle(method, path, body);
-  const res = await fetch(path, {
-    method,
-    headers: body !== undefined ? { "Content-Type": "application/json" } : {},
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-    keepalive: opts.keepalive || false,
-  });
-  let data = null;
-  try { data = await res.json(); } catch { /* empty body */ }
-  if (!res.ok) {
-    const err = new Error((data && data.detail) || `${res.status} ${res.statusText}`);
-    err.status = res.status;
-    throw err;
-  }
-  return data;
+// backend.js reports once when the browser won't store anything.
+window.addEventListener("swe-storage", (e) => toast(e.detail, "bad"));
+
+// Shown in a session's results while a run waits for Python to load (python.js).
+export const STARTING_PYTHON = "Starting Python… The first run in this browser downloads it (about 13 MB); after that it loads from the cache.";
+
+// ruff's syntax errors and pyflakes findings (undefined names...) are errors; the rest warnings.
+export function lintSeverity(monaco, code) {
+  return code === "syntax" || code === "invalid-syntax" || code.startsWith("F") || code.startsWith("E9")
+    ? monaco.MarkerSeverity.Error : monaco.MarkerSeverity.Warning;
+}
+
+// The history page's export and import. History is kept in this browser only.
+export function historyBackupSection() {
+  return `<h2 class="section-title">Your history file</h2>
+    <p class="dim">Your attempts are saved in this browser only. Export them to keep a copy or to move
+      them to another browser; importing a file adds its attempts to the ones here.</p>
+    <div class="random-row">
+      <button data-export-history>Export history</button>
+      <button data-import-history>Import history…</button>
+      <input type="file" accept=".json,application/json" data-import-file hidden>
+    </div>`;
+}
+
+export function bindHistoryBackup(rerender) {
+  $app.querySelector("[data-export-history]").onclick = async () => {
+    const data = await api("GET", "/api/backup");
+    const blob = new Blob([JSON.stringify(data, null, 1)], { type: "application/json" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `swe-prac-history-${new Date().toISOString().slice(0, 10)}.json`;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+  };
+  const input = $app.querySelector("[data-import-file]");
+  $app.querySelector("[data-import-history]").onclick = () => input.click();
+  input.onchange = async () => {
+    const file = input.files[0];
+    if (!file) return;
+    try {
+      const { added } = await api("POST", "/api/backup", JSON.parse(await file.text()));
+      const total = Object.values(added).reduce((a, b) => a + b, 0);
+      toast(total ? `Imported ${plural(total, "attempt")}` : "Nothing new: those attempts are already here", total ? "good" : "");
+      await rerender();
+    } catch (err) {
+      toast(err instanceof SyntaxError ? "That file isn't valid JSON." : err.message, "bad");
+    } finally {
+      input.value = ""; // so choosing the same file again still imports it
+    }
+  };
 }
 
 export function esc(value) {

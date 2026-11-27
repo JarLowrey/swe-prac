@@ -1,34 +1,77 @@
-// Browser-side stand-in for the FastAPI backend, used on the static site (GitHub Pages).
+// The app's backend, in the browser. There is no server: every api() call (common.js) lands in
+// handle() below, and the answers have the shapes the pages expect.
 //
-// The frontend sends every request through api() (common.js); when this file has defined
-// window.SWE_STATIC, that call lands in handle() below instead of the network. Responses have the
-// same shape as the real API's. Sessions live in localStorage and mirror swe_prac/sessions.py
-// (timer, pausing, scoring), swe_prac/design_sessions.py (system design) and
-// swe_prac/algo_sessions.py (algorithms).
+//   sessions, timers, scoring    kept in localStorage (one key, all three tracks)
+//   questions and study pages    data.json, built by tools/build_static.py
+//   each problem's tests         tests/coding/<id>.json and tests/algo/<id>.json
+//   Run, Submit, Run scratch     Python in a Web Worker (python.js)
+//   lint and Format              ruff compiled to WebAssembly (lint.js)
 //
-// Nothing here can run Python, so run / submit / scratch / format are refused and lint reports
-// that it is unavailable. app.js and algo.js disable those buttons, so no level can be passed and
-// no algorithm problem solved on this site. System design needs no code execution, so that whole
-// section works here, and so do the foundations pages of both tracks and the tech investigations.
-(() => {
-  const STORAGE_KEY = "swe-prac-static-v1";
-  const NEEDS_SERVER = "Running code needs the local server. It isn't available on the static site.";
+// createBackend() takes those as dependencies so tests/js/ can drive it with fakes.
+import * as python from "./python.js";
+import * as ruff from "./lint.js";
 
-  class ApiError extends Error {
-    constructor(message, status = 409) {
-      super(message);
-      this.status = status;
-    }
+const STORAGE_KEY = "swe-prac-static-v1"; // the name predates the in-browser runner; kept so old sessions load
+const BACKUP_FORMAT = "swe-prac-history";
+
+export class ApiError extends Error {
+  constructor(message, status = 409) {
+    super(message);
+    this.status = status;
   }
+}
+
+function browserDeps() {
+  const url = (path) => new URL(path, document.baseURI);
+  return {
+    fetchJson: async (path) => {
+      const res = await fetch(url(path));
+      if (!res.ok) throw new ApiError(`Could not load ${path} (${res.status})`, 500);
+      return res.json();
+    },
+    fetchText: async (path) => {
+      const res = await fetch(url(path));
+      if (!res.ok) throw new ApiError(`Could not load ${path} (${res.status})`, 500);
+      return res.text();
+    },
+    storage: {
+      get: () => localStorage.getItem(STORAGE_KEY),
+      set: (text) => localStorage.setItem(STORAGE_KEY, text),
+    },
+    python,
+    ruff,
+    clock: () => Date.now() / 1000,
+    random: Math.random,
+    onStorageError: (message) => window.dispatchEvent(new CustomEvent("swe-storage", { detail: message })),
+  };
+}
+
+export function createBackend(deps) {
+  const { fetchJson, fetchText, storage, clock, random } = deps;
 
   // ---------------------------------------------------------------- data
-  let bundle = null; // data.json, written by tools/build_static.py
+  let bundle = null; // data.json
+  let bundleLoad = null;
+  const testFiles = new Map(); // "coding/<id>" -> the problem's tests file
 
   async function loadBundle() {
-    const res = await fetch(new URL("data.json", document.baseURI));
-    if (!res.ok) throw new ApiError(`Could not load data.json (${res.status})`, 500);
-    bundle = await res.json();
+    bundleLoad ??= fetchJson("data.json").then((data) => { bundle = data; });
+    await bundleLoad;
   }
+
+  // Every test of a problem, shown and hidden: fetched the first time it runs.
+  async function testsFile(track, id) {
+    const key = `${track}/${id}`;
+    if (!testFiles.has(key)) {
+      const load = fetchJson(`tests/${key}.json`);
+      testFiles.set(key, load);
+      load.catch(() => testFiles.delete(key));
+    }
+    return testFiles.get(key);
+  }
+
+  let helpersText = null; // helpers.py for algorithm scratch runs
+  const helpers = async () => (helpersText ??= await fetchText("py/helpers.py"));
 
   function problemData(problemId) {
     const found = bundle.problems.find((p) => p.problem.id === problemId);
@@ -38,21 +81,27 @@
 
   // ---------------------------------------------------------------- storage
   let state = { nextId: 1, sessions: [] };
+  let storageWarned = false;
 
   // Re-read on every request so two open tabs don't overwrite each other. If storage is
-  // unavailable (private mode), the in-memory copy carries on for this page load.
+  // unavailable (some private modes), the in-memory copy carries on for this page load.
   function readState() {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
+      const raw = storage.get();
       if (raw) state = JSON.parse(raw);
     } catch { /* keep the in-memory state */ }
   }
 
   function persist() {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch { /* not persisted */ }
+    try {
+      storage.set(JSON.stringify(state));
+    } catch (err) {
+      if (!storageWarned) {
+        storageWarned = true;
+        deps.onStorageError?.(`Your work isn't being saved: this browser refused to store it (${err.message}). Export your history from the History page to keep it.`);
+      }
+    }
   }
-
-  const clock = () => Date.now() / 1000;
 
   function getSession(id) {
     const s = state.sessions.find((x) => x.id === id);
@@ -62,7 +111,9 @@
 
   const activeSession = () => [...state.sessions].reverse().find((s) => s.status === "active") ?? null;
 
-  // ---------------------------------------------------------------- timer (sessions.py)
+  // ---------------------------------------------------------------- timer (all three tracks)
+  // Elapsed time is wall clock minus recorded pauses, so reloading or closing the tab changes
+  // nothing: a strict session's clock keeps running.
   function elapsed(s, now = clock()) {
     if (s.status === "finished") return s.final_elapsed;
     const end = s.paused_at !== null ? s.paused_at : now;
@@ -131,11 +182,46 @@
     };
   }
 
-  // ---------------------------------------------------------------- results (sessions.results)
-  // A static session can't submit code, so completions and submissions stay empty. The shape is
-  // kept anyway so the review and history pages render exactly as they do with the server.
+  const pick = (pool) => pool[Math.floor(random() * pool.length)];
+
+  // ---------------------------------------------------------------- running code
+  const lintSettings = (track) => bundle.ruff[track];
+
+  async function lintCode(code, track) {
+    try {
+      return await deps.ruff.lint(code, lintSettings(track));
+    } catch (err) {
+      return { issues: [], error: `Lint is unavailable: ${err.message}` };
+    }
+  }
+
+  const tooSlow = (result) => Boolean(result && !result.passed && (result.error ?? "").startsWith("Too slow"));
+
+  // ---------------------------------------------------------------- coding results
+  // Pass counts for one level's own tests from the last submit (optionally before a time).
+  function levelRatio(subs, level, before) {
+    for (const sub of [...subs].reverse()) {
+      if (sub.kind !== "submit" || sub.level !== level) continue;
+      if (before != null && sub.elapsed > before) continue;
+      const counts = sub.breakdown[String(level)];
+      if (counts) {
+        return {
+          passed: counts.shown_passed + counts.hidden_passed,
+          total: counts.shown_total + counts.hidden_total,
+          shown_passed: counts.shown_passed,
+          shown_total: counts.shown_total,
+          hidden_passed: counts.hidden_passed,
+          hidden_total: counts.hidden_total,
+        };
+      }
+    }
+    return null;
+  }
+
+  // Score summary: the timed result (at the limit) and the final one (including overtime).
   function results(s) {
     const limit = s.time_limit;
+    const subs = s.submissions ?? [];
     const times = Object.values(s.completions);
     const timedLevels = times.filter((t) => t <= limit).length;
     const finalLevels = times.length;
@@ -154,6 +240,8 @@
       if (t !== null) previous = t;
       return row;
     });
+    const timedStop = timedLevels < total ? timedLevels + 1 : null;
+    const finalStop = finalLevels < total ? finalLevels + 1 : null;
     const spent = elapsed(s);
     return {
       time_limit: limit,
@@ -161,22 +249,53 @@
       overtime_seconds: Math.max(0, spent - limit),
       timed: {
         levels_completed: timedLevels,
-        stopped_level: timedLevels < total ? timedLevels + 1 : null,
-        stopped_level_ratio: null,
+        stopped_level: timedStop,
+        stopped_level_ratio: timedStop ? levelRatio(subs, timedStop, limit) : null,
       },
       final: {
         levels_completed: finalLevels,
-        stopped_level: finalLevels < total ? finalLevels + 1 : null,
-        stopped_level_ratio: null,
+        stopped_level: finalStop,
+        stopped_level_ratio: finalStop ? levelRatio(subs, finalStop, null) : null,
       },
       levels,
       pauses: pauseSummary(s.pauses),
-      runs: 0,
-      submits: 0,
+      runs: subs.filter((x) => x.kind === "run").length,
+      submits: subs.filter((x) => x.kind === "submit").length,
     };
   }
 
-  // ---------------------------------------------------------------- endpoints (app.py)
+  // Full detail for the shown tests; counts per level for the hidden ones.
+  function summarizeCoding(tests, run) {
+    const shown = [];
+    const breakdown = {};
+    let allPassed = run.import_error === null && run.crashed === null;
+    for (const test of tests) {
+      const result = run.results[test.id] ?? null;
+      const passed = Boolean(result?.passed);
+      allPassed &&= passed;
+      const counts = (breakdown[String(test.level)] ??= { shown_passed: 0, shown_total: 0, hidden_passed: 0, hidden_total: 0 });
+      counts[`${test.visibility}_total`] += 1;
+      counts[`${test.visibility}_passed`] += passed ? 1 : 0;
+      if (test.visibility === "shown") {
+        shown.push({
+          id: test.id,
+          level: test.level,
+          name: test.name,
+          passed,
+          ran: result !== null,
+          steps: result?.steps ?? [],
+          total_steps: test.steps.length,
+          failed_step: result?.failed_step ?? null,
+          error: result?.error ?? null,
+          stdout: result?.stdout ?? "",
+          ms: result?.ms ?? null,
+        });
+      }
+    }
+    return { shown, breakdown, allPassed };
+  }
+
+  // ---------------------------------------------------------------- coding endpoints
   function sessionPayload(s) {
     const data = problemData(s.problem_id);
     const unlocked = Math.min(s.current_level, bundle.levels.length);
@@ -225,6 +344,8 @@
       };
     },
 
+    // The full question, design hints or reference solution, outside any session. Refused while
+    // a session on this problem is running, so a live timed attempt can't peek.
     study(problemId, kind) {
       if (!["question", "hints", "reference"].includes(kind)) {
         throw new ApiError(`Unknown view '${kind}'`, 404);
@@ -261,6 +382,7 @@
     },
 
     start({ problem_id: problemId, mode, prefer_unseen: preferUnseen = true }) {
+      if (!bundle.problems.length) throw new ApiError("No problems are built. Run tools/build_problem.py --all.", 500);
       if (!["strict", "pausable"].includes(mode)) throw new ApiError("Mode must be 'strict' or 'pausable'.", 400);
       let data;
       if (problemId == null) {
@@ -270,7 +392,7 @@
           const unseen = pool.filter((p) => !seen.has(p.problem.id));
           if (unseen.length) pool = unseen;
         }
-        data = pool[Math.floor(Math.random() * pool.length)];
+        data = pick(pool);
       } else {
         data = problemData(problemId);
       }
@@ -291,6 +413,7 @@
         final_elapsed: null,
         completions: {},
         pauses: [],
+        submissions: [],
       };
       state.sessions.push(s);
       return sessionPayload(s);
@@ -322,6 +445,72 @@
       return timerState(s);
     },
 
+    // Run (the shown tests of levels 1..current) or Submit (hidden ones too). A submit that
+    // passes everything completes the current level and unlocks the next.
+    async execute(id, kind, body) {
+      let s = getSession(id);
+      saveCode(s, body);
+      persist();
+      const { code, problem_id: problemId } = s;
+      const level = Math.min(s.current_level, bundle.levels.length);
+      const file = await testsFile("coding", problemId);
+      const tests = file.tests.filter((t) => t.level <= level && (kind === "submit" || t.visibility === "shown"));
+      const run = await deps.python.runTests({ code, className: file.class_name, tests });
+      const lint = await lintCode(code, "coding");
+      const { shown, breakdown, allPassed } = summarizeCoding(tests, run);
+
+      readState(); // the run took a while: build on what's stored now
+      s = getSession(id);
+      (s.submissions ??= []).push({
+        kind, level, elapsed: elapsed(s), at: clock(), all_passed: allPassed, breakdown, lint_count: lint.issues.length,
+      });
+      let unlocked = null;
+      if (kind === "submit" && allPassed && s.current_level === level && level <= bundle.levels.length) {
+        s.completions[level] ??= elapsed(s);
+        s.current_level = level + 1;
+        unlocked = { completed: level, new_level: level + 1 };
+      }
+      persist();
+      return {
+        kind,
+        level,
+        all_passed: allPassed,
+        import_error: run.import_error,
+        import_stdout: run.import_stdout,
+        crashed: run.crashed,
+        timed_out: run.timed_out,
+        ms: run.ms,
+        shown,
+        breakdown, // hidden tests: counts only, never inputs or outputs
+        lint,
+        unlocked,
+        session: unlocked ? sessionPayload(s) : null,
+      };
+    },
+
+    run: (id, body) => endpoints.execute(id, "run", body),
+    submit: (id, body) => endpoints.execute(id, "submit", body),
+
+    async scratch(id, body) {
+      const s = getSession(id);
+      saveCode(s, body);
+      persist();
+      return deps.python.runScratch({ code: s.code, scratch: s.scratch });
+    },
+
+    lint(id, body) {
+      getSession(id);
+      return lintCode(body?.code ?? "", "coding");
+    },
+
+    async format(body) {
+      try {
+        return await deps.ruff.format(body?.code ?? "", lintSettings("coding"));
+      } catch (err) {
+        return { code: null, error: err.message };
+      }
+    },
+
     end(id, body) {
       const s = getSession(id);
       if (body && s.paused_at === null && s.status === "active") saveCode(s, body);
@@ -343,7 +532,7 @@
         finished_at: s.finished_at,
         results: results(s),
         pauses: s.pauses,
-        submissions: [],
+        submissions: s.submissions ?? [],
         levels: levelSummaries(data),
         hints_html: data.hints_html,
         analysis_html: data.analysis_html,
@@ -374,13 +563,9 @@
         }),
       };
     },
-
-    // Needs Python (and ruff), so there is no browser equivalent.
-    lint: () => ({ issues: [], error: "Linting needs the local server (ruff). It isn't available on the static site." }),
-    needsServer() { throw new ApiError(NEEDS_SERVER, 501); },
   };
 
-  // ---------------------------------------------------------------- system design (design_api.py)
+  // ---------------------------------------------------------------- system design
   // Kept in state.design so it shares the storage key, and the clock helpers above, with coding.
   function designState() {
     state.design ??= { nextId: 1, sessions: [] };
@@ -497,8 +682,8 @@
     },
 
     framework() {
-      const { steps, checklist, time_limit, guide_html, walkthrough_html } = bundle.design;
-      return { steps, checklist, time_limit, guide_html, walkthrough_html };
+      const { steps, checklist, time_limit: timeLimit, guide_html: guide, walkthrough_html: walkthrough } = bundle.design;
+      return { steps, checklist, time_limit: timeLimit, guide_html: guide, walkthrough_html: walkthrough };
     },
 
     study(questionId, kind) {
@@ -539,7 +724,7 @@
           const unseen = pool.filter((q) => !seen.has(q.question.id));
           if (unseen.length) pool = unseen;
         }
-        data = pool[Math.floor(Math.random() * pool.length)];
+        data = pick(pool);
       } else {
         data = designData(questionId);
       }
@@ -684,9 +869,9 @@
     },
   };
 
-  // ---------------------------------------------------------------- algorithms (algo_api.py)
-  // Kept in state.algo. Without code execution there are no runs or submits, so a session is
-  // never solved; the shapes still match the server's so the pages render the same.
+  // ---------------------------------------------------------------- algorithms
+  // Kept in state.algo. Run checks the examples; Submit adds the hidden tests, and the first
+  // submit that passes them all marks the problem solved (solved_at, in elapsed seconds).
   function algoState() {
     state.algo ??= { nextId: 1, sessions: [] };
     return state.algo;
@@ -723,39 +908,90 @@
       ...algoQuestion(data),
       code: s.code,
       scratch: s.scratch,
-      solved_at: null,
+      solved_at: s.solved_at ?? null,
       timer: timerState(s),
     };
   }
 
-  // algo_sessions.results for a session with no submits: not solved, no best attempt.
+  const passedCount = (sub) => sub.shown_passed + sub.hidden_passed;
+
+  // The submit that passed the most tests (the earliest of equals), optionally by a time.
+  function bestSubmit(submits, before) {
+    const pool = submits.filter((x) => before == null || x.elapsed <= before);
+    if (!pool.length) return null;
+    const best = pool.reduce((a, b) => (passedCount(b) > passedCount(a) || (passedCount(b) === passedCount(a) && b.elapsed < a.elapsed) ? b : a));
+    return {
+      passed: passedCount(best),
+      total: best.shown_total + best.hidden_total,
+      elapsed: best.elapsed,
+      too_slow: best.too_slow,
+    };
+  }
+
+  // The timed result (by the limit) and the final one (including overtime).
   function algoResults(s) {
+    const limit = s.time_limit;
+    const subs = s.submissions ?? [];
+    const submits = subs.filter((x) => x.kind === "submit");
+    const solvedAt = s.solved_at ?? null;
     const spent = elapsed(s);
     return {
-      time_limit: s.time_limit,
+      time_limit: limit,
       elapsed: spent,
-      overtime_seconds: Math.max(0, spent - s.time_limit),
-      solved_at: null,
-      timed: { solved: false, best: null },
-      final: { solved: false, best: null },
+      overtime_seconds: Math.max(0, spent - limit),
+      solved_at: solvedAt,
+      timed: { solved: solvedAt !== null && solvedAt <= limit, best: bestSubmit(submits, limit) },
+      final: { solved: solvedAt !== null, best: bestSubmit(submits, null) },
       pauses: pauseSummary(s.pauses),
-      runs: 0,
-      submits: 0,
+      runs: subs.length - submits.length,
+      submits: submits.length,
     };
+  }
+
+  // Full detail for the shown tests; counts only for the hidden ones.
+  function summarizeAlgo(tests, run) {
+    const shown = [];
+    const counts = { shown_passed: 0, shown_total: 0, hidden_passed: 0, hidden_total: 0, too_slow: 0 };
+    let allPassed = run.import_error === null && run.crashed === null;
+    for (const test of tests) {
+      const result = run.results[test.id] ?? null;
+      const passed = Boolean(result?.passed);
+      allPassed &&= passed;
+      counts[`${test.visibility}_total`] += 1;
+      counts[`${test.visibility}_passed`] += passed ? 1 : 0;
+      counts.too_slow += tooSlow(result) ? 1 : 0;
+      if (test.visibility === "shown") {
+        const step = result?.steps?.[0] ?? {};
+        shown.push({
+          id: test.id,
+          name: test.name,
+          passed,
+          ran: result !== null,
+          actual: step.actual ?? null,
+          error: result?.error ?? null,
+          stdout: result?.stdout ?? "",
+          ms: result?.ms ?? null,
+        });
+      }
+    }
+    return { shown, counts, allPassed };
   }
 
   const algo = {
     listProblems() {
-      const attempts = {};
-      for (const s of algoState().sessions) attempts[s.problem_id] = (attempts[s.problem_id] ?? 0) + 1;
+      const stats = {};
+      for (const s of algoState().sessions) {
+        const st = (stats[s.problem_id] ??= { attempts: 0, solved: false, solved_in_time: false, best_time: null });
+        st.attempts += 1;
+        if (s.solved_at != null) {
+          st.solved = true;
+          st.solved_in_time ||= s.solved_at <= s.time_limit;
+          if (st.best_time === null || s.solved_at < st.best_time) st.best_time = s.solved_at;
+        }
+      }
+      const empty = { attempts: 0, solved: false, solved_in_time: false, best_time: null };
       return {
-        problems: bundle.algo.problems.map(({ problem }) => ({
-          ...problem,
-          attempts: attempts[problem.id] ?? 0,
-          solved: false,
-          solved_in_time: false,
-          best_time: null,
-        })),
+        problems: bundle.algo.problems.map(({ problem }) => ({ ...problem, ...(stats[problem.id] ?? empty) })),
         minutes: bundle.algo.minutes,
         patterns: bundle.algo.patterns,
       };
@@ -784,7 +1020,7 @@
           id: s.id,
           problem: algoData(s.problem_id).problem,
           mode: s.mode,
-          solved_at: null,
+          solved_at: s.solved_at ?? null,
           timer: timerState(s),
         },
       };
@@ -802,7 +1038,7 @@
           const unseen = pool.filter((p) => !seen.has(p.problem.id));
           if (unseen.length) pool = unseen;
         }
-        data = pool[Math.floor(Math.random() * pool.length)];
+        data = pick(pool);
       } else {
         data = algoData(problemId);
       }
@@ -820,9 +1056,11 @@
         total_paused: 0,
         code: data.starter_code,
         scratch: data.scratch_starter,
+        solved_at: null,
         finished_at: null,
         final_elapsed: null,
         pauses: [],
+        submissions: [],
       };
       store.sessions.push(s);
       return algoPayload(s);
@@ -854,6 +1092,63 @@
       return timerState(s);
     },
 
+    async execute(id, kind, body) {
+      let s = getAlgoSession(id);
+      saveCode(s, body);
+      persist();
+      const { code, problem_id: problemId } = s;
+      const file = await testsFile("algo", problemId);
+      const tests = file.tests.filter((t) => kind === "submit" || t.visibility === "shown");
+      const run = await deps.python.runTests({ code, className: file.class_name, tests, options: file.options });
+      const lint = await lintCode(code, "algo");
+      const { shown, counts, allPassed } = summarizeAlgo(tests, run);
+
+      readState(); // the run took a while: build on what's stored now
+      s = getAlgoSession(id);
+      const spent = elapsed(s);
+      (s.submissions ??= []).push({
+        kind, elapsed: spent, at: clock(), all_passed: allPassed, ...counts, lint_count: lint.issues.length,
+      });
+      let solved = false;
+      if (kind === "submit" && allPassed && (s.solved_at ?? null) === null) {
+        s.solved_at = spent;
+        solved = true;
+      }
+      persist();
+      return {
+        kind,
+        all_passed: allPassed,
+        import_error: run.import_error,
+        import_stdout: run.import_stdout,
+        crashed: run.crashed,
+        timed_out: run.timed_out,
+        stopped: run.stopped, // a test hit its time limit; the tests after it didn't run
+        ms: run.ms,
+        shown,
+        counts, // hidden tests: counts only, never inputs or outputs
+        lint,
+        solved, // this submit solved it for the first time
+        solved_at: s.solved_at ?? null,
+        timer: timerState(s),
+      };
+    },
+
+    run: (id, body) => algo.execute(id, "run", body),
+    submit: (id, body) => algo.execute(id, "submit", body),
+
+    async scratch(id, body) {
+      const s = getAlgoSession(id);
+      saveCode(s, body);
+      persist();
+      const { code, scratch } = s;
+      return deps.python.runScratch({ code, scratch, files: { "helpers.py": await helpers() } });
+    },
+
+    lint(id, body) {
+      getAlgoSession(id);
+      return lintCode(body?.code ?? "", "algo");
+    },
+
     end(id, body) {
       const s = getAlgoSession(id);
       if (body && s.paused_at === null && s.status === "active") saveCode(s, body);
@@ -873,7 +1168,7 @@
         finished_at: s.finished_at,
         results: algoResults(s),
         pauses: s.pauses,
-        submissions: [],
+        submissions: s.submissions ?? [],
         ...algoQuestion(data),
         hints_html: data.hints_html,
         explanation_html: data.explanation_html,
@@ -897,7 +1192,7 @@
             started_at: s.started_at,
             elapsed: res.elapsed,
             time_limit: res.time_limit,
-            solved_at: null,
+            solved_at: res.solved_at,
             timed: res.timed,
             final: res.final,
             pauses: res.pauses,
@@ -907,7 +1202,7 @@
     },
   };
 
-  // ---------------------------------------------------------------- foundations and tech (pages.py)
+  // ---------------------------------------------------------------- foundations and tech
   // Every page is pre-rendered into data.json; the track is the first captured group.
   function foundations(track) {
     return bundle.foundations?.[track] ?? { cards: [], pages: {} };
@@ -920,7 +1215,7 @@
       if (!page) throw new ApiError(`Unknown page '${slug}'`, 404);
       return page;
     },
-    // A tech investigation's project, for the file browser (tech_api.project).
+    // A tech investigation's project, for the file browser.
     files(track, slug) {
       const project = foundations(track).projects?.[slug];
       if (!project) throw new ApiError(`Page '${slug}' has no project folder`, 404);
@@ -928,6 +1223,63 @@
     },
   };
 
+  // ---------------------------------------------------------------- history export and import
+  // History lives in this browser only, so it can be saved to a file and loaded elsewhere (another
+  // browser, or the site at another address). tools/export_history.py writes the same format.
+  const TRACKS = {
+    coding: { list: () => state, key: "problem_id" },
+    algo: { list: algoState, key: "problem_id" },
+    design: { list: designState, key: "question_id" },
+  };
+
+  const backup = {
+    export() {
+      const out = { format: BACKUP_FORMAT, version: 1, exported_at: clock() };
+      for (const [track, { list }] of Object.entries(TRACKS)) out[track] = { sessions: list().sessions };
+      return out;
+    },
+
+    // Adds the file's sessions to this browser's history, skipping ones it already has (same
+    // question, same start time). Imported sessions get new ids.
+    import(body) {
+      if (body?.format !== BACKUP_FORMAT || !Number.isInteger(body.version)) {
+        throw new ApiError("That file isn't a history export from this app.", 400);
+      }
+      if (body.version > 1) throw new ApiError("That export is from a newer version of the app.", 400);
+      const added = {};
+      for (const [track, { list, key }] of Object.entries(TRACKS)) {
+        const store = list();
+        const incoming = body[track]?.sessions ?? [];
+        if (!Array.isArray(incoming)) throw new ApiError(`${track}: sessions must be a list.`, 400);
+        const have = new Set(store.sessions.map((s) => `${s[key]}@${s.started_at}`));
+        let count = 0;
+        for (const raw of incoming) {
+          if (!raw || typeof raw[key] !== "string" || typeof raw.started_at !== "number") {
+            throw new ApiError(`${track}: a session is missing its ${key} or started_at.`, 400);
+          }
+          if (have.has(`${raw[key]}@${raw.started_at}`)) continue;
+          const s = structuredClone(raw);
+          s.id = store.nextId++;
+          // Only one session per track can be running: if this browser has one, an imported
+          // running session ends, where it was paused or else now.
+          if (s.status === "active" && store.sessions.some((x) => x.status === "active")) {
+            if (s.paused_at === null) s.paused_at = clock();
+            s.final_elapsed = elapsed({ ...s, status: "active" }, s.paused_at);
+            s.finished_at = s.paused_at;
+            s.status = "finished";
+          }
+          store.sessions.push(s);
+          have.add(`${raw[key]}@${raw.started_at}`);
+          count += 1;
+        }
+        store.sessions.sort((a, b) => a.started_at - b.started_at);
+        added[track] = count;
+      }
+      return { ok: true, added };
+    },
+  };
+
+  // ---------------------------------------------------------------- routes
   // [method, path pattern, handler]; captured groups are passed first (ids as numbers).
   const E = endpoints;
   const D = design;
@@ -942,12 +1294,16 @@
     ["PUT", /^\/api\/sessions\/(\d+)\/code$/, E.save],
     ["POST", /^\/api\/sessions\/(\d+)\/pause$/, E.pause],
     ["POST", /^\/api\/sessions\/(\d+)\/resume$/, E.resume],
+    ["POST", /^\/api\/sessions\/(\d+)\/run$/, E.run],
+    ["POST", /^\/api\/sessions\/(\d+)\/submit$/, E.submit],
+    ["POST", /^\/api\/sessions\/(\d+)\/scratch$/, E.scratch],
+    ["POST", /^\/api\/sessions\/(\d+)\/lint$/, E.lint],
+    ["POST", /^\/api\/format$/, E.format],
     ["POST", /^\/api\/sessions\/(\d+)\/end$/, E.end],
     ["GET", /^\/api\/sessions\/(\d+)\/review$/, E.review],
     ["GET", /^\/api\/history$/, E.history],
-    ["POST", /^\/api\/sessions\/(\d+)\/lint$/, E.lint],
-    ["POST", /^\/api\/sessions\/(\d+)\/(run|submit|scratch)$/, E.needsServer],
-    ["POST", /^\/api\/format$/, E.needsServer],
+    ["GET", /^\/api\/backup$/, backup.export],
+    ["POST", /^\/api\/backup$/, backup.import],
     ["GET", /^\/api\/design\/questions$/, D.listQuestions],
     ["GET", /^\/api\/design\/framework$/, D.framework],
     ["GET", /^\/api\/design\/questions\/([\w-]+)\/([\w-]+)$/, D.study],
@@ -972,25 +1328,28 @@
     ["PUT", /^\/api\/algo\/sessions\/(\d+)\/code$/, A.save],
     ["POST", /^\/api\/algo\/sessions\/(\d+)\/pause$/, A.pause],
     ["POST", /^\/api\/algo\/sessions\/(\d+)\/resume$/, A.resume],
+    ["POST", /^\/api\/algo\/sessions\/(\d+)\/run$/, A.run],
+    ["POST", /^\/api\/algo\/sessions\/(\d+)\/submit$/, A.submit],
+    ["POST", /^\/api\/algo\/sessions\/(\d+)\/scratch$/, A.scratch],
+    ["POST", /^\/api\/algo\/sessions\/(\d+)\/lint$/, A.lint],
     ["POST", /^\/api\/algo\/sessions\/(\d+)\/end$/, A.end],
     ["GET", /^\/api\/algo\/sessions\/(\d+)\/review$/, A.review],
     ["GET", /^\/api\/algo\/history$/, A.history],
-    ["POST", /^\/api\/algo\/sessions\/(\d+)\/lint$/, E.lint],
-    ["POST", /^\/api\/algo\/sessions\/(\d+)\/(run|submit|scratch)$/, E.needsServer],
     ["GET", /^\/api\/(design|algo)\/foundations$/, learn.list],
     ["GET", /^\/api\/(design|algo)\/foundations\/([\w-]+)$/, learn.page],
     ["GET", /^\/api\/(tech)\/pages$/, learn.list],
     ["GET", /^\/api\/(tech)\/pages\/([\w-]+)$/, learn.page],
     ["GET", /^\/api\/(tech)\/pages\/([\w-]+)\/files$/, learn.files],
   ];
+  // Routes whose first captured group is a session id.
   const ID_ROUTES = new Set([
-    E.session, E.timer, E.save, E.pause, E.resume, E.end, E.review,
+    E.session, E.timer, E.save, E.pause, E.resume, E.run, E.submit, E.scratch, E.lint, E.end, E.review,
     D.session, D.timer, D.save, D.step, D.pause, D.resume, D.end, D.review, D.assess,
-    A.session, A.timer, A.save, A.pause, A.resume, A.end, A.review,
+    A.session, A.timer, A.save, A.pause, A.resume, A.run, A.submit, A.scratch, A.lint, A.end, A.review,
   ]);
 
   async function handle(method, path, body) {
-    if (!bundle) await loadBundle(); // after the first call everything below runs synchronously
+    await loadBundle();
     for (const [m, pattern, fn] of ROUTES) {
       const match = m === method && path.split("?")[0].match(pattern);
       if (!match) continue;
@@ -998,11 +1357,29 @@
       const args = match.slice(1);
       if (ID_ROUTES.has(fn)) args[0] = Number(args[0]);
       const out = fn(...args, body);
+      // Handlers that run code are async and store their own changes, before and after the run.
+      if (out instanceof Promise) return structuredClone(await out);
       if (method !== "GET") persist();
       return structuredClone(out);
     }
     throw new ApiError(`Not found: ${method} ${path}`, 404);
   }
 
-  window.SWE_STATIC = { handle, needsServer: NEEDS_SERVER };
-})();
+  return { handle };
+}
+
+let backend = null;
+
+// The app's backend (common.js api() calls this).
+export function handle(method, path, body) {
+  backend ??= createBackend(browserDeps());
+  return backend.handle(method, path, body);
+}
+
+// Start loading Python and ruff, so the first Run or lint doesn't wait for them (session pages).
+export function warmUp() {
+  python.warmUp().catch(() => { /* reported when a run needs it */ });
+  ruff.warmUp().catch(() => { /* reported by lint */ });
+}
+
+export const coolDown = python.coolDown;

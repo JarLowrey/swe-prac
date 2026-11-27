@@ -1,4 +1,6 @@
-"""Running user code in fresh subprocesses: tests, scratch scripts, lint and format."""
+"""Running code natively in fresh subprocesses, for the build tools: tools/build_problem.py and
+tools/build_algo.py check each reference solution (and the starter code) through the real runner,
+and ruff. The app itself runs code in the browser (static/python.js, static/lint.js)."""
 
 from __future__ import annotations
 

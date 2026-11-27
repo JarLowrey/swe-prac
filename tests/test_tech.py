@@ -1,24 +1,33 @@
-"""Tech investigations over HTTP, and the ```include block they use, against the fixture page."""
+"""Tech investigations as the site build publishes them, and the ```include block they use,
+against the fixture page."""
 
 from __future__ import annotations
 
 import unittest
 
-from support import ClientCase
+from support import EnvCase
 
-from swe_prac import config, pages
+from swe_prac import config, pages, tech
 
 
-class TechApiTests(ClientCase):
+def cards() -> list[dict]:
+    return [tech.card(p) for p in pages.list_pages(tech.pages_dir())]
+
+
+def project(slug: str) -> dict | None:
+    return tech.project(pages.get(tech.pages_dir(), slug))
+
+
+class TechPageTests(EnvCase):
     def test_the_list_has_one_card_per_page(self):
-        (card,) = self.client.get("/api/tech/pages").json()["pages"]
+        (card,) = cards()
         self.assertEqual(card["slug"], "demo")
         self.assertEqual(card["title"], "Demo investigation")
         self.assertTrue(card["summary"].startswith("A tiny tech page"))
         self.assertEqual([s["id"] for s in card["sections"]], ["the-code", "running-it"])
 
     def test_a_page_shows_the_included_file_under_its_path(self):
-        page = self.client.get("/api/tech/pages/demo").json()
+        page = tech.page_payload("demo")
         html = page["html"]
         self.assertIn('<div class="code-file">demo/hello.ts</div>', html)
         self.assertIn('<code class="language-ts">', html)
@@ -28,29 +37,24 @@ class TechApiTests(ClientCase):
         self.assertNotIn("```include", html)
         self.assertEqual((page["prev"], page["next"]), (None, None))
 
-    def test_an_unknown_page_is_404(self):
-        self.assertEqual(self.client.get("/api/tech/pages/nope").status_code, 404)
+    def test_an_unknown_page_is_an_error(self):
+        with self.assertRaises(pages.PageNotFound):
+            tech.page_payload("nope")
 
 
-class ProjectFilesTests(ClientCase):
-    """The file browser's API: the project folder named after the page's slug, file by file."""
-
-    def files(self) -> dict:
-        response = self.client.get("/api/tech/pages/demo/files")
-        self.assertEqual(response.status_code, 200, response.text)
-        return response.json()
+class ProjectFilesTests(EnvCase):
+    """The file browser's copy of the project: the folder named after the page's slug."""
 
     def test_cards_and_pages_name_the_project(self):
-        (card,) = self.client.get("/api/tech/pages").json()["pages"]
+        (card,) = cards()
         self.assertEqual(card["project"], {"folder": "demo", "files": 1})
-        page = self.client.get("/api/tech/pages/demo").json()
-        self.assertEqual(page["project"], {"folder": "demo", "files": 1})
+        self.assertEqual(tech.page_payload("demo")["project"], {"folder": "demo", "files": 1})
 
     def test_a_file_comes_with_its_text_and_the_sections_that_show_it(self):
-        project = self.files()
-        self.assertEqual((project["slug"], project["folder"]), ("demo", "demo"))
-        self.assertEqual(project["title"], "Demo investigation")
-        (file,) = project["files"]
+        info = project("demo")
+        self.assertEqual((info["slug"], info["folder"]), ("demo", "demo"))
+        self.assertEqual(info["title"], "Demo investigation")
+        (file,) = info["files"]
         self.assertEqual((file["path"], file["lang"], file["note"]), ("hello.ts", "ts", None))
         self.assertIn("<world>", file["text"])
         self.assertEqual(file["size"], (config.TECH_DIR / "demo" / "hello.ts").stat().st_size)
@@ -73,14 +77,14 @@ class ProjectFilesTests(ClientCase):
             (demo / name).parent.mkdir(parents=True, exist_ok=True)
             (demo / name).write_text("x\n", encoding="utf-8")
         (demo / ".gitignore").write_text("# local\n*.log\n/tmp/\n!keep.log\n", encoding="utf-8")
-        paths = [f["path"] for f in self.files()["files"]]
+        paths = [f["path"] for f in project("demo")["files"]]
         self.assertEqual(paths, [".env.example", ".gitignore", "hello.ts", "src/b.css"])
 
     def test_binary_and_large_files_are_listed_without_their_text(self):
         demo = config.TECH_DIR / "demo"
         (demo / "logo.png").write_bytes(b"\x89PNG\r\n\x1a\n\x00\xff\xfe")
         (demo / "big.json").write_text("[" + "0," * 60_000 + "0]", encoding="utf-8")
-        by_path = {f["path"]: f for f in self.files()["files"]}
+        by_path = {f["path"]: f for f in project("demo")["files"]}
         self.assertIsNone(by_path["logo.png"]["text"])
         self.assertIn("binary", by_path["logo.png"]["note"])
         self.assertIsNone(by_path["big.json"]["text"])
@@ -91,14 +95,15 @@ class ProjectFilesTests(ClientCase):
         (config.TECH_DIR / "02_bare.md").write_text(
             "# Bare\n\nA page with no project.\n\n## Notes\n\nText.\n", encoding="utf-8"
         )
-        cards = self.client.get("/api/tech/pages").json()["pages"]
-        self.assertEqual([c["project"] for c in cards], [{"folder": "demo", "files": 1}, None])
-        self.assertIsNone(self.client.get("/api/tech/pages/bare").json()["project"])
-        self.assertEqual(self.client.get("/api/tech/pages/bare/files").status_code, 404)
-        self.assertEqual(self.client.get("/api/tech/pages/nope/files").status_code, 404)
+        self.assertEqual([c["project"] for c in cards()], [{"folder": "demo", "files": 1}, None])
+        self.assertIsNone(tech.page_payload("bare")["project"])
+        self.assertIsNone(project("bare"))
+        bundle = tech.bundle()
+        self.assertEqual(sorted(bundle["pages"]), ["bare", "demo"])
+        self.assertEqual(sorted(bundle["projects"]), ["demo"])
 
 
-class IncludeTests(ClientCase):
+class IncludeTests(EnvCase):
     def _render(self, name: str) -> str:
         return pages.expand_includes(f"```include\n{name}\n```\n", config.TECH_DIR)
 

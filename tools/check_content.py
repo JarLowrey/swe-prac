@@ -36,7 +36,7 @@ from urllib.parse import unquote
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from swe_prac import algorithms, config, pages, problems, tech_api  # noqa: E402
+from swe_prac import algorithms, config, pages, problems, tech  # noqa: E402
 
 LINK = re.compile(r'href="(#/[^"]*)"')
 
@@ -127,7 +127,7 @@ def _tech_files() -> dict[str, set[str]]:
     """The files each tech page's file browser lists, by page slug (pages with a project)."""
     out = {}
     for page in pages.list_pages(config.TECH_DIR):
-        info = tech_api.project(page)
+        info = tech.project(page)
         if info is not None:
             out[page.slug] = {f["path"] for f in info["files"]}
     return out

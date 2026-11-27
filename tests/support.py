@@ -1,55 +1,16 @@
-"""Shared test scaffolding: temp dirs, the fixture problem set, a fake clock, an API client."""
+"""Shared test scaffolding: temp dirs and the fixture content set."""
 
 from __future__ import annotations
 
 import shutil
 import tempfile
 import unittest
-import warnings
 from pathlib import Path
 from unittest import mock
 
-# Must run before fastapi.testclient is imported, which is what emits the warning.
-warnings.filterwarnings("ignore", message="Using `httpx` with `starlette.testclient`")
-
-from fastapi.testclient import TestClient  # noqa: E402
-
-from swe_prac import config, problems, sessions  # noqa: E402
+from swe_prac import config, problems
 
 FIXTURES = Path(__file__).parent / "fixtures"
-
-COUNTER_FULL = """
-class Counter:
-    def __init__(self):
-        self.counts = {}
-
-    def incr(self, timestamp, key):
-        self.counts[key] = self.counts.get(key, 0) + 1
-        return self.counts[key]
-
-    def get(self, timestamp, key):
-        return self.counts.get(key)
-
-    def reset(self, timestamp, key):
-        if key not in self.counts:
-            return False
-        self.counts[key] = 0
-        return True
-
-    def total(self, timestamp):
-        return sum(self.counts.values())
-"""
-
-
-class FakeClock:
-    def __init__(self, start: float = 1_000_000.0):
-        self.now = start
-
-    def __call__(self) -> float:
-        return self.now
-
-    def advance(self, seconds: float) -> None:
-        self.now += seconds
 
 
 class TempDirCase(unittest.TestCase):
@@ -66,8 +27,7 @@ class TempDirCase(unittest.TestCase):
 
 
 class EnvCase(TempDirCase):
-    """Isolated data dir, the fixture problem, design, algorithm and tech sets and a fake clock
-    (`self.clock`)."""
+    """The fixture problem, design, algorithm and tech sets, copied to a temp dir."""
 
     def setUp(self) -> None:
         super().setUp()
@@ -86,30 +46,4 @@ class EnvCase(TempDirCase):
         shutil.copytree(FIXTURES / "tech", tech_dir)
         self.patch(config, "TECH_DIR", tech_dir)
         self.patch(config, "REFERENCE_DIR", self.tmp_path / "reference")
-        self.patch(config, "DATA_DIR", self.tmp_path / "data")
         problems.conventions_html.cache_clear()
-        self.clock = FakeClock()
-        self.patch(sessions, "clock", self.clock)
-
-
-class ClientCase(EnvCase):
-    """EnvCase plus an HTTP client for the app (`self.client`)."""
-
-    def setUp(self) -> None:
-        super().setUp()
-        from swe_prac.app import app
-
-        self.client = self.enterContext(TestClient(app))
-
-
-class RealClientCase(TempDirCase):
-    """The real problem set in problems/, with isolated history and a fake clock."""
-
-    def setUp(self) -> None:
-        super().setUp()
-        self.patch(config, "DATA_DIR", self.tmp_path / "data")
-        self.clock = FakeClock()
-        self.patch(sessions, "clock", self.clock)
-        from swe_prac.app import app
-
-        self.client = self.enterContext(TestClient(app))

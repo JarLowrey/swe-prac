@@ -274,7 +274,7 @@ def build(path: Path, write: bool) -> list[str]:
     elif not target.exists() or target.read_text(encoding="utf-8") != text:
         raise BuildError("tests.json is out of date: run tools/build_algo.py")
 
-    # The real runner, in a subprocess, exactly as a session runs it.
+    # The real runner, natively in a subprocess (tests/js/ runs it in the browser's Python).
     problem = algorithms._load(path) if target.exists() else None
     if problem is not None:
         verify_with_runner(problem, warnings)

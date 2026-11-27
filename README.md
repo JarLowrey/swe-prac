@@ -1,9 +1,8 @@
 # SWE Practice
 
-Live site: https://jarlowrey.github.io/swe-prac/ (a static copy: code can't run there, see
-[Static site](#static-site-github-pages))
+Live site: https://jarlowrey.github.io/swe-prac/ (the whole app: your code runs in the browser)
 
-Local practice for three kinds of software engineering interview: 90-minute, four-level coding
+Practice for three kinds of software engineering interview: 90-minute, four-level coding
 assessments in Python, classic algorithm problems against a 20 to 40-minute clock, and 45-minute
 system design rounds. The home page lets you pick one. The algorithms and system design sections
 also have foundations pages to study from, with diagrams. A fourth section, tech investigations,
@@ -20,7 +19,7 @@ passing the one before it. Pace matters, and so does a design that still holds u
 levels arrive.
 
 Practising in a plain editor leaves out most of that pressure: the clock, levels you can't read
-ahead, and tests you can't see. This app recreates those conditions on your machine. Afterwards it
+ahead, and tests you can't see. This app recreates those conditions in your browser. Afterwards it
 shows where your time went against a pacing target for each level.
 
 It comes with seven problems. Each has four levels, shown and hidden tests, hints, a solution
@@ -99,7 +98,7 @@ Each tech investigation (Tech in the top bar) studies one technology through a s
 project in `tech/`. Its page shows every file of the project with the file's own comments, and
 explains the choices: what is current best practice, what it replaces, the common mistakes, the
 questions an interviewer would ask, and exercises. The code on the page is read from the project
-when the page is shown, so it is always the code that runs. A file browser (the Files tab) has the
+when the site is built, so it is always the code that runs. A file browser (the Files tab) has the
 whole finished project as a folder tree, every file in full with line numbers, and links back to
 the sections of the guide that explain it. Nothing is timed or graded.
 
@@ -118,33 +117,42 @@ the sections of the guide that explain it. Nothing is timed or graded.
 
 ## Start
 
-Double-click `start.bat` in Windows, or run:
+Open https://jarlowrey.github.io/swe-prac/. There's nothing to install: the whole app runs in the
+browser. Opening a session starts loading Python and ruff in the background. The first time, the
+browser downloads about 25 MB for them; after that they come from its cache.
+
+### Running a local copy
+
+To practise offline, or to see content changes before you push them, build the site and serve
+it. It needs Python 3.12 or newer:
 
 ```
-.venv\Scripts\python -m swe_prac            # opens http://127.0.0.1:8765/
-.venv\Scripts\python -m swe_prac --port 9000 --no-browser
+python -m venv .venv
+.venv\Scripts\python -m pip install -r requirements.txt
+.venv\Scripts\python tools\build_static.py --serve    # builds site/, opens http://127.0.0.1:8765/
 ```
 
-On first run, `start.bat` creates `.venv` and installs `requirements.txt`. It needs Python 3.12 or newer.
-Everything runs on your machine, and the server only listens on 127.0.0.1.
+`--port 9000` and `--no-browser` change how it serves; without `--serve` it only builds `site/`
+(gitignored). The first build downloads the two runtimes your code runs with in the browser,
+Pyodide (Python) and ruff, from the npm registry at pinned versions, checks them against their
+published hashes and keeps them in `.cache/` for later builds. The local server only hands the
+files to the browser and listens on 127.0.0.1. Any static file server would do, but opening
+`site/index.html` as a file won't work: browsers don't run its modules and workers from a
+`file://` page.
 
-## Static site (GitHub Pages)
+A local copy keeps its own history, separate from the live site's (see
+[Your history](#your-history)).
 
-A copy of the app is published at https://jarlowrey.github.io/swe-prac/ on every push to `master`.
-Python can't run in a browser tab, so there Run, Submit, Run scratch and Format are disabled: no
-coding level can be passed and no algorithm problem solved. Everything else works: the question,
-hints and solution pages, the explanations, the timer, pausing, the editor, review and history.
-The system design section, the foundations pages and the tech investigations need no code
-execution, so all of them work there. Sessions are stored in the browser's localStorage instead of SQLite.
+## Publishing (GitHub Pages)
 
-```
-.venv\Scripts\python tools/build_static.py    # writes site/ (gitignored)
-```
+`.github/workflows/pages.yml` publishes the site at https://jarlowrey.github.io/swe-prac/ on every
+push to `master`: it builds it, runs both test suites and deploys `site/`. One-time setup:
+Settings > Pages > Source: GitHub Actions.
 
-`tools/static_site/static-api.js` answers the frontend's `/api/...` calls in the browser. The hidden
-tests are not exported; for algorithm problems only the examples are. The reference solutions,
-explanations and reference designs are exported, so the live site gives them away to anyone who
-opens `data.json`. One-time setup: Settings > Pages > Source: GitHub Actions.
+Everything the browser runs is in the site, so it gives the answers away to anyone who looks: every
+problem's tests, hidden ones included, are in `tests/`, and the reference solutions, explanations
+and reference designs are in `data.json`. The app itself shows hidden tests only as pass counts,
+and asks before opening a spoiler.
 
 ## Screenshots
 
@@ -223,7 +231,8 @@ link to the section of the guide that explains it.
 ## How a coding session works
 
 - **Pick a problem** or a random one. You can prefer problems you haven't tried yet. Then choose the timer mode:
-  - **Strict:** 90 minutes, no pausing. The clock runs on the server, so closing the tab doesn't stop it.
+  - **Strict:** 90 minutes, no pausing. The clock is wall time saved with the session, so closing
+    the tab doesn't stop it.
   - **Pausable:** pausing blurs the problem and your code and makes the editor read-only.
     Every pause is recorded in your history.
 - **Levels are revealed one at a time.** Level N+1 unlocks when *every* shown and hidden test for
@@ -252,15 +261,22 @@ buttons. They open the full problem, the design hints or the reference solution 
 session. On a problem you haven't attempted they ask you to confirm first, and they stay locked
 while a session on that problem is running.
 
-Your code runs with the project's Python in a fresh subprocess for every run, with a 10 s limit,
-so an infinite loop can't hang the app. It is not a security sandbox: run only your own code.
+Your code runs in your browser, in Pyodide (CPython 3.14 compiled to WebAssembly), with a fresh
+interpreter in its own Web Worker for every run, so nothing one run does carries over to the next.
+A run is stopped at 10 s, so an infinite loop can't hang the page, and it has only what the
+browser allows a web page: no access to your files. Two things differ from Python on your
+machine. There are no threads. And recursion that passes through built-in code is limited to a
+few hundred levels: plain recursive calls are fine (the limit is 200,000 for algorithm problems),
+and so are `functools.cache` and `max`, `min`, `sum`, `any`, `all` and `sorted` over a generator,
+which the runner swaps for pure-Python versions in the browser. Recursion through others, such as
+`list(...)` over a generator, stops Python, and the result says why.
 
 ## How an algorithms session works
 
 - **Pick a problem** or a random one that matches the difficulty and pattern filters. You can
   prefer problems you haven't tried yet. Then choose strict or pausable, as for coding. An
   algorithms session can run alongside a coding or design session; only one of each can be active.
-- **The clock** is 20, 30 or 40 minutes by difficulty, and it runs on the server.
+- **The clock** is 20, 30 or 40 minutes by difficulty.
 - **Run** (`Ctrl+Enter`) runs the examples from the statement with full detail: the input, the
   expected answer, what you returned and your `print()` output.
 - **Submit** (`Ctrl+Shift+Enter`) also runs the hidden tests: edge cases first, then large inputs.
@@ -295,8 +311,8 @@ they stay locked while a session on that problem is running.
   non-functional and out of scope for requirements). Notes save every few seconds.
 - **Diagram:** add clients, services, databases, queues and notes. Drag a shape to move it, drag
   its dot onto another shape to draw an arrow, double-click to label, and press Delete to remove.
-- **No spoilers while you work.** The hints, key points and reference design aren't sent to the
-  page until the session ends.
+- **No spoilers while you work.** The hints, key points and reference design stay hidden until
+  the session ends.
 - **At 0:00** you can keep going; steps you start after that are marked as overtime.
 - **End session** opens the review: time on each step against its target, then tabs for the
   self-review, your notes next to the reference design, your diagram and the reference design.
@@ -308,45 +324,68 @@ Each question card also has **Hints** and **Reference design** buttons. As with 
 you to confirm first on a question you haven't attempted, and they stay locked while a session on
 that question is running.
 
-History lives in `data/prac.db` (SQLite) with per-session files in `data/sessions/`. Both are
-gitignored. Delete `data/` to reset.
+## Your history
+
+Your attempts are saved in the browser's localStorage, separately for each browser and each site
+address: the live site and a local copy keep separate histories. **Export history** on the coding
+History page saves every track's attempts to a JSON file, and **Import history** adds a file's
+attempts to the browser's (ones it already has are skipped). That's how to keep a backup or move
+to another browser. Clearing the site's data in the browser resets it.
+
+Before the app moved into the browser, a local server kept history in `data/prac.db` (SQLite).
+`tools/export_history.py` writes that to a file Import history accepts:
+
+```
+.venv\Scripts\python tools\export_history.py    # writes swe-prac-history-<date>.json
+```
 
 ## Architecture
 
-**While you practise.** The browser talks JSON to a local FastAPI server. The server owns the
-clock, the level gating and your history. It never runs your code itself: each action starts a
-fresh Python subprocess.
+**While you practise.** The app is a set of static files, and everything runs in the browser tab:
+the sessions, the clock, the scoring, your code and ruff.
 
-![Architecture: the browser talks to a local FastAPI server, which starts a fresh subprocess for runner.py, scratch.py or ruff on each action](docs/diagrams/architecture.svg)
+![Architecture: the static files load into a browser tab, where backend.js keeps sessions in localStorage, lint.js runs ruff in WebAssembly, and python.js runs each job in a fresh Web Worker with Pyodide](docs/diagrams/architecture.svg)
 
-- **Hidden tests stay on the server.** `app.py` keeps full detail only for shown tests. For hidden
-  tests it sends back pass counts per level.
-- **tests.py and the scratch example are generated, not stored.** `testsource.py` renders them from
-  the shown entries in `tests.json`, so every problem gets them and they can never drift from what
-  Run executes. Only unlocked levels are rendered, so nothing leaks from later levels.
-- **The timer is server-side.** Elapsed time is wall clock minus recorded pauses, so refreshing or
+- **There is no server.** The pages call `api()` (`common.js`), which lands in `backend.js`: it
+  answers with the JSON the pages expect, and keeps the sessions, the clock, the level gating,
+  the scoring and your history in localStorage. Questions, study pages and reviews come from
+  `data.json`, and a problem's tests from `tests/<track>/<id>.json` the first time you run it.
+- **Code runs in a Web Worker.** `python.js` hands each Run, Submit or Run scratch to a fresh
+  worker (`py-worker.js`, with Pyodide and `runner.py` loaded) and starts the next one ahead of
+  time. The page enforces the limits by ending the worker: the whole run at 10 s, and a call with
+  a time limit at 1.5 times that limit (the runner says when each such call starts). Tests that
+  finished keep their results either way.
+- **One runner, two homes.** `runner.py` runs in the browser and also natively, where the build
+  tools check every reference solution through it in a subprocess (`execution.py`). In the
+  browser it swaps the C code that recursive solutions recurse through for pure-Python versions,
+  and keeps every test's linked lists and trees alive, because freeing a long one recurses in C
+  past the small WebAssembly stack.
+- **Lint is ruff compiled to WebAssembly** (`lint.js`), with `user_ruff.toml` and
+  `user_ruff_algo.toml` merged into `data.json` by the build.
+- **Hidden tests show as counts.** `backend.js` returns full detail for shown tests and only pass
+  counts per level for hidden ones. They aren't secret, though: they're in the site's files.
+- **tests.py and the scratch example are generated, not stored.** `testsource.py` renders them
+  from the shown entries in `tests.json` at build time, so every problem gets them and they can
+  never drift from what Run executes. Only unlocked levels are shown, so nothing leaks from later
+  levels.
+- **The timer is wall clock minus recorded pauses**, saved with the session, so refreshing or
   closing the tab changes nothing.
-- **A runaway solution can't hang the app.** `runner.py` writes each result as it finishes, so
-  when a run hits the 10 s limit, finished tests keep their results and the test that was running
-  is marked as timed out.
-- **System design reuses the same clock.** `design_api.py` serves `/api/design/...`, and
-  `design_sessions.py` runs the timer, pause and finish code from `sessions.py` against its own
-  tables. Questions and the framework are plain files in `designs/`, read by `designs.py`.
-- **So do algorithms.** `algo_api.py` serves `/api/algo/...` and `algo_sessions.py` keeps its
-  own tables; `algorithms.py` reads `algorithms/<id>/`. Tests are stored as plain lists, and the
-  runner gets each problem's options: adapters that build linked lists, trees and graphs before
-  the call, an answer comparison that ignores order or calls the problem's own validator, and a
-  per-test time limit that stops a submit at the first test that's too slow.
-- **Study pages are markdown.** Python-Markdown renders the foundations pages and the tech
-  investigations (`pages.py`, which also builds their tables of contents and section links), the
-  statements, explanations and reference designs. A tech page's ```` ```include ```` blocks are
-  replaced with the project files they name when the page is served (`tech_api.py` serves
-  `/api/tech/...`, including `/files`, the whole project for the file browser). The browser colours
-  Python, TypeScript, CSS, JSON, HTML and Markdown with Monaco's tokenizers, without loading an
-  editor. `diagrams.py` draws the data-structure blocks (arrays, trees, linked lists,
-  grids, intervals, hash rings) as SVG on the server. Mermaid, bundled in `static/vendor/`, draws
-  the flowcharts and sequence and state diagrams in the browser, and is only loaded on pages
-  that have one.
+- **System design and algorithms reuse the same clock.** `backend.js` keeps each track's
+  sessions apart and runs the same timer, pause and finish code for all three. Questions and the
+  framework are plain files in `designs/`, read by `designs.py`. `algorithms.py` reads
+  `algorithms/<id>/`. Tests are stored as plain lists, and the runner gets each problem's
+  options: adapters that build linked lists, trees and graphs before the call, an answer
+  comparison that ignores order or calls the problem's own validator, and a per-test time limit
+  that stops a submit at the first test that's too slow.
+- **Study pages are markdown, rendered at build time.** Python-Markdown renders the foundations
+  pages and the tech investigations (`pages.py`, which also builds their tables of contents and
+  section links), the statements, explanations and reference designs into `data.json`. A tech
+  page's ```` ```include ```` blocks are replaced with the project files they name, and `tech.py`
+  adds the whole project for the file browser. The browser colours Python, TypeScript, CSS, JSON,
+  HTML and Markdown with Monaco's tokenizers, without loading an editor. `diagrams.py` draws the
+  data-structure blocks (arrays, trees, linked lists, grids, intervals, hash rings) as SVG.
+  Mermaid, bundled in `static/vendor/`, draws the flowcharts and sequence and state diagrams in
+  the browser, and is only loaded on pages that have one.
 
 **Building problems.** `tools/build_problem.py` turns the spoiler sources in `reference/` into
 what the app serves from `problems/`, and checks the hidden tests along the way.
@@ -359,8 +398,10 @@ random inputs, and runs both the reference and the empty starter code through th
 ## Layout
 
 ```
-swe_prac/            the app: FastAPI backend, test runner, static frontend (Monaco and Mermaid
-                     are bundled)
+swe_prac/static/     the app as the browser runs it: the pages, backend.js, python.js and
+                     lint.js (Monaco and Mermaid are bundled)
+swe_prac/            runner.py (runs the tests, in the browser and for the build tools), and the
+                     Python that renders the content into the site
 problems/<pid>/      what the app reads: statements, review pages, built tests.json and stubs.json
 reference/<pid>/     SPOILERS: reference solution, test source, random generator, mutants
 algorithms/<id>/     algorithm problems: problem.json, statement.md, test inputs (cases.py) and
@@ -374,11 +415,11 @@ tech/NN_slug.md      a tech investigation's page (markdown, with ```include bloc
 tech/<slug>/         the project it walks through, named after the page's slug, e.g.
                      tech/react-swapi/ for 01_react_swapi.md (a Vite + React app; npm install
                      creates node_modules/ there, which its .gitignore excludes)
-tools/               build_problem.py (compile and verify problems), dsl.py (test format parser),
-                     build_algo.py (build and verify algorithm problems), check_content.py
-                     (check the study pages' diagrams and links), build_static.py +
-                     static_site/ (the GitHub Pages build)
-tests/               the app's own test suite (unittest)
+tools/               build_static.py (build the site; --serve serves it), build_problem.py
+                     (compile and verify problems), dsl.py (test format parser), build_algo.py
+                     (build and verify algorithm problems), check_content.py (check the study
+                     pages' diagrams and links), export_history.py (old history to an import file)
+tests/               the Python tests (unittest); tests/js/ the browser side, run in Node
 docs/                README screenshots, architecture diagrams (SVG, edit them directly) and
                      writing-content.md (how to write study pages and diagrams)
 ```
@@ -390,7 +431,9 @@ designs are in `designs/<qid>/reference.md`. Don't open them before you've pract
 ## Developing
 
 ```
-.venv\Scripts\python -m unittest discover -s tests  # app + every problem end to end
+.venv\Scripts\python -m unittest discover -s tests  # content, build, runner, every problem natively
+.venv\Scripts\python tools\build_static.py          # then the browser side, in Node 22 or newer:
+node --test "tests/js/*.test.mjs"                    # backend, every problem in Pyodide, ruff
 .venv\Scripts\python tools\build_problem.py --all    # rebuild and verify all problems
 .venv\Scripts\python tools\build_algo.py --check     # verify every algorithm problem (no writes)
 .venv\Scripts\python tools\check_content.py          # diagrams and links in the study pages
@@ -398,6 +441,12 @@ designs are in `designs/<qid>/reference.md`. Don't open them before you've pract
 ```
 
 `ruff format` also formats the Python code blocks in the study pages' markdown.
+
+The JavaScript tests run the built `site/`, so build it first; they test what ships. They run
+`backend.js` against the real `data.json` with fakes for Python and ruff, every reference solution
+against every test in Pyodide within the time limits the page enforces, `python.js` through its
+real worker script (a stand-in gives Node the browser's `Worker`), and ruff's WebAssembly build
+against native ruff.
 
 `build_problem.py` compiles `reference/<pid>/tests.txt` into `tests.json`. The build fails if any of these checks fail:
 - hand-written expectations must match the reference solution
@@ -435,9 +484,8 @@ cd tech\react-swapi
 npm run typecheck && npm run lint && npm test && npx prettier --check .
 ```
 
-These environment variables point the app at other directories: `SWE_PRAC_DATA` (history),
-`SWE_PRAC_PROBLEMS` (problem set), `SWE_PRAC_REFERENCE` (reference solutions shown on the review
-page), `SWE_PRAC_ALGO` (algorithm problems and their foundations pages), `SWE_PRAC_DESIGNS`
+These environment variables point the build at other directories: `SWE_PRAC_PROBLEMS` (problem
+set), `SWE_PRAC_REFERENCE` (reference solutions shown on the review page), `SWE_PRAC_ALGO` (algorithm problems and their foundations pages), `SWE_PRAC_DESIGNS`
 (system design questions, foundations pages and framework) and `SWE_PRAC_TECH` (tech
 investigations). The README screenshots were taken
 with them set to throwaway demo sets.

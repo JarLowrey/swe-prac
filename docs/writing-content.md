@@ -97,7 +97,7 @@ Two kinds of diagram are available, both written as fenced code blocks.
 
 - **Mermaid** for architecture, flows, sequences and state machines. Drawn in the browser.
 - **Data-structure blocks** for arrays, trees, linked lists, grids, intervals and hash rings.
-  Drawn on the server as SVG.
+  Drawn as SVG when the site is built.
 
 A broken diagram shows as a red "Diagram error" box with the message, so you'll see it straight
 away when you preview the page.
@@ -352,7 +352,7 @@ The browser lists every file in the folder except:
 - what the project's `.gitignore` ignores (names and simple patterns like `*.log` or `/dist/`),
 - `node_modules/`, build output (`dist/`, `build/`, `coverage/`) and caches,
 - `.env` and `.env.*` (but not `.env.example`) and `*.local`, so secrets stay out even if the
-  `.gitignore` forgets them. The static site publishes every file the browser lists.
+  `.gitignore` forgets them. The site publishes every file the browser lists.
 
 A file over 100 KB (usually a lock file) or one that isn't text is listed without its contents.
 
@@ -369,5 +369,6 @@ page section called "Files", design questions whose
 `foundations` don't resolve, reference designs without a diagram, and Mermaid labels that start
 like a list. The test suite runs it too.
 
-Otherwise Mermaid is only drawn in the browser: run the app (`python -m swe_prac`) and open the
-page. A broken diagram is a red box with the parser's message.
+Otherwise Mermaid is only drawn in the browser: build and serve the site
+(`python tools/build_static.py --serve`) and open the page. A broken diagram is a red box with
+the parser's message.

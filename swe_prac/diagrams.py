@@ -7,8 +7,8 @@ Markdown like
     pointers: lo=0 hi=3
     ```
 
-becomes an <svg class="ds"> styled by styles.css (.ds-*), so it matches the app and works on the
-static site without JavaScript. Flowcharts and sequence diagrams use ```mermaid blocks instead,
+becomes an <svg class="ds"> styled by styles.css (.ds-*) when the site is built, so it matches the
+app and needs no JavaScript. Flowcharts and sequence diagrams use ```mermaid blocks instead,
 rendered in the browser. The block syntax is documented in docs/writing-content.md.
 
 Every block is a list of `key: value` lines. Several frames (before/after, step 1/step 2) can be

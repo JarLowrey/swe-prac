@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import unittest
 
-from support import RealClientCase
-
 from swe_prac import config, designs
 
 REAL = designs.list_questions()
@@ -37,20 +35,6 @@ class DesignCatalogueTests(unittest.TestCase):
         self.assertEqual(len(designs.checklist()), 10)
         self.assertIn("What the interviewer is grading", designs.guide_html("framework"))
         self.assertTrue(designs.guide_html("walkthrough"))
-
-
-class RealDesignSessionTests(RealClientCase):
-    def test_a_session_on_a_real_question_round_trips(self):
-        listed = self.client.get("/api/design/questions").json()["questions"]
-        self.assertEqual(len(listed), 10)
-        s = self.client.post(
-            "/api/design/sessions", json={"question_id": REAL[0].id, "mode": "strict"}
-        ).json()
-        self.assertEqual(len(s["steps"]), 7)
-        self.client.post(f"/api/design/sessions/{s['id']}/end")
-        review = self.client.get(f"/api/design/sessions/{s['id']}/review").json()
-        self.assertEqual(len(review["results"]["steps"]), 7)
-        self.assertEqual(len(review["checklist"]), 10)
 
 
 if __name__ == "__main__":

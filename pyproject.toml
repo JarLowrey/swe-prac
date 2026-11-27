@@ -1,13 +1,13 @@
 [project]
 name = "swe-prac"
 version = "1.0.0"
-description = "Timed, level-gated Python coding-assessment practice, run locally."
+description = "Timed, level-gated Python coding-assessment practice that runs in the browser."
 requires-python = ">=3.12"
 
 [tool.ruff]
 line-length = 100
 target-version = "py312"
-extend-exclude = ["swe_prac/static", "data", "**/mutants"]
+extend-exclude = ["swe_prac/static", "data", "site", ".cache", "**/mutants"]
 
 [tool.ruff.lint]
 select = ["E", "W", "F", "I", "B", "UP", "SIM", "C4"]

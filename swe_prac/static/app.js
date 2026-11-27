@@ -4,10 +4,11 @@
 // projects' file browser in files.js, shared helpers in common.js.
 
 import {
-  $app, $modalRoot, STATIC, NEEDS_SERVER_NOTE, api, esc, fmtClock, fmtDelta, plural, fmtDate,
-  storage, toast, modal, chooseMode, confirmSpoil, topnav, levelDots, dragGutter, resizableSplit,
-  watchDiagrams,
+  $app, $modalRoot, STARTING_PYTHON, api, esc, fmtClock, fmtDelta, plural, fmtDate, storage, toast,
+  modal, chooseMode, confirmSpoil, topnav, levelDots, dragGutter, resizableSplit, watchDiagrams,
+  lintSeverity, historyBackupSection, bindHistoryBackup,
 } from "./common.js";
+import { coolDown, warmUp } from "./backend.js";
 import {
   renderDesignHome, renderDesignSession, renderDesignReview, renderDesignStudy, renderFramework,
   designHistoryTable, designTrackCard,
@@ -89,7 +90,6 @@ async function renderHome() {
         <p>90 minutes, one problem in four levels, revealed one at a time. You write Python against
           shown and hidden tests, and each level unlocks when everything up to it passes.</p>
         <ul class="track-facts"><li>${plural(coding.problems.length, "problem")}</li><li>${coding.time_limit / 60} min</li><li>auto-graded</li></ul>
-        ${STATIC ? '<p class="faint track-note">Code can\'t run on this static copy, so levels can\'t be passed here.</p>' : ""}
         <div class="track-foot">${status}<span class="track-cta">Open →</span></div>
       </a>
       ${algoCard}
@@ -136,10 +136,6 @@ async function renderCodingHome() {
   $app.innerHTML = `${topnav("coding")}<main class="page">
     <h1>90-minute coding assessment practice</h1>
     <p class="lead">One problem, four levels, revealed one at a time. Each level unlocks when every shown and hidden test up to it passes.</p>
-    ${STATIC ? `<div class="callout info"><strong>Static copy.</strong> Reading the problems, the timer, pausing, review and
-      history all work here, and your sessions are saved in this browser. Python can't run on this site, so
-      Run, Submit, Run scratch and Format are disabled and no level can be passed. To run the tests,
-      <a href="https://github.com/JarLowrey/swe-prac">clone the repo</a> and start it locally.</div>` : ""}
     ${banner}
     <h2 class="section-title">Problems</h2>
     <div class="random-row">
@@ -195,6 +191,7 @@ async function renderSession(sessionId) {
     if (err.status === 410) { location.hash = `#/review/${sessionId}`; return; }
     throw err;
   }
+  warmUp(); // load Python and ruff now, so the first Run doesn't wait for them
   const monaco = await window.monacoReady;
 
   const st = {
@@ -204,6 +201,7 @@ async function renderSession(sessionId) {
     file: "solution",
     resultsTab: "tests",
     busy: false,
+    busyText: "Running…",
     dirty: false,
     lastSaved: null,
     lastResult: null,
@@ -301,12 +299,12 @@ async function renderSession(sessionId) {
     el.textContent = st.dirty ? "Unsaved…" : st.lastSaved ? "Saved" : "";
   }
 
-  async function save({ keepalive = false } = {}) {
+  async function save() {
     if (!st.dirty || st.timer.paused) return;
     const body = { code: solutionModel.getValue(), scratch: scratchModel.getValue() };
     st.dirty = false;
     try {
-      const res = await api("PUT", `/api/sessions/${sessionId}/code`, body, { keepalive });
+      const res = await api("PUT", `/api/sessions/${sessionId}/code`, body);
       st.lastSaved = Date.now();
       if (res?.timer) syncTimer(res.timer);
     } catch (err) {
@@ -316,7 +314,7 @@ async function renderSession(sessionId) {
     renderSaveState();
   }
   const autosave = setInterval(save, 3000);
-  const beforeUnload = () => { save({ keepalive: true }); };
+  const beforeUnload = () => { save(); };
   window.addEventListener("beforeunload", beforeUnload);
 
   // ----- lint (idle + every run/submit)
@@ -337,8 +335,7 @@ async function renderSession(sessionId) {
       startLineNumber: i.row, startColumn: i.col, endLineNumber: i.end_row,
       endColumn: Math.max(i.end_col, i.col + 1),
       message: `${i.message} (${i.code})`,
-      severity: i.code === "syntax" || i.code.startsWith("F") || i.code.startsWith("E9")
-        ? monaco.MarkerSeverity.Error : monaco.MarkerSeverity.Warning,
+      severity: lintSeverity(monaco, i.code),
       source: "ruff",
     })));
     renderResultTabs();
@@ -411,7 +408,7 @@ async function renderSession(sessionId) {
     } else if (!paused && overlay) {
       overlay.remove();
     }
-    q("[data-run]").disabled = q("[data-submit]").disabled = q("[data-scratch]").disabled = paused || st.busy || STATIC;
+    q("[data-run]").disabled = q("[data-submit]").disabled = q("[data-scratch]").disabled = paused || st.busy;
   }
 
   async function togglePause() {
@@ -490,7 +487,7 @@ async function renderSession(sessionId) {
   // tests.py is never editable; the other files lock while the session is paused.
   function syncReadOnly() {
     editor.updateOptions({ readOnly: st.timer.paused || st.file === "tests" });
-    q("[data-format]").disabled = st.file === "tests" || STATIC;
+    q("[data-format]").disabled = st.file === "tests";
   }
   function switchFile(name) {
     st.file = name;
@@ -535,14 +532,9 @@ async function renderSession(sessionId) {
   function renderResults() {
     const el = q("[data-results]");
     if (st.resultsTab === "lint") { el.innerHTML = renderLint(); bindLint(el); return; }
+    if (st.busy) { el.innerHTML = `<div class="empty">${esc(st.busyText)}</div>`; return; }
     if (st.resultsTab === "scratch") { el.innerHTML = renderScratch(); return; }
-    if (st.busy) { el.innerHTML = '<div class="empty">Running…</div>'; return; }
     const r = st.lastResult;
-    if (!r && STATIC) {
-      el.innerHTML = `<div class="empty">Code can't run on the static site, so there are no results here. You can still read the
-        problem, write code (it autosaves in this browser) and read <code>tests.py</code>.</div>`;
-      return;
-    }
     if (!r) {
       el.innerHTML = `<div class="empty">The shown tests are in <code>tests.py</code>. <kbd>Ctrl+↵</kbd> Run checks them with full details.
         <kbd>Ctrl+⇧+↵</kbd> Submit also runs the hidden tests (counts only) and unlocks the next level when everything passes.</div>`;
@@ -634,7 +626,7 @@ async function renderSession(sessionId) {
     const o = st.scratchOut;
     if (!o) return `<div class="empty">Write experiments in <code>scratch.py</code> (it starts with <code>from solution import *</code>) and press <strong>Run scratch</strong>.</div>`;
     return `<div class="summary-row"><strong>scratch.py</strong>
-        <span class="chip ${o.exit_code === 0 ? "good" : "bad"}">${o.timed_out ? "timed out" : `exit ${o.exit_code}`}</span>
+        <span class="chip ${o.exit_code === 0 ? "good" : "bad"}">${o.timed_out ? "timed out" : o.crashed ? "crashed" : `exit ${o.exit_code}`}</span>
         <span class="faint">${o.ms} ms</span></div>
       <div class="block-label">stdout</div><pre class="out">${esc(o.stdout) || '<span class="faint">(empty)</span>'}</pre>
       ${o.stderr ? `<div class="block-label">stderr</div><pre class="out fail">${esc(o.stderr)}</pre>` : ""}`;
@@ -643,11 +635,19 @@ async function renderSession(sessionId) {
   // ----- actions
   function setBusy(busy) {
     st.busy = busy;
-    q("[data-run]").disabled = q("[data-submit]").disabled = q("[data-scratch]").disabled = busy || st.timer.paused || STATIC;
+    st.busyText = "Running…";
+    q("[data-run]").disabled = q("[data-submit]").disabled = q("[data-scratch]").disabled = busy || st.timer.paused;
   }
 
+  // While a run waits for Python to load (the first one in this browser downloads it), say so.
+  const onPython = (e) => {
+    if (!st.busy) return;
+    st.busyText = e.detail.state === "loading" ? STARTING_PYTHON : "Running…";
+    renderResults();
+  };
+  window.addEventListener("swe-python", onPython);
+
   async function doRun(kind) {
-    if (STATIC) { toast(NEEDS_SERVER_NOTE, "bad"); return; }  // reached via the keyboard shortcuts
     if (st.busy || st.timer.paused) return;
     setBusy(true);
     st.resultsTab = "tests";
@@ -685,9 +685,11 @@ async function renderSession(sessionId) {
   }
 
   async function doScratch() {
-    if (STATIC) { toast(NEEDS_SERVER_NOTE, "bad"); return; }
     if (st.busy || st.timer.paused) return;
     setBusy(true);
+    st.resultsTab = "scratch";
+    renderResultTabs();
+    renderResults();
     try {
       st.scratchOut = await api("POST", `/api/sessions/${sessionId}/scratch`, {
         code: solutionModel.getValue(), scratch: scratchModel.getValue(),
@@ -740,11 +742,6 @@ async function renderSession(sessionId) {
   });
 
   // ----- initial paint
-  if (STATIC) {
-    for (const sel of ["[data-run]", "[data-submit]", "[data-scratch]", "[data-format]"]) {
-      q(sel).title = NEEDS_SERVER_NOTE;
-    }
-  }
   renderLevelPills();
   renderStatement();
   renderResultTabs();
@@ -755,10 +752,12 @@ async function renderSession(sessionId) {
   if (!st.timer.paused) editor.focus();
 
   cleanup = async () => {
-    await save({ keepalive: true });
+    await save();
     clearInterval(autosave); clearInterval(tick); clearInterval(resync); clearTimeout(lintTimer);
     window.removeEventListener("beforeunload", beforeUnload);
     window.removeEventListener("keydown", keyHandler);
+    window.removeEventListener("swe-python", onPython);
+    coolDown();
     subs.forEach((s) => s.dispose());
     formatProvider.dispose();
     editor.dispose();
@@ -951,10 +950,12 @@ async function renderHistory() {
     ${algoTable}
     <h2 class="section-title">System design</h2>
     ${designTable}
+    ${historyBackupSection()}
   </main>`;
   $app.querySelectorAll("tr[data-href]").forEach((tr) => {
     tr.onclick = () => { location.hash = tr.dataset.href; };
   });
+  bindHistoryBackup(renderHistory);
 }
 
 watchDiagrams();
