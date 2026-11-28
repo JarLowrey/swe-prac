@@ -87,6 +87,13 @@ button.small { padding: 3px 8px; font-size: 12px; }
 .nav-spacer { flex: 1; }
 .nav-out { color: var(--text-dim); white-space: nowrap; }
 .nav-out:hover { color: var(--text); }
+/* icon button to the source on GitHub, last in the bar; the auto margin pushes it right where there is no spacer */
+.nav-icon {
+  flex: none; margin-left: auto; width: 32px; height: 32px; border-radius: 6px;
+  display: grid; place-items: center; color: var(--text-dim);
+}
+.nav-icon:hover { color: var(--text); background: var(--bg-elev-2); text-decoration: none; }
+.nav-icon svg { width: 20px; height: 20px; fill: currentColor; }
 
 .page { max-width: 1100px; margin: 0 auto; padding: 32px 24px 64px; }
 .page h1 { font-size: 26px; margin-bottom: 6px; }
