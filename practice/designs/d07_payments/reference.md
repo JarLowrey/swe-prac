@@ -79,7 +79,7 @@ Webhook-Signature: v1,K5oZfzN95Z9UVu1EsfQmfVNQhn
 
 Card data is tokenized by a secure vault (or the processor's hosted fields) so our servers never touch raw card numbers, which keeps PCI scope small.
 
-**Data model (relational, strongly consistent).**
+**Data model.** Relational and strongly consistent.
 
 - `payment(id, merchant_id, amount, currency, status, idempotency_key UNIQUE per merchant, provider_ref, created_at)`
 - `payment_event(payment_id, seq, type, payload, at)`: append-only history of every transition.
@@ -132,7 +132,7 @@ stateDiagram-v2
   end note
 ```
 
-**High-level design.** The payment service owns one relational database holding payments, their events, the ledger and an outbox. Card numbers go from the customer's browser to a vault and never reach our servers. Events leave through the outbox to the webhook service and other consumers.
+**Diagram.** The payment service owns one relational database holding payments, their events, the ledger and an outbox. Card numbers go from the customer's browser to a vault and never reach our servers. Events leave through the outbox to the webhook service and other consumers.
 
 ```mermaid
 flowchart TD
@@ -204,4 +204,4 @@ flowchart TD
   RC --> DB
 ```
 
-**Wrap-up.** Metrics: success rate by provider/issuer, pending-aged count, reconciliation diffs, p99 latency, webhook lag. Multi-provider routing with fallback (if one processor is down, route to another) improves availability but needs care so one payment isn't charged twice across providers.
+**Done.** Metrics: success rate by provider/issuer, pending-aged count, reconciliation diffs, p99 latency, webhook lag. Multi-provider routing with fallback (if one processor is down, route to another) improves availability but needs care so one payment isn't charged twice across providers.

@@ -1,68 +1,12 @@
 {
   "steps": [
-    {
-      "step": 1,
-      "title": "Requirements",
-      "short": "Req",
-      "minutes": 5,
-      "output": "Functional list, non-functional list, out of scope",
-      "guide": "The most valuable time in the interview: build the right thing before building the thing right. Functional: the 3–5 things a user can do, written as verbs. Non-functional: scale, latency, availability, consistency, durability; ask which matters most. Out of scope: say what you're skipping. End by reading the list back: \"Does this match what you had in mind?\"",
-      "starter": "Functional:\n- \n\nNon-functional:\n- \n\nOut of scope:\n- \n"
-    },
-    {
-      "step": 2,
-      "title": "Estimates",
-      "short": "Est",
-      "minutes": 3,
-      "output": "Users, QPS, storage: only the numbers that change a decision",
-      "guide": "Napkin math, but only as far as it changes a decision. \"About 1,000 bookings per second at peak, so one database can handle writes\" is useful; storage to three digits is not. If the numbers don't change anything, say so and move on.",
-      "starter": "Traffic:\n\nStorage:\n\nSo:\n"
-    },
-    {
-      "step": 3,
-      "title": "API",
-      "short": "API",
-      "minutes": 5,
-      "output": "3–6 endpoints with inputs and outputs",
-      "guide": "Write each endpoint with its key inputs and outputs. It pins down what the system actually does before you draw boxes. Mention pagination, idempotency keys for anything that charges money, and REST vs. GraphQL vs. gRPC only if it matters.",
-      "starter": ""
-    },
-    {
-      "step": 4,
-      "title": "Data model",
-      "short": "Data",
-      "minutes": 5,
-      "output": "Main entities, keys, and which store holds them",
-      "guide": "List the main entities, their keys and the relationships between them. Then pick a store for each and give one reason: \"Bookings go in a relational database because I need transactions to prevent double booking.\"",
-      "starter": ""
-    },
-    {
-      "step": 5,
-      "title": "High-level design",
-      "short": "HLD",
-      "minutes": 10,
-      "output": "Diagram covering every functional requirement",
-      "guide": "Draw the simplest system that satisfies every functional requirement (Diagram tab): clients, load balancer, services, databases, caches, queues. Then trace one request through it out loud. If a requirement has no box that serves it, you've found a gap. Keep it simple on purpose; scaling comes next.",
-      "starter": "Request trace:\n1. \n"
-    },
-    {
-      "step": 6,
-      "title": "Deep dives",
-      "short": "Deep",
-      "minutes": 15,
-      "output": "2–3 hardest parts, designed properly",
-      "guide": "This is where you earn the grade. Pick the 2–3 hardest parts of this problem, say why they're hard, and design them properly: where correctness matters most, the hottest path at scale, the part most likely to fail. Propose them yourself.",
-      "starter": "The hardest parts, and why:\n1. \n2. \n"
-    },
-    {
-      "step": 7,
-      "title": "Wrap-up",
-      "short": "Wrap",
-      "minutes": 2,
-      "output": "Bottlenecks, failure modes, what you'd do next",
-      "guide": "Name the biggest remaining bottleneck, one or two failure modes and how you'd detect them, and what you'd build next. Ending on a clear summary leaves a strong last impression.",
-      "starter": "Biggest remaining risk:\n\nFailure modes, and how I'd detect them:\n- \n\nRollout and monitoring:\n\nNext I'd build:\n"
-    }
+    {"step": 1, "title": "Requirements"},
+    {"step": 2, "title": "Estimates"},
+    {"step": 3, "title": "API"},
+    {"step": 4, "title": "Data model"},
+    {"step": 5, "title": "Diagram"},
+    {"step": 6, "title": "Deep dives"},
+    {"step": 7, "title": "Done"}
   ],
   "checklist": [
     "Requirements written: functional, non-functional, out of scope. Read back and confirmed.",

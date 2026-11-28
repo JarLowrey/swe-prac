@@ -70,7 +70,7 @@ erDiagram
   }
 ```
 
-**Design.**
+**Diagram.**
 
 1. **Source of truth:** the listing database (relational). Changes flow out through the [outbox/CDC](#/design/learn/reliability/the-outbox-pattern) to a queue.
 2. **Search index:** Elasticsearch/OpenSearch (or a similar engine) holds [a denormalized document per listing](#/design/learn/reliability/read-models-and-search-indexes): location (as a geo point and as [geohash/S2 cell IDs](#/design/learn/building-blocks/geohash)), price, amenities, ratings, capacity, and a compact availability summary. Updated asynchronously by index workers; eventually consistent.
@@ -124,4 +124,4 @@ flowchart TD
   M -->|"rider's cell<br/>and its neighbors"| LOC
 ```
 
-**Wrap-up.** Metrics: search latency p99, zero-result rate, index lag, conversion. Failure: if the search cluster degrades, [serve cached popular results](#/design/learn/reliability/graceful-degradation) and a simplified query path.
+**Done.** Metrics: search latency p99, zero-result rate, index lag, conversion. Failure: if the search cluster degrades, [serve cached popular results](#/design/learn/reliability/graceful-degradation) and a simplified query path.

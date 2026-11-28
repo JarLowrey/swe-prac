@@ -395,26 +395,31 @@ describe("algorithm sessions", () => {
 });
 
 describe("system design sessions", () => {
-  test("steps go forward, the time on each is measured, and the self-check scores it", async () => {
+  test("the round is one board and one clock, and the self-check scores it", async () => {
     const t = tab();
-    let s = await t.api("POST", "/api/design/sessions", { question_id: DESIGN, mode: "strict" });
-    assert.deepEqual(s.step_starts, { 1: 0 });
+    const s = await t.api("POST", "/api/design/sessions", { question_id: DESIGN, mode: "strict" });
+    assert.deepEqual(s.board, {});
+    assert.equal("hints" in s || "key_points" in s || "reference_html" in s, false);
+    assert.equal("steps" in s || "current_step" in s || "step_starts" in s, false);
+    await assert.rejects(t.api("POST", `/api/design/sessions/${s.id}/step`, { step: 2 }), { status: 404 });
     t.advance(300);
-    s = await t.api("POST", `/api/design/sessions/${s.id}/step`, { step: 3 });
-    assert.equal(s.current_step, 3);
-    await assert.rejects(t.api("POST", `/api/design/sessions/${s.id}/step`, { step: 2 }), { status: 400 });
-    await t.api("PUT", `/api/design/sessions/${s.id}/notes`, { notes: { 3: "a cache", 99: "ignored" }, diagram: { nodes: [] } });
+    const draft = { nodes: [{ id: "n1", kind: "text", x: 0, y: 0, w: 40, h: 26, label: "a cache" }], edges: [] };
+    await t.api("PUT", `/api/design/sessions/${s.id}/board`, { board: draft });
+    assert.deepEqual((await t.api("GET", `/api/design/sessions/${s.id}`)).board, draft);
+    await assert.rejects(t.api("PUT", `/api/design/sessions/${s.id}/board`, { board: [1] }), { status: 400 });
     t.advance(120);
-    await t.api("POST", `/api/design/sessions/${s.id}/end`, { notes: { 3: "a cache, sharded" } });
-    await assert.rejects(t.api("PUT", `/api/design/sessions/${s.id}/notes`, { notes: {} }), { status: 409 });
+    const final = { nodes: [...draft.nodes, { id: "n2", kind: "store", x: 0, y: 60, w: 130, h: 72, label: "Pastes" }], edges: [] };
+    await t.api("POST", `/api/design/sessions/${s.id}/end`, { board: final });
+    await assert.rejects(t.api("PUT", `/api/design/sessions/${s.id}/board`, { board: {} }), { status: 409 });
 
     let review = await t.api("GET", `/api/design/sessions/${s.id}/review`);
-    assert.equal(review.notes["3"], "a cache, sharded");
-    assert.equal(review.notes["99"], undefined);
-    assert.deepEqual(review.diagram, { nodes: [] });
-    const spent = Object.fromEntries(review.results.steps.map((st) => [st.step, st.spent]));
-    assert.deepEqual([spent[1], spent[2], spent[3]], [300, null, 120]);
+    assert.deepEqual(review.board, final);
+    assert.deepEqual(review.notes, []);
+    assert.deepEqual(review.asked, []);
+    assert.deepEqual(review.results, { time_limit: 2700, elapsed: 420, overtime_seconds: 0, pauses: { count: 0, total_seconds: 0 } });
     assert.equal(review.score, null);
+    const row = (await t.api("GET", "/api/design/history")).sessions[0];
+    assert.equal("steps_reached" in row || "step_count" in row, false);
 
     await assert.rejects(t.api("PUT", `/api/design/sessions/${s.id}/assessment`, { checklist: [999], key_points: [] }), { status: 400 });
     const got = await t.api("PUT", `/api/design/sessions/${s.id}/assessment`, { checklist: [2, 0, 2], key_points: [1] });
@@ -424,6 +429,55 @@ describe("system design sessions", () => {
     assert.deepEqual(review.score, { done: 3, total, checklist: 2, key_points: 1 });
     const listed = (await t.api("GET", "/api/design/questions")).questions.find((q) => q.id === DESIGN);
     assert.equal(listed.best.done, 3);
+  });
+
+  test("the AI interviewer's answers are logged with the time, and its notes stay off the page payload", async () => {
+    const t = tab();
+    const s = await t.api("POST", "/api/design/sessions", { question_id: DESIGN, mode: "pausable" });
+    const notes = await t.api("GET", `/api/design/sessions/${s.id}/interviewer`);
+    const item = data.design.questions[0];
+    assert.deepEqual(notes.key_points, item.key_points);
+    assert.equal(notes.hard_part, item.hints.hard_part);
+    assert.equal(notes.reference_md, item.reference_md);
+
+    t.advance(90);
+    const first = await t.api("POST", `/api/design/sessions/${s.id}/hints`, { profile: "strict", question: " Cache it? ", answer: "Yes. Obviously." });
+    assert.deepEqual(first.hint, { at: 90, profile: "strict", question: "Cache it?", answer: "Yes. Obviously.", source: "api" });
+    await assert.rejects(t.api("POST", `/api/design/sessions/${s.id}/hints`, { profile: "nice", answer: "x" }), { status: 400 });
+    await assert.rejects(t.api("POST", `/api/design/sessions/${s.id}/hints`, { profile: "helpful", answer: "  " }), { status: 400 });
+    await assert.rejects(t.api("POST", `/api/design/sessions/${s.id}/hints`, { profile: "helpful", answer: "x", source: "mail" }), { status: 400 });
+
+    // A reply that lands after a pause is still kept.
+    await t.api("POST", `/api/design/sessions/${s.id}/pause`);
+    t.advance(30);
+    await t.api("POST", `/api/design/sessions/${s.id}/hints`, { profile: "helpful", answer: "Think about the read path.", source: "pasted" });
+    assert.equal((await t.api("GET", `/api/design/sessions/${s.id}`)).asked.length, 2);
+    await t.api("POST", `/api/design/sessions/${s.id}/resume`);
+
+    await t.api("POST", `/api/design/sessions/${s.id}/end`);
+    await assert.rejects(t.api("POST", `/api/design/sessions/${s.id}/hints`, { profile: "strict", answer: "No." }), { status: 409 });
+    await assert.rejects(t.api("GET", `/api/design/sessions/${s.id}/interviewer`), { status: 410 });
+    const review = await t.api("GET", `/api/design/sessions/${s.id}/review`);
+    assert.deepEqual(review.asked.map((h) => [h.profile, h.source, h.at]), [["strict", "api", 90], ["helpful", "pasted", 90]]);
+    const row = (await t.api("GET", "/api/design/history")).sessions[0];
+    assert.equal(row.asked, 2);
+  });
+
+  test("a session saved before the whiteboard opens its diagram as the board and keeps its notes", async () => {
+    const t = tab();
+    const diagram = { nodes: [{ id: "a", kind: "box", x: 10, y: 10, w: 140, h: 56, label: "API" }], edges: [] };
+    const legacy = {
+      id: 1, question_id: DESIGN, mode: "strict", status: "finished", started_at: 1000, time_limit: 2700,
+      paused_at: null, total_paused: 0, current_step: 2, step_starts: { 1: 0, 2: 300 },
+      notes: { 1: "Functional:\n- paste" }, diagram, assessment: null, finished_at: 2000, final_elapsed: 1000, pauses: [],
+    };
+    await t.api("POST", "/api/backup", { format: "swe-prac-history", version: 1, design: { sessions: [legacy] } });
+    const [{ id }] = (await t.api("GET", "/api/design/history")).sessions;
+    const review = await t.api("GET", `/api/design/sessions/${id}/review`);
+    assert.deepEqual(review.board, diagram);
+    assert.deepEqual(review.notes, [{ title: "1. Requirements", text: "Functional:\n- paste" }]);
+    assert.equal(review.results.elapsed, 1000);
+    assert.deepEqual(review.asked, []);
   });
 });
 

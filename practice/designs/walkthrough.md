@@ -58,7 +58,7 @@ erDiagram
   }
 ```
 
-**5. High-level design.**
+**5. Diagram.**
 
 ```mermaid
 flowchart TD
@@ -88,7 +88,7 @@ relational database, which is the single source of truth.
 - *Retries.* The idempotency key on create-booking means a client that times out and retries can't
   create two bookings.
 
-**7. Wrap-up.** The biggest risk is a popular listing getting many simultaneous booking attempts;
+**7. Done.** The biggest risk is a popular listing getting many simultaneous booking attempts;
 the unique constraint handles correctness, and a per-listing rate limit protects the database. I'd
 monitor booking error rates and indexer lag, and alert if lag exceeds a minute. Next I'd add the
 payments flow and host calendar sync with external calendars.

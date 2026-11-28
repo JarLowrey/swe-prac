@@ -33,7 +33,7 @@ GET /v1/suggest?q=new%20yo&limit=8&locale=en-US
 - **Failure is silent.** An error, a timeout or a `429` just hides the dropdown; the search box never waits for suggestions ([graceful degradation](#/design/learn/reliability/graceful-degradation)).
 - **No feedback endpoint.** The search request records how it started (`?source=suggest&pos=2`), which gives the acceptance-rate metric without an extra call.
 
-**Core data structure.** A **[trie](#/design/learn/building-blocks/autocomplete-and-typeahead)** (prefix tree) where each node represents a prefix. To answer quickly, each node stores its **top-K completions** (K around 10) precomputed, so a lookup is O(length of prefix) with no subtree traversal. Memory trick: store only popular completions per node, compress chains of single-child nodes (a radix tree), and cut the trie at a depth limit and a minimum frequency.
+**Data model.** The core data structure is a **[trie](#/design/learn/building-blocks/autocomplete-and-typeahead)** (prefix tree) where each node represents a prefix. To answer quickly, each node stores its **top-K completions** (K around 10) precomputed, so a lookup is O(length of prefix) with no subtree traversal. Memory trick: store only popular completions per node, compress chains of single-child nodes (a radix tree), and cut the trie at a depth limit and a minimum frequency.
 
 ```mermaid
 flowchart TD
@@ -46,7 +46,7 @@ flowchart TD
 
 Alternative: [an inverted-index style table](#/design/learn/building-blocks/inverted-indexes) `prefix → top-K list` generated offline for every prefix of every popular query (a key-value store keyed by prefix). Simpler to serve (one key lookup, trivially cacheable and shardable) at the cost of more storage; most production systems end up here.
 
-**High-level design: two paths.**
+**Diagram.** Two paths.
 
 - **Serving path (online):** client → CDN/edge cache → load balancer → suggestion service → in-memory trie or prefix-key store (and optionally a personalization layer). The popular prefixes (the first one to three characters cover a huge share of traffic) are served from cache with short TTLs, [even at the CDN](#/design/learn/building-blocks/cdns-and-edge-caching).
 - **Data path (offline/near-line):** search logs stream into Kafka → [aggregation jobs](#/design/learn/building-blocks/batch-vs-stream-processing) (batch hourly/daily, plus a streaming job for trending terms) count query frequencies [over time windows](#/design/learn/building-blocks/event-time-windows-and-watermarks) → a builder produces the top-K per prefix, filters blocked content → publishes a new versioned snapshot to object storage → serving nodes load it and [atomically swap](#/design/learn/reliability/atomic-snapshot-swaps).
@@ -94,4 +94,4 @@ flowchart TD
   VAL -->|swap| SS
 ```
 
-**Wrap-up.** Metrics: suggestion latency p99, cache hit rate, suggestion acceptance rate (the product metric: how often users pick a suggestion), snapshot age. Scaling 10x: more replicas and cache layers; the data size barely changes.
+**Done.** Metrics: suggestion latency p99, cache hit rate, suggestion acceptance rate (the product metric: how often users pick a suggestion), snapshot age. Scaling 10x: more replicas and cache layers; the data size barely changes.

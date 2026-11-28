@@ -1,8 +1,12 @@
 {
   "steps": [
-    {"step": 1, "title": "Requirements", "short": "Req", "minutes": 15, "output": "A list", "guide": "Ask questions.", "starter": "Functional:\n- \n"},
-    {"step": 2, "title": "Design", "short": "Des", "minutes": 20, "output": "A diagram", "guide": "Draw boxes.", "starter": ""},
-    {"step": 3, "title": "Wrap-up", "short": "Wrap", "minutes": 10, "output": "Risks", "guide": "Name risks.", "starter": ""}
+    {"step": 1, "title": "Requirements"},
+    {"step": 2, "title": "Diagram"},
+    {"step": 3, "title": "Done"}
   ],
-  "checklist": ["Asked about scale.", "Drew a diagram.", "Named a failure mode."]
+  "checklist": [
+    "Asked about scale.",
+    "Drew a diagram.",
+    "Named a failure mode."
+  ]
 }

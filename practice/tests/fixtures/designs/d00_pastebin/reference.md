@@ -1,6 +1,6 @@
 **Requirements.** Create and read pastes.
 
-**High-level design.**
+**Diagram.**
 
 ```mermaid
 flowchart TD

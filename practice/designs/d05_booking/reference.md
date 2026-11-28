@@ -69,7 +69,7 @@ The error cases are where this API earns its keep:
 | Someone else's booking | `404`, so booking IDs can't be probed |
 | The same `Idempotency-Key` with a different body | `422` |
 
-**Data model (relational; [this needs transactions](#/design/learn/data/transactions)).**
+**Data model.** Relational, because [this needs transactions](#/design/learn/data/transactions).
 
 - `listing(id, host_id, ...)`
 - `calendar(listing_id, night, status, price, booking_id)` with a **primary key / [unique key](#/design/learn/data/unique-constraints) on `(listing_id, night)`**: one row per listing-night.
@@ -105,7 +105,7 @@ erDiagram
   }
 ```
 
-**High-level design.** Search and booking need different things, so they take different paths. Search reads an index kept up to date from the database's change events and may lag by seconds. Booking writes to the relational database, the single source of truth, in one transaction.
+**Diagram.** Search and booking need different things, so they take different paths. Search reads an index kept up to date from the database's change events and may lag by seconds. Booking writes to the relational database, the single source of truth, in one transaction.
 
 ```mermaid
 flowchart TD
@@ -195,4 +195,4 @@ flowchart TD
   DB -.->|"read replicas"| RR[(Other regions)]:::good
 ```
 
-**Wrap-up.** Metrics: booking success rate, hold-expiry rate, search-to-book conversion, calendar/search index lag, conflicts at booking time. [Reconciliation](#/design/learn/reliability/reconciliation): nightly job verifying every `CONFIRMED` booking has exactly the right calendar rows and a matching payment.
+**Done.** Metrics: booking success rate, hold-expiry rate, search-to-book conversion, calendar/search index lag, conflicts at booking time. [Reconciliation](#/design/learn/reliability/reconciliation): nightly job verifying every `CONFIRMED` booking has exactly the right calendar rows and a matching payment.

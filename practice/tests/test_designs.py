@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import re
 import unittest
 
-from swe_prac import config, designs
+from swe_prac import designs
 
 REAL = designs.list_questions()
 
@@ -22,16 +23,25 @@ class DesignCatalogueTests(unittest.TestCase):
                 self.assertTrue(q.hard_part)
                 self.assertTrue(q.building_blocks)
                 self.assertGreaterEqual(len(q.key_points), 4)
-                html = designs.reference_html(q)
-                for section in ("Requirements.", "Estimates.", "Deep dives."):
-                    self.assertIn(section, html)
+                self.assertTrue(designs.reference_html(q))
 
-    def test_framework_steps_fill_the_time_limit(self):
+    def test_every_reference_follows_readddd(self):
+        # Each framework step opens a paragraph with its bold label, in order: Requirements,
+        # Estimates, API, Data model, Diagram, Deep dives, Done. Other bold labels may sit between.
+        titles = [s["title"] for s in designs.steps()]
+        self.assertEqual("".join(t[0] for t in titles), "READDDD")
+        for q in REAL:
+            with self.subTest(question=q.id):
+                labels = re.findall(r"^\*\*([^*]+?)\.\*\*", designs.reference_markdown(q), re.M)
+                self.assertEqual([t for t in labels if t in titles], titles)
+
+    def test_framework_has_the_checklist_guides_and_step_titles(self):
+        # The titles only label old sessions' per-step notes on their review.
         steps = designs.steps()
         self.assertEqual([s["step"] for s in steps], list(range(1, 8)))
-        self.assertEqual(sum(s["minutes"] for s in steps) * 60, config.DESIGN_TIME_LIMIT_SECONDS)
         for s in steps:
-            self.assertTrue(s["title"] and s["short"] and s["output"] and s["guide"])
+            self.assertEqual(sorted(s), ["step", "title"])
+            self.assertTrue(s["title"])
         self.assertEqual(len(designs.checklist()), 10)
         self.assertIn("What the interviewer is grading", designs.guide_html("framework"))
         self.assertTrue(designs.guide_html("walkthrough"))

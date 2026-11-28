@@ -106,7 +106,7 @@ flowchart TD
   M --> PG([One feed page])
 ```
 
-**High-level design.**
+**Diagram.**
 
 1. Post service writes the post to the posts store and publishes a `PostCreated` event ([via outbox](#/design/learn/reliability/the-outbox-pattern), so it's never lost).
 2. [Fan-out workers consume the event](#/design/learn/building-blocks/message-queues-and-streams), look up followers (paginated from the follow graph), and push the post ID into each follower's feed cache, in batches, partitioned by follower.
@@ -152,4 +152,4 @@ flowchart TD
   FS --> RK[Ranker<br/>with a feature store]:::good
 ```
 
-**Wrap-up.** Metrics: feed latency p99, [fan-out lag](#/design/learn/building-blocks/backpressure-and-consumer-lag) (post creation to last follower write), cache hit rate, queue depth. Scale levers: shard feed cache by user, add fan-out workers, cap feed length at a few hundred entries and fall back to pull for deeper scroll.
+**Done.** Metrics: feed latency p99, [fan-out lag](#/design/learn/building-blocks/backpressure-and-consumer-lag) (post creation to last follower write), cache hit rate, queue depth. Scale levers: shard feed cache by user, add fan-out workers, cap feed length at a few hundred entries and fall back to pull for deeper scroll.

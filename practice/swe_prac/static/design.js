@@ -1,24 +1,133 @@
-// System design practice: the question list, the 45-minute session (notes for each framework
-// step plus a diagram), the review (pacing, your work beside the reference design, a self-check),
-// the study pages and the framework guide. Every page returns its cleanup, if it needs one.
+// System design practice: the question list, the 45-minute session (one whiteboard, an AI
+// interviewer to ask for hints, sound recording; the round isn't split into steps), the review
+// (your board, the hints you asked for, your recordings, the reference design, a self-check), the
+// study pages and the framework guide. Every page returns its cleanup, if it needs one.
 
 import {
-  $app, api, esc, fmtClock, fmtDelta, plural, fmtDate, storage, toast, modal, chooseMode,
+  $app, api, esc, fmtClock, plural, fmtDate, storage, toast, modal, chooseMode,
   confirmSpoil, topnav, resizableSplit,
 } from "./common.js";
-import { createDiagramEditor, renderDiagramSvg } from "./diagram.js";
+import { createWhiteboard, renderBoardSvg } from "./whiteboard.js";
+import {
+  PERSONAS, PROVIDERS, aiSettings, askApi, modelName, pastePrompt, saveAiSettings, systemPrompt, userPrompt, verdict,
+} from "./interviewer.js";
+import {
+  clipBlob, clipExtension, createRecorder, deleteClip, listClips, recordingSupported,
+} from "./recorder.js";
+import { DEFAULT_SPEECH, MODELS, createTranscriber, transcriptionSupported } from "./transcribe.js";
 import { foundationsSection } from "./learn.js";
 
 const MINUTES = 45;
 const timerLabel = (t) => (t.paused ? "paused" : t.overtime ? "overtime" : `${fmtClock(t.remaining)} left`);
 const scoreText = (score) => (score ? `${score.done}/${score.total}` : "not reviewed");
 
+// Which speech model transcribes the recording about to start: a key of MODELS, or null to not
+// record after all. The last choice is preselected.
+async function chooseSpeech() {
+  const last = MODELS[storage("swe-prac-design-speech")] ? storage("swe-prac-design-speech") : DEFAULT_SPEECH;
+  const { fast, accurate } = MODELS;
+  const pending = modal({
+    title: "Transcribe with which model?",
+    body: `<p>Your recording is transcribed in this browser as you talk, for the AI interviewer.</p>
+      <ul class="mode-help">
+        <li><strong>${fast.name}</strong> &mdash; ${fast.mb} MB download. About twice as fast; mishears more words.</li>
+        <li><strong>${accurate.name}</strong> &mdash; ${accurate.mb} MB download. Better with technical terms.</li>
+      </ul>`,
+    actions: [
+      { label: "Cancel", value: null, kind: "ghost" },
+      { label: fast.name, value: "fast", kind: last === "fast" ? "primary" : "" },
+      { label: accurate.name, value: "accurate", kind: last === "accurate" ? "primary" : "" },
+    ],
+  });
+  [...document.querySelectorAll(".modal-backdrop")].pop()?.querySelector(".actions .primary")?.focus();
+  const choice = await pending;
+  if (choice) storage("swe-prac-design-speech", choice);
+  return choice;
+}
+
 function confirmEnd() {
   return modal({
     title: "End this session?",
-    body: "<p>Your notes and diagram lock, and the reference design and self-review unlock.</p>",
+    body: "<p>Your board locks, and the reference design and self-review unlock.</p>",
     actions: [{ label: "Keep working", value: false, kind: "ghost" }, { label: "End & review", value: true, kind: "primary" }],
   });
+}
+
+// ---------------------------------------------------------------- AI settings
+const aiStatus = () => {
+  const s = aiSettings();
+  return s.key
+    ? `Using your ${PROVIDERS[s.provider].name} key (${modelName(s.provider, s.model)})`
+    : "No API key: Ask copies a prompt for your own AI agent";
+};
+
+// Pick Claude, Gemini or ChatGPT, then that service's key and model. Each service keeps its own
+// key, so switching back and forth loses nothing. Resolves to true when the settings changed.
+async function openAiSettings() {
+  const first = aiSettings();
+  const drafts = {}; // provider -> {key, model, remember} as edited in this dialog
+  const pending = modal({
+    title: "AI interviewer",
+    body: `<p>Hints come from the AI service you pick, with your own API key. Keys stay in this browser
+        and go only to that service.</p>
+      <div class="ai-form">
+        <fieldset class="lang-picker"><legend>Service</legend>
+          ${Object.entries(PROVIDERS).map(([id, p]) => `<label><input type="radio" name="ai-provider" value="${id}" ${id === first.provider ? "checked" : ""}> ${p.name}</label>`).join("")}
+        </fieldset>
+        <label class="field"><span data-key-label></span>
+          <input type="password" data-key autocomplete="off" spellcheck="false" placeholder="Paste your key"></label>
+        <label class="field"><span>Model</span>
+          <input data-model list="ai-models" autocomplete="off" spellcheck="false"><datalist id="ai-models"></datalist></label>
+        <label class="check"><input type="checkbox" data-remember> Remember the key in this browser</label>
+        <p class="faint" style="margin:0"><a data-key-link target="_blank" rel="noopener"></a> · Pick a model or type any model ID.</p>
+      </div>
+      <p class="faint">No key? Ask copies a prompt to paste into any AI agent, and you paste the reply back.</p>`,
+    actions: [
+      { label: "Remove key", value: "remove", kind: "ghost danger" },
+      { label: "Cancel", value: null, kind: "ghost" },
+      { label: "Save", value: "save", kind: "primary" },
+    ],
+    read: (dialog, value) => {
+      if (!value) return null;
+      const provider = dialog.querySelector('[name="ai-provider"]:checked').value;
+      keep(provider);
+      return { value, provider };
+    },
+  });
+  const dialog = [...document.querySelectorAll(".modal-backdrop")].pop();
+  const $ = (s) => dialog.querySelector(s);
+  function keep(provider) {
+    drafts[provider] = { provider, key: $("[data-key]").value, model: $("[data-model]").value, remember: $("[data-remember]").checked };
+  }
+  function show(provider) {
+    const s = drafts[provider] ?? aiSettings(provider);
+    const p = PROVIDERS[provider];
+    $("[data-key-label]").textContent = `${p.api} key`;
+    $("[data-key]").value = s.key;
+    $("[data-model]").value = s.model;
+    $("#ai-models").innerHTML = p.models.map(([id, name]) => `<option value="${id}">${esc(name)}</option>`).join("");
+    $("[data-remember]").checked = s.remember || !s.key;
+    $("[data-key-link]").href = p.keyUrl;
+    $("[data-key-link]").textContent = `Get a ${p.api} key`;
+    const saved = aiSettings(provider).key;
+    [...dialog.querySelectorAll(".actions button")].find((b) => b.textContent === "Remove key").style.display = saved ? "" : "none";
+  }
+  let current = first.provider;
+  dialog.querySelectorAll('[name="ai-provider"]').forEach((radio) => {
+    radio.onchange = () => { keep(current); current = radio.value; show(current); };
+  });
+  show(current);
+
+  const result = await pending;
+  if (!result) return false;
+  if (result.value === "remove") {
+    saveAiSettings({ ...aiSettings(result.provider), key: "", remember: false });
+    return true;
+  }
+  // Save every service edited here, the picked one last so it becomes the one in use.
+  const order = Object.keys(drafts).filter((p) => p !== result.provider).concat(result.provider);
+  for (const p of order) saveAiSettings(drafts[p]);
+  return true;
 }
 
 // ---------------------------------------------------------------- home page card
@@ -32,8 +141,8 @@ export async function designTrackCard() {
     : `<span class="faint">${attempts ? `${plural(attempts, "attempt")} so far` : "No attempts yet"}</span>`;
   return `<a class="track-card" href="#/design">
     <div class="track-head"><span class="track-mark design">◇</span><h2>System design</h2></div>
-    <p>One open-ended question in seven steps, from requirements to deep dives. Write notes, draw a
-      diagram, then score yourself against a reference design.</p>
+    <p>One open-ended question. Work it out on a whiteboard, ask an AI interviewer when stuck, then
+      score yourself against a reference design.</p>
     <ul class="track-facts"><li>${plural(questions.length, "question")}</li><li>${limit / 60} min</li><li>self-reviewed</li></ul>
     <div class="track-foot">${status}<span class="track-cta">Open →</span></div>
   </a>`;
@@ -41,7 +150,7 @@ export async function designTrackCard() {
 
 // ---------------------------------------------------------------- question list
 export async function renderDesignHome() {
-  const [{ questions, steps }, { session: active }, foundations] = await Promise.all([
+  const [{ questions }, { session: active }, foundations] = await Promise.all([
     api("GET", "/api/design/questions"), api("GET", "/api/design/active"),
     foundationsSection("design", "Networking and APIs, data, the building blocks, and reliability."),
   ]);
@@ -49,16 +158,10 @@ export async function renderDesignHome() {
 
   const banner = active ? `<div class="banner">
       <div><strong>Session in progress:</strong> ${esc(active.question.title)} · ${active.mode} ·
-        Step ${active.current_step} · <span class="mono">${timerLabel(active.timer)}</span></div>
+        <span class="mono">${timerLabel(active.timer)}</span></div>
       <div style="display:flex;gap:8px"><button class="primary" data-resume>Resume</button>
         <button class="danger" data-end-active>End session</button></div>
     </div>` : "";
-
-  let elapsed = 0;
-  const strip = steps.map((s) => {
-    elapsed += s.minutes;
-    return `<li title="${esc(s.output)}"><span class="n">${s.step}</span>${esc(s.title)}<span class="faint">${s.minutes}m · by ${elapsed}:00</span></li>`;
-  }).join("");
 
   const cards = questions.map((q) => {
     const inSession = active && active.question.id === q.id;
@@ -80,14 +183,19 @@ export async function renderDesignHome() {
 
   $app.innerHTML = `${topnav("design")}<main class="page">
     <h1>System design practice</h1>
-    <p class="lead">One deliberately vague question, ${MINUTES} minutes. Set the scope, design it, then compare
-      with a reference design and tick off what you covered.</p>
+    <p class="lead">One deliberately vague question, ${MINUTES} minutes. Set the scope and design it on a
+      whiteboard, then compare with a reference design and tick off what you covered.</p>
+    <p class="faint" style="margin:-8px 0 0"><a href="#/design/framework">Framework guide →</a>
+      how to pace the round and what interviewers grade.</p>
     ${banner}
     ${foundations}
-    <h2 class="section-title">The seven steps</h2>
-    <ol class="step-strip">${strip}</ol>
-    <p class="faint" style="margin:8px 0 0"><a href="#/design/framework">Framework guide →</a>
-      what each step produces and what interviewers grade.</p>
+    <h2 class="section-title">AI interviewer</h2>
+    <div class="random-row">
+      <span class="dim">Ask for hints during a session: <strong>Strict</strong> answers yes or no;
+        <strong>Helpful</strong> gives a few sentences. Every hint shows in the review.</span>
+      <span class="faint" data-ai-status>${esc(aiStatus())}</span>
+      <button class="small" data-ai-settings>AI settings</button>
+    </div>
     <h2 class="section-title">Questions</h2>
     <div class="random-row">
       <button data-random ${active ? "disabled" : ""}>🎲 Random question</button>
@@ -98,9 +206,12 @@ export async function renderDesignHome() {
 
   const unseenBox = $app.querySelector("[data-unseen]");
   unseenBox.addEventListener("change", () => storage("swe-prac-design-prefer-unseen", unseenBox.checked ? "1" : "0"));
+  $app.querySelector("[data-ai-settings]").onclick = async () => {
+    if (await openAiSettings()) $app.querySelector("[data-ai-status]").textContent = aiStatus();
+  };
 
   const start = async (questionId) => {
-    const mode = await chooseMode(MINUTES, "the question and the seven steps");
+    const mode = await chooseMode(MINUTES, "the question and the whiteboard");
     if (!mode) return;
     try {
       const s = await api("POST", "/api/design/sessions", { question_id: questionId, mode, prefer_unseen: unseenBox.checked });
@@ -122,6 +233,16 @@ export async function renderDesignHome() {
   });
 }
 
+// ---------------------------------------------------------------- hints (session and review)
+function hintEntryHtml(h) {
+  const mark = h.profile === "strict" ? verdict(h.answer) : null;
+  return `<li class="hint-entry ${esc(h.profile)}">
+    <div class="hint-meta">${fmtClock(h.at)} · <strong>${esc(PERSONAS[h.profile]?.name ?? h.profile)}</strong>${h.source === "pasted" ? ' · <span class="faint">pasted</span>' : ""}</div>
+    <div class="hint-q">${h.question ? esc(h.question) : '<span class="faint">Hint, no question</span>'}</div>
+    <div class="hint-a">${mark ? `<span class="verdict ${mark}">${mark === "yes" ? "✓" : "✗"}</span>` : ""}${esc(h.answer)}</div>
+  </li>`;
+}
+
 // ---------------------------------------------------------------- session
 export async function renderDesignSession(sessionId) {
   let session;
@@ -131,88 +252,73 @@ export async function renderDesignSession(sessionId) {
     if (err.status === 410) { location.hash = `#/design/review/${sessionId}`; return undefined; }
     throw err;
   }
-  const monaco = await window.monacoReady;
-  const steps = session.steps;
-  const last = steps[steps.length - 1].step;
   const st = {
     s: session,
     timer: { ...session.timer, syncedAt: performance.now() },
-    tab: String(session.current_step),
     dirty: false,
     lastSaved: null,
     timeUpShown: storage(`swe-prac-design-timeup-${sessionId}`) === "1",
+    persona: PERSONAS[storage("swe-prac-design-persona")] ? storage("swe-prac-design-persona") : "strict",
+    asking: false,
+    transcribing: null, // {skip()} while a prompt waits for the recording's transcript
+    closed: false,
+    pending: null, // {profile, question} of a prompt copied for the visitor's own agent
   };
 
   $app.innerHTML = `<div class="session design-session">
     <div class="session-bar">
       <a href="#/design" class="ghost" title="Back to questions" style="color:var(--text-dim)">←</a>
       <span class="title">${esc(session.question.title)}</span>
-      <span class="level-pills" data-pills></span>
       <span class="mode-badge">${session.mode}</span>
       <span class="spacer"></span>
-      <span class="pace" data-pace></span>
+      <span class="save-state" data-save-state></span>
+      <button class="rec-btn ${recordingSupported() ? "" : "hidden"}" data-rec title="Record sound only. It stays in this browser.">● Record</button>
       <span class="timer" data-timer>--:--</span>
       <button data-pause class="${session.mode === "pausable" ? "" : "hidden"}">Pause</button>
-      <button data-next class="primary"></button>
       <button data-end class="danger">End session</button>
     </div>
     <div class="workspace" data-workspace>
-      <section class="statement-pane" data-blur>
-        <div class="scroll">
-          <div class="prompt-card">
-            <span class="num">QUESTION ${session.question.number}</span>
-            <h2>${esc(session.question.title)}</h2>
-            <p>${esc(session.question.prompt)}</p>
+      <section class="statement-pane side-pane" data-blur>
+        <div class="prompt-card">
+          <span class="num">QUESTION ${session.question.number}</span>
+          <h2>${esc(session.question.title)}</h2>
+          <p>${esc(session.question.prompt)}</p>
+        </div>
+        <div class="ask-pane">
+          <h3 class="ask-title">AI interviewer</h3>
+          <div class="persona-pick" role="radiogroup" aria-label="Interviewer">
+            ${Object.entries(PERSONAS).map(([k, p]) => `<button class="persona" role="radio" data-persona="${k}">
+              <strong>${p.name}</strong><span>${p.blurb}</span></button>`).join("")}
           </div>
-          <ol class="step-list" data-steps></ol>
+          <ol class="hint-log" data-log></ol>
+          <div class="ask-form">
+            <textarea data-ask rows="2" placeholder="Ask a question, or leave it blank for a hint (Ctrl+Enter)"></textarea>
+            <div class="ask-actions">
+              <button class="primary" data-send>Ask</button>
+              <span class="ask-status" data-ask-status></span>
+              <button class="ghost small hidden" data-skip title="Go on without the transcript">Skip</button>
+              <button class="ghost small" data-ai-settings>AI settings</button>
+            </div>
+            <div class="paste-back hidden" data-paste>
+              <textarea data-reply rows="3" placeholder="Paste your AI agent's reply"></textarea>
+              <div class="ask-actions"><button class="primary small" data-save-reply>Add reply</button>
+                <button class="ghost small" data-cancel-paste>Cancel</button></div>
+            </div>
+            <p class="faint ask-mode" data-ask-mode></p>
+          </div>
         </div>
       </section>
       <div class="gutter" data-gutter-x></div>
-      <section class="notes-pane" data-blur>
-        <div class="editor-toolbar">
-          <div class="file-tabs" data-tabs></div>
-          <span class="save-state" data-save-state></span>
-        </div>
-        <div class="notes-body">
-          <div class="editor-host" data-editor-host></div>
-          <div class="diagram-host hidden" data-diagram-host></div>
-        </div>
-      </section>
+      <section class="board-pane" data-blur><div class="board-host" data-board-host></div></section>
     </div>
   </div>`;
   const q = (sel) => $app.querySelector(sel);
   const workspace = q("[data-workspace]");
 
-  // ----- editors: one plain-text model per step, plus the diagram
-  const models = Object.fromEntries(steps.map((x) => [String(x.step), monaco.editor.createModel(session.notes[x.step] ?? "", "plaintext")]));
-  const editor = monaco.editor.create(q("[data-editor-host]"), {
-    model: models[st.tab],
-    theme: "vs-dark",
-    fontSize: 14,
-    fontFamily: "'Cascadia Code', 'JetBrains Mono', Consolas, monospace",
-    wordWrap: "on",
-    lineNumbers: "off",
-    glyphMargin: false,
-    folding: false,
-    minimap: { enabled: false },
-    automaticLayout: true,
-    scrollBeyondLastLine: false,
-    renderLineHighlight: "none",
-    padding: { top: 12 },
-    tabSize: 2,
-    fixedOverflowWidgets: true,
-    // While readOnly is set, also mark the hidden textarea readonly so mobile keeps its keyboard closed.
-    domReadOnly: true,
-  });
+  // ----- the whiteboard
   const markDirty = () => { st.dirty = true; renderSaveState(); };
-  const subs = Object.values(models).map((m) => m.onDidChangeContent(markDirty));
-  const diagram = createDiagramEditor(q("[data-diagram-host]"), session.diagram, { onChange: markDirty });
-  editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => save());
-
-  const work = () => ({
-    notes: Object.fromEntries(Object.entries(models).map(([k, m]) => [k, m.getValue()])),
-    diagram: diagram.getModel(),
-  });
+  const board = createWhiteboard(q("[data-board-host]"), session.board, { onChange: markDirty });
+  const work = () => ({ board: board.getModel() });
 
   // ----- saving
   function renderSaveState() {
@@ -223,7 +329,7 @@ export async function renderDesignSession(sessionId) {
     if (!st.dirty || st.timer.paused) return;
     st.dirty = false;
     try {
-      const res = await api("PUT", `/api/design/sessions/${sessionId}/notes`, work());
+      const res = await api("PUT", `/api/design/sessions/${sessionId}/board`, work());
       st.lastSaved = Date.now();
       if (res?.timer) syncTimer(res.timer);
     } catch (err) {
@@ -233,8 +339,45 @@ export async function renderDesignSession(sessionId) {
     renderSaveState();
   }
   const autosave = setInterval(save, 3000);
-  const beforeUnload = () => { save(); };
+  const beforeUnload = (e) => {
+    save();
+    if (recorder?.state() === "recording") { e.preventDefault(); e.returnValue = ""; }
+  };
   window.addEventListener("beforeunload", beforeUnload);
+
+  // ----- recording (sound only)
+  const recorder = recordingSupported()
+    ? createRecorder({ sessionId, elapsed: () => currentElapsed(), onChange: () => { renderRec(); transcriber?.recordingChanged(); } })
+    : null;
+  // Transcribes the recording while it's made, for the interviewer's prompts.
+  const transcriber = recorder && transcriptionSupported() ? createTranscriber({ sessionId, recorder }) : null;
+  function renderRec() {
+    const btn = q("[data-rec]");
+    if (!btn || !recorder) return;
+    const state = recorder.state();
+    btn.classList.toggle("on", state !== "inactive");
+    btn.classList.toggle("held", state === "paused");
+    btn.textContent = state === "inactive" ? "● Record" : `${state === "paused" ? "⏸" : "■"} ${fmtClock(recorder.seconds())}`;
+    btn.title = state === "inactive" ? "Record sound only. It stays in this browser." : "Stop recording";
+    btn.disabled = st.timer.paused && state === "inactive";
+  }
+  q("[data-rec]").onclick = async () => {
+    if (!recorder) return;
+    try {
+      if (recorder.state() === "inactive") {
+        if (st.timer.paused) return;
+        const speech = transcriber ? await chooseSpeech() : null;
+        if (transcriber && !speech) return;
+        if (st.timer.paused || recorder.state() !== "inactive") return; // paused while choosing
+        await recorder.start(speech ? { speech } : {});
+        toast("Recording sound. Stop it any time; it plays back in the review.", "good");
+      } else {
+        await recorder.stop();
+        toast("Recording saved in this browser.");
+      }
+    } catch (err) { toast(err.message, "bad"); }
+    renderRec();
+  };
 
   // ----- timer
   function syncTimer(t) { st.timer = { ...t, syncedAt: performance.now() }; renderTimer(); }
@@ -265,19 +408,7 @@ export async function renderDesignSession(sessionId) {
     const pauseBtn = q("[data-pause]");
     pauseBtn.textContent = st.timer.paused ? "Resume" : "Pause";
     pauseBtn.disabled = !st.timer.paused && remaining <= 0;
-    renderPace(elapsed);
-  }
-  // Time on the current step against its target, in the bar and in the step list.
-  function renderPace(elapsed) {
-    const step = steps.find((x) => x.step === st.s.current_step);
-    const spent = Math.max(0, elapsed - (st.s.step_starts[String(step.step)] ?? 0));
-    const over = spent > step.minutes * 60;
-    const text = `${fmtClock(spent)} / ${fmtClock(step.minutes * 60)}`;
-    const pace = q("[data-pace]");
-    pace.className = `pace${over ? " warn" : ""}`;
-    pace.textContent = `${step.title} · ${text}${over ? " over" : ""}`;
-    const clock = q("[data-step-clock]");
-    if (clock) { clock.textContent = text; clock.classList.toggle("warn", over); }
+    if (recorder && recorder.state() !== "inactive") renderRec();
   }
   const tick = setInterval(renderTimer, 250);
   const resync = setInterval(async () => {
@@ -287,100 +418,189 @@ export async function renderDesignSession(sessionId) {
   async function showTimeUp() {
     const choice = await modal({
       title: "⏰ Time's up",
-      body: `<p>A real interview ends here. You reached step ${st.s.current_step} of ${steps.length}.</p>
-        <p>Keep going and steps you start count as overtime.</p>`,
+      body: "<p>A real interview ends here. Keep going in overtime, or end and review.</p>",
       actions: [{ label: "Keep going (overtime)", value: "keep", kind: "ghost" }, { label: "End & review", value: "end", kind: "primary" }],
     });
     if (choice === "end") await endSession(false);
   }
 
-  // ----- steps (left pane, bar pills, the Next button)
-  function renderSteps() {
-    const cur = st.s.current_step;
-    const starts = st.s.step_starts;
-    let targetEnd = 0;
-    q("[data-steps]").innerHTML = steps.map((x) => {
-      targetEnd += x.minutes * 60;
-      const started = starts[String(x.step)];
-      const later = Object.entries(starts).filter(([k]) => Number(k) > x.step).map(([, v]) => v);
-      const state = x.step === cur ? "current" : x.step < cur ? "done" : "upcoming";
-      let meta = "";
-      if (state === "current") {
-        meta = `<div class="step-meta">On this step: <span class="mono" data-step-clock></span></div>`;
-      } else if (state === "done") {
-        meta = started == null ? '<div class="step-meta faint">Skipped</div>'
-          : `<div class="step-meta">✓ ${fmtClock(Math.min(...later) - started)} (target ${fmtClock(x.minutes * 60)})</div>`;
-      }
-      return `<li class="step-item ${state}" data-open="${x.step}">
-        <div class="step-head"><span class="step-num">${state === "done" ? "✓" : x.step}</span>
-          <strong>${esc(x.title)}</strong><span class="step-time">${x.minutes} min · by ${fmtClock(targetEnd)}</span></div>
-        <div class="step-output">${esc(x.output)}</div>
-        ${state === "current" ? `<div class="step-guide">${esc(x.guide)}</div>` : ""}
-        ${meta}
-      </li>`;
-    }).join("");
-    q("[data-steps]").querySelectorAll("[data-open]").forEach((li) => {
-      li.onclick = () => switchTab(li.dataset.open);
+  // ----- the interviewer
+  const askBox = q("[data-ask]");
+  const replyBox = q("[data-reply]");
+  let notes = null; // the question's interviewer notes, fetched for the first API hint
+  const status = (text, bad = false) => {
+    const el = q("[data-ask-status]");
+    el.textContent = text;
+    el.classList.toggle("fail", bad);
+  };
+  function renderAsk() {
+    const { key } = aiSettings();
+    const paused = st.timer.paused;
+    $app.querySelectorAll("[data-persona]").forEach((b) => {
+      b.classList.toggle("on", b.dataset.persona === st.persona);
+      b.setAttribute("aria-checked", String(b.dataset.persona === st.persona));
     });
-    q("[data-pills]").innerHTML = steps.map((x) => {
-      const cls = x.step < cur ? "done" : x.step === cur ? "current" : "";
-      return `<span class="level-pill ${cls}" title="${esc(x.title)}">${esc(x.short)}</span>`;
-    }).join("");
-    const next = steps.find((x) => x.step === cur + 1);
-    const nextBtn = q("[data-next]");
-    nextBtn.classList.toggle("hidden", !next);
-    if (next) {
-      nextBtn.textContent = `Next: ${next.title} →`;
-      nextBtn.title = `Start step ${next.step} (${next.minutes} min). You can still edit earlier notes.`;
-    }
-    q("[data-end]").className = cur === last ? "primary" : "danger";
-    renderTabs();
-    renderPace(currentElapsed());
+    const send = q("[data-send]");
+    send.textContent = st.asking ? "Asking…" : st.transcribing ? "Transcribing…" : key ? "Ask" : "Copy prompt";
+    send.disabled = Boolean(st.asking || st.transcribing || paused);
+    askBox.disabled = paused;
+    q("[data-skip]").classList.toggle("hidden", !st.transcribing);
+    q("[data-ask-mode]").textContent = key
+      ? `${aiStatus()}. Requests include a transcript of any recording.`
+      : "No API key: Copy prompt puts the request, with a transcript of any recording, on your clipboard for any AI agent. Paste its reply back here.";
+  }
+  function renderLog() {
+    const log = q("[data-log]");
+    log.innerHTML = st.s.asked.length
+      ? st.s.asked.map(hintEntryHtml).join("")
+      : `<li class="hint-empty faint">Pick an interviewer and ask. A blank question asks for a hint on where you are.</li>`;
+    log.scrollTop = log.scrollHeight;
+  }
+  const context = () => ({
+    question: st.s.question,
+    elapsed: currentElapsed(),
+    limit: st.timer.limit,
+    board: board.getModel(),
+    hints: st.s.asked,
+  });
+  async function logHint(hint) {
+    const res = await api("POST", `/api/design/sessions/${sessionId}/hints`, hint);
+    st.s.asked = res.asked;
+    renderLog();
+    renderAsk();
   }
 
-  function renderTabs() {
-    const tabs = steps.map((x) => {
-      const cur = x.step === st.s.current_step ? ' <span class="cur-dot" title="Current step"></span>' : "";
-      return `<button class="file-tab ${st.tab === String(x.step) ? "active" : ""}" data-tab="${x.step}" title="${esc(x.output)}">${x.step}. ${esc(x.title)}${cur}</button>`;
-    });
-    tabs.push(`<button class="file-tab ${st.tab === "diagram" ? "active" : ""}" data-tab="diagram" title="Box-and-arrow diagram for the high-level design">◇ Diagram</button>`);
-    q("[data-tabs]").innerHTML = tabs.join("");
-    q("[data-tabs]").querySelectorAll("[data-tab]").forEach((b) => { b.onclick = () => switchTab(b.dataset.tab); });
-  }
-
-  function switchTab(tab) {
-    st.tab = tab;
-    const isDiagram = tab === "diagram";
-    q("[data-editor-host]").classList.toggle("hidden", isDiagram);
-    q("[data-diagram-host]").classList.toggle("hidden", !isDiagram);
-    if (!isDiagram) {
-      editor.setModel(models[tab]);
-      if (!st.timer.paused) editor.focus();
-    }
-    renderTabs();
-  }
-
-  async function nextStep() {
-    const step = st.s.current_step + 1;
-    if (step > last || st.timer.paused) return;
-    await save();
+  async function ask() {
+    if (st.asking || st.transcribing || st.timer.paused) return;
+    const settings = aiSettings();
+    const question = askBox.value.trim();
+    const persona = st.persona;
+    if (!settings.key) { await copyPrompt(persona, question); return; }
+    const said = await transcriptForPrompt();
+    if (st.closed) return;
+    st.asking = true;
+    status("Thinking…");
+    renderAsk();
     try {
-      const s = await api("POST", `/api/design/sessions/${sessionId}/step`, { step });
-      st.s.current_step = s.current_step;
-      st.s.step_starts = s.step_starts;
-      syncTimer(s.timer);
-      renderSteps();
-      switchTab(String(step));
-    } catch (err) { toast(err.message, "bad"); }
+      notes ??= await api("GET", `/api/design/sessions/${sessionId}/interviewer`);
+      const user = userPrompt({ ...context(), transcript: said.lines }, question);
+      const { text } = await askApi(settings, { system: systemPrompt(persona, notes), user });
+      await logHint({ profile: persona, question, answer: text, source: "api" });
+      askBox.value = "";
+      status("");
+    } catch (err) {
+      status(err.message, true);
+    } finally {
+      st.asking = false;
+      renderAsk();
+    }
   }
+
+  // The session's recordings as text for the interviewer's prompt, transcribed in this browser.
+  // {lines: [{at, text}] or null when the prompt goes without, note: for the status line}.
+  async function transcriptForPrompt() {
+    let clips = [];
+    try { clips = await listClips(sessionId); } catch { /* recordings unavailable: none to add */ }
+    if (!clips.length) return { lines: null, note: "" };
+    if (!transcriber) return { lines: null, note: " without a transcript (this browser can't make one)" };
+    const pct = (part, whole) => `${whole > 0 ? Math.min(100, Math.round((100 * part) / whole)) : 0}%`;
+    const progress = (p) => {
+      if (st.transcribing !== job) return; // skipped: it still finishes, saved for next time
+      status(p.phase === "load"
+        ? `Loading the speech model (${p.mb} MB the first time)… ${pct(p.loaded, p.total)}`
+        : `Transcribing your recording… ${pct(p.done, p.total)}`);
+    };
+    let skip;
+    const skipped = new Promise((resolve) => { skip = () => resolve("skip"); });
+    const job = { skip };
+    st.transcribing = job;
+    status("Transcribing your recording…");
+    renderAsk();
+    try {
+      const lines = await Promise.race([transcriber.transcript({ onProgress: progress }), skipped]);
+      if (lines === "skip") return { lines: null, note: " without the transcript" };
+      return { lines, note: lines?.length ? " with your recording's transcript" : " (nothing heard in your recording yet)" };
+    } catch (err) {
+      if (!st.closed) toast(err.message, "bad");
+      return { lines: null, note: " without the transcript" };
+    } finally {
+      st.transcribing = null;
+      if (!st.closed) renderAsk();
+    }
+  }
+
+  async function copyPrompt(persona, question) {
+    const said = await transcriptForPrompt();
+    if (st.closed) return;
+    const text = pastePrompt(persona, { ...context(), transcript: said.lines }, question);
+    let copied = true;
+    try { await navigator.clipboard.writeText(text); } catch { copied = false; }
+    if (!copied) {
+      // A long transcription can outlast the click's permission to write the clipboard: this
+      // button is a fresh click.
+      const shown = modal({
+        title: "Copy this prompt",
+        body: `<p>Paste it into your AI agent, then paste the reply back.</p>
+          <textarea class="prompt-copy" readonly rows="12">${esc(text)}</textarea>
+          <p style="margin-bottom:0"><button class="small" data-copy-prompt>Copy</button></p>`,
+        actions: [{ label: "Done", value: true, kind: "primary" }],
+      });
+      const dialog = [...document.querySelectorAll(".modal-backdrop")].pop();
+      dialog.querySelector("[data-copy-prompt]").onclick = async (e) => {
+        try {
+          await navigator.clipboard.writeText(text);
+          e.target.textContent = "Copied";
+        } catch {
+          const box = dialog.querySelector(".prompt-copy");
+          box.focus();
+          box.select();
+        }
+      };
+      await shown;
+    }
+    st.pending = { profile: persona, question };
+    q("[data-paste]").classList.remove("hidden");
+    replyBox.focus();
+    status(copied ? `Copied${said.note}. Paste it into your AI agent, then paste the reply below.` : "");
+  }
+  async function saveReply() {
+    const answer = replyBox.value.trim();
+    if (!answer || !st.pending) return;
+    try {
+      await logHint({ ...st.pending, answer, source: "pasted" });
+      replyBox.value = "";
+      askBox.value = "";
+      st.pending = null;
+      q("[data-paste]").classList.add("hidden");
+      status("");
+    } catch (err) { status(err.message, true); }
+  }
+
+  $app.querySelectorAll("[data-persona]").forEach((b) => {
+    b.onclick = () => { st.persona = b.dataset.persona; storage("swe-prac-design-persona", st.persona); renderAsk(); };
+  });
+  q("[data-send]").onclick = ask;
+  q("[data-skip]").onclick = () => st.transcribing?.skip();
+  askBox.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); ask(); }
+  });
+  q("[data-save-reply]").onclick = saveReply;
+  q("[data-cancel-paste]").onclick = () => { st.pending = null; replyBox.value = ""; q("[data-paste]").classList.add("hidden"); status(""); };
+  // Setting up the AI isn't interview time: a pausable session pauses first, so the Paused card
+  // sits behind the dialog, and stays paused after it closes. A strict session's clock runs on.
+  q("[data-ai-settings]").onclick = async () => {
+    if (session.mode === "pausable" && !st.timer.paused && currentElapsed() < st.timer.limit) await setPaused(true);
+    if (await openAiSettings()) { status(""); renderAsk(); }
+  };
 
   // ----- pausing
   function applyPaused() {
     const paused = st.timer.paused;
     $app.querySelectorAll("[data-blur]").forEach((el) => el.classList.toggle("blurred", paused));
-    editor.updateOptions({ readOnly: paused });
-    diagram.setReadOnly(paused);
-    q("[data-next]").disabled = paused;
+    board.setReadOnly(paused);
+    if (recorder) { if (paused) recorder.pause(); else recorder.resume(); }
+    renderRec();
+    renderAsk();
     let overlay = q("[data-overlay]");
     if (paused && !overlay) {
       overlay = document.createElement("div");
@@ -395,24 +615,26 @@ export async function renderDesignSession(sessionId) {
       overlay.remove();
     }
   }
-  async function togglePause() {
+  async function setPaused(paused) {
+    if (paused === Boolean(st.timer.paused)) return;
     try {
-      if (!st.timer.paused) await save();
-      syncTimer(await api("POST", `/api/design/sessions/${sessionId}/${st.timer.paused ? "resume" : "pause"}`));
+      if (paused) await save();
+      syncTimer(await api("POST", `/api/design/sessions/${sessionId}/${paused ? "pause" : "resume"}`));
       applyPaused();
     } catch (err) { toast(err.message, "bad"); }
   }
+  const togglePause = () => setPaused(!st.timer.paused);
 
-  async function endSession(ask = true) {
-    if (ask && !(await confirmEnd())) return;
+  async function endSession(askFirst = true) {
+    if (askFirst && !(await confirmEnd())) return;
     try {
+      await recorder?.stop();
       await api("POST", `/api/design/sessions/${sessionId}/end`, st.timer.paused ? undefined : work());
       st.dirty = false;
       location.hash = `#/design/review/${sessionId}`;
     } catch (err) { toast(err.message, "bad"); }
   }
 
-  q("[data-next]").onclick = nextStep;
   q("[data-pause]").onclick = togglePause;
   q("[data-end]").onclick = () => endSession(true);
   const keyHandler = (e) => {
@@ -421,19 +643,20 @@ export async function renderDesignSession(sessionId) {
   window.addEventListener("keydown", keyHandler);
   resizableSplit(workspace, q("[data-gutter-x]"));
 
-  renderSteps();
-  switchTab(st.tab);
+  renderLog();
   renderTimer();
   applyPaused();
+  if (!st.timer.paused) board.focus();
 
   return async () => {
+    st.closed = true;
+    transcriber?.stop();
     await save();
+    await recorder?.stop().catch(() => {});
     clearInterval(autosave); clearInterval(tick); clearInterval(resync);
     window.removeEventListener("beforeunload", beforeUnload);
     window.removeEventListener("keydown", keyHandler);
-    subs.forEach((s) => s.dispose());
-    editor.dispose();
-    Object.values(models).forEach((m) => m.dispose());
+    board.dispose();
   };
 }
 
@@ -452,12 +675,25 @@ function hintsHtml(hints) {
     ${groups ? `<div><strong>Foundations to review</strong> (the reference design links to them too)${groups}</div>` : ""}</div>`;
 }
 
-function notesHtml(steps, notes) {
-  return steps.map((x) => {
-    const text = (notes[x.step] ?? "").trim();
-    return `<div class="notes-block"><h4>${x.step}. ${esc(x.title)}</h4>
-      ${text ? `<pre>${esc(text)}</pre>` : '<p class="faint">(empty)</p>'}</div>`;
-  }).join("");
+// Sessions from before the whiteboard kept notes per step: [{title, text}].
+function notesHtml(notes) {
+  if (!notes?.length) return "";
+  return `<h3>Your notes</h3>${notes.map((n) => `<div class="notes-block"><h4>${esc(n.title)}</h4>
+    <pre>${esc(n.text)}</pre></div>`).join("")}`;
+}
+
+// The board at full size, over the page; click or Esc closes it.
+function showBoardFull(svg) {
+  const wrap = document.createElement("div");
+  wrap.className = "board-full";
+  wrap.tabIndex = -1;
+  wrap.innerHTML = `<div class="board-full-bar"><span>Your board</span><button class="small" data-close>Close</button></div>
+    <div class="board-full-body">${svg.replace('style="max-width:100%;height:auto"', "")}</div>`;
+  const close = () => wrap.remove();
+  wrap.querySelector("[data-close]").onclick = close;
+  wrap.addEventListener("keydown", (e) => { if (e.key === "Escape") close(); });
+  document.body.appendChild(wrap);
+  wrap.focus();
 }
 
 export async function renderDesignReview(sessionId) {
@@ -469,17 +705,8 @@ export async function renderDesignReview(sessionId) {
     throw err;
   }
   const r = data.results;
-  const pacingRows = r.steps.map((x) => {
-    const status = x.started_at == null ? '<span class="faint">not reached</span>'
-      : x.overtime ? '<span class="warn">overtime</span>'
-      : x.delta <= 0 ? '<span class="pass">on time</span>' : '<span class="warn">over</span>';
-    return `<tr><td>${x.step}. ${esc(x.title)}</td>
-      <td>${fmtClock(x.target)}</td>
-      <td>${x.started_at == null ? "—" : fmtClock(x.started_at)} <span class="faint">(${fmtClock(x.target_start)})</span></td>
-      <td>${x.spent == null ? "—" : fmtClock(x.spent)}</td>
-      <td>${fmtDelta(x.delta)}</td><td>${status}</td></tr>`;
-  }).join("");
-  const deep = r.steps.find((x) => x.title === "Deep dives");
+  const hints = data.asked;
+  const byPersona = Object.keys(PERSONAS).map((k) => [k, hints.filter((h) => h.profile === k).length]).filter(([, n]) => n);
 
   $app.innerHTML = `${topnav("")}<main class="page">
     <p class="faint" style="margin:0 0 4px"><a href="#/history">← History</a></p>
@@ -489,18 +716,16 @@ export async function renderDesignReview(sessionId) {
       <div class="stat"><div class="label">Time used</div>
         <div class="value">${fmtClock(Math.min(r.elapsed, r.time_limit))}</div>
         <div class="sub">${r.overtime_seconds > 0 ? `+ ${fmtClock(r.overtime_seconds)} overtime` : `of ${fmtClock(r.time_limit)}`}</div></div>
-      <div class="stat"><div class="label">Steps reached</div>
-        <div class="value">${r.steps_reached}/${r.steps.length}</div>
-        <div class="sub">${!deep ? "" : deep.started_at != null ? `Deep dives started at ${fmtClock(deep.started_at)}` : "Deep dives not reached"}</div></div>
       <div class="stat"><div class="label">Self-review</div>
         <div class="value" data-score>${scoreText(data.score)}</div>
         <div class="sub" data-score-sub></div></div>
+      <div class="stat"><div class="label">Hints asked</div>
+        <div class="value">${hints.length}</div>
+        <div class="sub">${byPersona.length ? byPersona.map(([k, n]) => `${n} ${PERSONAS[k].name.toLowerCase()}`).join(" · ") : "none"}</div></div>
       <div class="stat"><div class="label">Pauses</div>
         <div class="value">${r.pauses.count}</div>
         <div class="sub">${r.pauses.count ? `${fmtClock(r.pauses.total_seconds)} paused` : data.mode === "strict" ? "strict mode" : "none taken"}</div></div>
     </div>
-    <h2 class="section-title">Pacing</h2>
-    <table class="table"><tr><th>Step</th><th>Target</th><th>Started at (target)</th><th>Time on step</th><th>vs target</th><th></th></tr>${pacingRows}</table>
     <div class="review-tabs">
       <div class="tabs" data-review-tabs></div>
       <div class="review-panel" data-review-panel></div>
@@ -522,21 +747,67 @@ export async function renderDesignReview(sessionId) {
 
   const tabs = [
     ["assess", "Self-review"],
-    ["compare", "Your notes vs reference"],
-    ["diagram", "Your diagram"],
+    ["board", "Your board"],
+    ["hints", `Interviewer${hints.length ? ` <span class="badge">${hints.length}</span>` : ""}`],
+    ["recording", "Recording"],
     ["reference", "Reference design"],
   ];
   let current = "assess";
   const panel = $app.querySelector("[data-review-panel]");
+  const urls = []; // object URLs of the recordings shown, freed when the panel changes
+  const freeUrls = () => { while (urls.length) URL.revokeObjectURL(urls.pop()); };
+  const boardSvg = renderBoardSvg(data.board);
+  const fileSize = (bytes) => (bytes < 1048576 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 1048576).toFixed(1)} MB`);
+
+  async function showRecordings() {
+    let clips;
+    try { clips = await listClips(sessionId); } catch { clips = null; }
+    if (current !== "recording") return;
+    if (!clips) { panel.innerHTML = '<p class="dim">This browser can\'t open its saved recordings.</p>'; return; }
+    if (!clips.length) {
+      panel.innerHTML = '<p class="dim">No recording. Press ● Record during a session to capture sound only.</p>';
+      return;
+    }
+    const blobs = await Promise.all(clips.map((c) => clipBlob(c)));
+    if (current !== "recording") return;
+    const slug = data.question.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    panel.innerHTML = `<p class="dim" style="margin-top:0">Saved in this browser only, and not part of the history export. Download to keep a copy.</p>
+      <ul class="clips">${clips.map((c, i) => {
+        const url = URL.createObjectURL(blobs[i]);
+        urls.push(url);
+        const name = `${slug}-${fmtDate(data.started_at).replace(/[^\w]+/g, "-")}-${i + 1}.${clipExtension(c.mime)}`;
+        return `<li class="clip">
+          <div class="clip-meta"><strong>Recording ${i + 1}</strong> · started at ${fmtClock(c.started_at)} ·
+            ${fmtClock(c.duration)} long · ${fileSize(blobs[i].size)}</div>
+          <audio controls preload="metadata" src="${url}"></audio>
+          <div class="clip-actions"><a class="button-link" href="${url}" download="${esc(name)}">Download</a>
+            <button class="small danger" data-delete-clip="${esc(c.id)}">Delete</button></div>
+        </li>`;
+      }).join("")}</ul>`;
+    panel.querySelectorAll("[data-delete-clip]").forEach((b) => {
+      b.onclick = async () => {
+        const ok = await modal({
+          title: "Delete this recording?",
+          body: "<p>It's removed from this browser for good.</p>",
+          actions: [{ label: "Cancel", value: false, kind: "ghost" }, { label: "Delete", value: true, kind: "danger" }],
+        });
+        if (!ok) return;
+        await deleteClip(b.dataset.deleteClip);
+        freeUrls();
+        showRecordings();
+      };
+    });
+  }
 
   function show(key) {
     current = key;
+    freeUrls();
     $app.querySelector("[data-review-tabs]").innerHTML = tabs.map(([k, label]) =>
       `<button class="tab ${k === current ? "active" : ""}" data-k="${k}">${label}</button>`).join("");
     $app.querySelectorAll("[data-k]").forEach((b) => { b.onclick = () => show(b.dataset.k); });
     panel.className = "review-panel";
     if (key === "assess") {
-      panel.innerHTML = `<p class="dim" style="margin-top:0">Grade yourself: tick only what your notes and diagram show.
+      panel.innerHTML = `<p class="dim" style="margin-top:0">Grade yourself: tick only what your board shows.
         Ticks save as you go.</p>
         <div class="assess-grid">
           <section><h3>Key points for this question</h3>${checks(data.key_points, "key_points")}</section>
@@ -555,20 +826,27 @@ export async function renderDesignReview(sessionId) {
           } catch (err) { box.checked = !box.checked; toast(err.message, "bad"); }
         };
       });
-    } else if (key === "compare") {
-      panel.innerHTML = `<div class="compare">
-        <section><h3>Your notes</h3>${notesHtml(data.steps, data.notes)}</section>
-        <section class="md"><h3>Reference design</h3>${data.reference_html}</section></div>`;
-    } else if (key === "diagram") {
-      const svg = renderDiagramSvg(data.diagram);
-      panel.innerHTML = svg ? `<div class="diagram-view">${svg}</div>` : '<p class="dim">You didn\'t draw a diagram in this session.</p>';
+    } else if (key === "board") {
+      const notes = notesHtml(data.notes);
+      panel.innerHTML = boardSvg
+        ? `<div style="margin:0 0 8px"><button class="small" data-full>Full size</button></div>
+          <div class="board-view" data-full-view title="Open at full size">${boardSvg}</div>${notes}`
+        : notes || '<p class="dim">You didn\'t use the whiteboard in this session.</p>';
+      panel.querySelectorAll("[data-full], [data-full-view]").forEach((el) => { el.onclick = () => showBoardFull(boardSvg); });
+    } else if (key === "hints") {
+      panel.innerHTML = hints.length
+        ? `<ol class="hint-log review">${hints.map(hintEntryHtml).join("")}</ol>`
+        : '<p class="dim">You didn\'t ask the interviewer in this session.</p>';
+    } else if (key === "recording") {
+      panel.innerHTML = '<p class="dim">Loading…</p>';
+      showRecordings();
     } else {
       panel.className = "review-panel md";
       panel.innerHTML = hintsHtml(data.hints) + data.reference_html;
     }
   }
   show(current);
-  return undefined;
+  return async () => { current = null; freeUrls(); };
 }
 
 // ---------------------------------------------------------------- study page
@@ -618,11 +896,11 @@ export async function designHistoryTable() {
       <td>${fmtDate(s.started_at)}</td>
       <td>${esc(s.question_title)}</td>
       <td>${s.mode}</td>
-      <td>${s.status === "active" ? '<span class="chip">in progress</span>' : `${s.steps_reached}/${s.step_count}`}</td>
-      <td>${s.status === "active" ? "—" : scoreText(s.score)}</td>
+      <td>${s.status === "active" ? '<span class="chip">in progress</span>' : scoreText(s.score)}</td>
+      <td>${s.asked || "—"}</td>
       <td>${fmtClock(Math.min(s.elapsed, s.time_limit))}${over}</td>
       <td>${s.pauses.count ? `${s.pauses.count} (${fmtClock(s.pauses.total_seconds)})` : "—"}</td>
     </tr>`;
   }).join("");
-  return `<table class="table"><tr><th>Date</th><th>Question</th><th>Mode</th><th>Steps reached</th><th>Self-review</th><th>Time</th><th>Pauses</th></tr>${rows}</table>`;
+  return `<table class="table"><tr><th>Date</th><th>Question</th><th>Mode</th><th>Self-review</th><th>Hints</th><th>Time</th><th>Pauses</th></tr>${rows}</table>`;
 }

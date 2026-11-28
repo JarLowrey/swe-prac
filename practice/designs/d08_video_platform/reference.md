@@ -43,7 +43,7 @@ GET  /v1/videos/{id}/play
 - **Processing is [asynchronous](#/design/learn/networking/async-request-reply).** `complete` returns `202`, and `status` moves through `UPLOADING`, `UPLOADED`, `PROCESSING` and `READY` (or `FAILED`, with a reason). The uploader's app polls `GET /v1/videos/{id}` or hears through a notification.
 - **Checks before a byte is sent.** `POST /v1/videos` rejects a file over the size limit with `413` and a type that isn't video with `415`. The pipeline's validate step checks again, since a client can lie about both.
 - **Playback.** `/play` returns a [signed manifest URL](#/design/learn/building-blocks/serving-downloads) (HLS `.m3u8` or DASH `.mpd`) that expires in a few hours; the player then fetches segments from the CDN, never from this API. Segments never change once written, so they're served with `Cache-Control: public, max-age=31536000, immutable`. A video that isn't `READY` gets `409 not_ready`; a private video the viewer can't see gets `404`.
-- **Playback events.** The player sends a batch every 30 s or so (`POST /v1/playback-events` with position, bitrate and rebuffer time). They feed the view counter and the wrap-up's metrics, and go to a stream rather than the metadata database.
+- **Playback events.** The player sends a batch every 30 s or so (`POST /v1/playback-events` with position, bitrate and rebuffer time). They feed the view counter and the metrics under Done, and go to a stream rather than the metadata database.
 
 **Data model.** Only the `video` row lives in the metadata database. The bytes are objects in storage, named by the keys below: the raw parts in the upload bucket, and the manifests and segments in the delivery bucket. Segments never change once written, which is what lets the CDN cache them for a year.
 
@@ -77,7 +77,7 @@ erDiagram
   }
 ```
 
-**High-level design.** Three paths share the metadata database: uploads go straight to object storage, a queue drives processing, and the CDN serves playback.
+**Diagram.** Three paths share the metadata database: uploads go straight to object storage, a queue drives processing, and the CDN serves playback.
 
 ```mermaid
 flowchart TD
@@ -179,4 +179,4 @@ flowchart TD
   D2 -->|"fetch missing blocks"| BS
 ```
 
-**Wrap-up.** Metrics: upload success rate, time from upload to ready, time to first frame, rebuffer ratio, CDN hit ratio, cost per hour of video.
+**Done.** Metrics: upload success rate, time from upload to ready, time to first frame, rebuffer ratio, CDN hit ratio, cost per hour of video.

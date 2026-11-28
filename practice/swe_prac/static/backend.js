@@ -679,62 +679,50 @@ export function createBackend(deps) {
     };
   }
 
-  // Time spent on each step against its target, and the overall clock.
+  // The round is one block of time: the clock, overtime and pauses. (Sessions from before kept a
+  // step_starts map, which nothing reads any more.)
   function designResults(s) {
-    const starts = Object.entries(s.step_starts).map(([step, t]) => [Number(step), t]);
-    const spentTotal = elapsed(s);
-    const limit = s.time_limit;
-    let targetStart = 0;
-    const steps = bundle.design.steps.map(({ step, title, minutes }) => {
-      const start = s.step_starts[step] ?? null;
-      const later = starts.filter(([m]) => m > step).map(([, t]) => t);
-      const end = later.length ? Math.min(...later) : spentTotal;
-      const spent = start === null ? null : Math.max(0, end - start);
-      const row = {
-        step,
-        title,
-        target: minutes * 60,
-        target_start: targetStart,
-        started_at: start,
-        spent,
-        delta: spent === null ? null : spent - minutes * 60,
-        overtime: start !== null && start > limit,
-      };
-      targetStart += minutes * 60;
-      return row;
-    });
+    const spent = elapsed(s);
     return {
-      time_limit: limit,
-      elapsed: spentTotal,
-      overtime_seconds: Math.max(0, spentTotal - limit),
-      steps,
-      steps_reached: starts.length,
+      time_limit: s.time_limit,
+      elapsed: spent,
+      overtime_seconds: Math.max(0, spent - s.time_limit),
       pauses: pauseSummary(s.pauses),
     };
   }
 
-  // Merge notes for known steps and replace the diagram. Refused while paused or finished.
+  // Replace the whiteboard. Refused while paused or finished.
   function saveDesign(s, body) {
     requireEditable(s);
-    if (body?.notes != null) {
-      const known = new Set(bundle.design.steps.map((st) => String(st.step)));
-      for (const [k, v] of Object.entries(body.notes)) if (known.has(k)) s.notes[k] = v;
+    const board = body?.board;
+    if (board != null) {
+      if (typeof board !== "object" || Array.isArray(board)) throw new ApiError("board must be an object.", 400);
+      s.board = board;
     }
-    if (body?.diagram != null) s.diagram = body.diagram;
   }
 
-  // The session payload carries no hints, key points or reference design.
+  // Sessions from before the whiteboard kept per-step notes and a diagram; the diagram's model is
+  // a subset of the board's, so it opens as the board.
+  const boardOf = (s) => s.board ?? s.diagram ?? {};
+  const askedOf = (s) => s.asked ?? [];
+  // Those notes, for the review: [{title, text}] in step order, empty ones left out.
+  const notesOf = (s) => bundle.design.steps
+    .map(({ step, title }) => ({ title: `${step}. ${title}`, text: (s.notes?.[step] ?? "").trim() }))
+    .filter((n) => n.text);
+
+  const PERSONAS = ["strict", "helpful"];
+  const HINT_SOURCES = ["api", "pasted"];
+
+  // The session payload carries no hints, key points or reference design: the interviewer's notes
+  // come from their own route, for the AI request only.
   function designPayload(s) {
     return {
       id: s.id,
       question: designData(s.question_id).question,
       mode: s.mode,
       status: s.status,
-      current_step: s.current_step,
-      steps: bundle.design.steps,
-      step_starts: s.step_starts,
-      notes: s.notes,
-      diagram: s.diagram,
+      board: boardOf(s),
+      asked: askedOf(s),
       timer: timerState(s),
     };
   }
@@ -756,13 +744,12 @@ export function createBackend(deps) {
           best: best[question.id] ?? null,
         })),
         time_limit: bundle.design.time_limit,
-        steps: bundle.design.steps,
       };
     },
 
     framework() {
-      const { steps, checklist, time_limit: timeLimit, guide_html: guide, walkthrough_html: walkthrough } = bundle.design;
-      return { steps, checklist, time_limit: timeLimit, guide_html: guide, walkthrough_html: walkthrough };
+      const { checklist, time_limit: timeLimit, guide_html: guide, walkthrough_html: walkthrough } = bundle.design;
+      return { checklist, time_limit: timeLimit, guide_html: guide, walkthrough_html: walkthrough };
     },
 
     study(questionId, kind) {
@@ -788,7 +775,6 @@ export function createBackend(deps) {
           id: s.id,
           question: designData(s.question_id).question,
           mode: s.mode,
-          current_step: s.current_step,
           timer: timerState(s),
         },
       };
@@ -821,10 +807,8 @@ export function createBackend(deps) {
         time_limit: bundle.design.time_limit,
         paused_at: null,
         total_paused: 0,
-        current_step: 1,
-        step_starts: { 1: 0 }, // step 1 (requirements) starts with the clock
-        notes: Object.fromEntries(bundle.design.steps.map((st) => [String(st.step), st.starter ?? ""])),
-        diagram: {},
+        board: {},
+        asked: [], // hints from the AI interviewer: {at, profile, question, answer, source}
         assessment: null,
         finished_at: null,
         final_elapsed: null,
@@ -848,19 +832,6 @@ export function createBackend(deps) {
       return { ok: true, timer: timerState(s) };
     },
 
-    // Steps only go forward; skipping one is allowed.
-    step(id, body) {
-      const s = getDesignSession(id);
-      requireEditable(s);
-      const step = body?.step;
-      if (!Number.isInteger(step) || !(s.current_step < step && step <= bundle.design.steps.length)) {
-        throw new ApiError(`You're on step ${s.current_step}; you can only move forward.`, 400);
-      }
-      s.step_starts[step] = elapsed(s);
-      s.current_step = step;
-      return designPayload(s);
-    },
-
     pause(id) {
       const s = getDesignSession(id);
       pause(s);
@@ -871,6 +842,40 @@ export function createBackend(deps) {
       const s = getDesignSession(id);
       resume(s);
       return timerState(s);
+    },
+
+    // Log one answer from the AI interviewer, at the current time. Accepted while paused
+    // too, so a reply that arrives after a pause isn't lost; the page doesn't ask while paused.
+    hint(id, body) {
+      const s = getDesignSession(id);
+      if (s.status !== "active") throw new ApiError("This session has ended.");
+      const profile = body?.profile;
+      const question = body?.question ?? "";
+      const answer = body?.answer;
+      const source = body?.source ?? "api";
+      if (!PERSONAS.includes(profile)) throw new ApiError(`profile must be one of: ${PERSONAS.join(", ")}.`, 400);
+      if (!HINT_SOURCES.includes(source)) throw new ApiError(`source must be one of: ${HINT_SOURCES.join(", ")}.`, 400);
+      if (typeof question !== "string" || question.length > 2000) throw new ApiError("question must be text, up to 2,000 characters.", 400);
+      if (typeof answer !== "string" || !answer.trim() || answer.length > 4000) {
+        throw new ApiError("answer must be text, 1 to 4,000 characters.", 400);
+      }
+      const hint = { at: elapsed(s), profile, question: question.trim(), answer: answer.trim(), source };
+      s.asked = [...askedOf(s), hint];
+      return { hint, asked: s.asked };
+    },
+
+    // What the AI interviewer judges against, for the API request. Never shown on the page; only
+    // while the session runs (afterwards the review has all of it).
+    interviewer(id) {
+      const s = getDesignSession(id);
+      if (s.status !== "active") throw new ApiError("This session has ended; open its review instead.", 410);
+      const data = designData(s.question_id);
+      return {
+        hard_part: data.hints.hard_part,
+        building_blocks: data.hints.building_blocks,
+        key_points: data.key_points,
+        reference_md: data.reference_md ?? "",
+      };
     },
 
     end(id, body) {
@@ -895,9 +900,9 @@ export function createBackend(deps) {
         finished_at: s.finished_at,
         results: designResults(s),
         pauses: s.pauses,
-        steps: bundle.design.steps,
-        notes: s.notes,
-        diagram: s.diagram,
+        notes: notesOf(s),
+        board: boardOf(s),
+        asked: askedOf(s),
         checklist: bundle.design.checklist,
         key_points: data.key_points,
         assessment: s.assessment,
@@ -924,7 +929,6 @@ export function createBackend(deps) {
     },
 
     history() {
-      const stepCount = bundle.design.steps.length;
       return {
         sessions: [...designState().sessions].reverse().map((s) => {
           const data = bundle.design.questions.find((q) => q.question.id === s.question_id);
@@ -938,9 +942,8 @@ export function createBackend(deps) {
             started_at: s.started_at,
             elapsed: res.elapsed,
             time_limit: res.time_limit,
-            steps_reached: res.steps_reached,
-            step_count: stepCount,
             pauses: res.pauses,
+            asked: askedOf(s).length,
             score: data ? designScore(s, designSizes(data)) : null,
           };
         }),
@@ -1400,8 +1403,9 @@ export function createBackend(deps) {
     ["POST", /^\/api\/design\/sessions$/, D.start],
     ["GET", /^\/api\/design\/sessions\/(\d+)$/, D.session],
     ["GET", /^\/api\/design\/sessions\/(\d+)\/timer$/, D.timer],
-    ["PUT", /^\/api\/design\/sessions\/(\d+)\/notes$/, D.save],
-    ["POST", /^\/api\/design\/sessions\/(\d+)\/step$/, D.step],
+    ["PUT", /^\/api\/design\/sessions\/(\d+)\/board$/, D.save],
+    ["POST", /^\/api\/design\/sessions\/(\d+)\/hints$/, D.hint],
+    ["GET", /^\/api\/design\/sessions\/(\d+)\/interviewer$/, D.interviewer],
     ["POST", /^\/api\/design\/sessions\/(\d+)\/pause$/, D.pause],
     ["POST", /^\/api\/design\/sessions\/(\d+)\/resume$/, D.resume],
     ["POST", /^\/api\/design\/sessions\/(\d+)\/end$/, D.end],
@@ -1433,7 +1437,7 @@ export function createBackend(deps) {
   // Routes whose first captured group is a session id.
   const ID_ROUTES = new Set([
     E.session, E.timer, E.save, E.pause, E.resume, E.run, E.submit, E.scratch, E.lint, E.end, E.review,
-    D.session, D.timer, D.save, D.step, D.pause, D.resume, D.end, D.review, D.assess,
+    D.session, D.timer, D.save, D.pause, D.resume, D.hint, D.interviewer, D.end, D.review, D.assess,
     A.session, A.timer, A.save, A.pause, A.resume, A.run, A.submit, A.scratch, A.lint, A.end, A.review,
   ]);
 

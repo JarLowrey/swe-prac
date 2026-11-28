@@ -75,10 +75,13 @@ to edit them.
 ### System design
 
 The system design section practices the 45-minute design round. You get one deliberately vague
-prompt and work through seven timed steps: requirements, estimates, API, data model, high-level
-design, deep dives and wrap-up. Each step has its own notes tab, and a diagram tab lets you draw
-boxes and arrows. Nothing is auto-graded. Afterwards you compare your notes with a reference design
-and tick a self-review checklist, and that is your score.
+prompt and design it on one whiteboard of text, shapes, lines and arrows. The framework guide
+teaches seven steps to work through, READDDD: requirements, estimates, API, data model, diagram
+(high level), deep dives and done (wrap-up). An AI interviewer (Claude, Gemini or ChatGPT with
+your own key, or any AI agent by copy and paste), strict or helpful, gives hints when you ask, and
+you can record yourself talking it through (sound only). Nothing is auto-graded. Afterwards you
+compare your board with a reference design and tick a self-review checklist, and that is your
+score.
 
 It comes with ten questions. Each has hints, key points to check yourself against and a reference
 design:
@@ -144,8 +147,9 @@ section in `site/jobs/`. `--port 9000` and `--no-browser` change how it serves; 
 it only builds `site/` (gitignored). `tools\build_static.py --serve`, run in this folder, builds
 and serves this section alone, in `practice/site/` (its "Job search" link has nothing to go to
 there). The first build downloads the runtimes your code runs with in the browser, Pyodide
-(Python), ruff, javac with TeaVM (Java) and clang (C++), from the npm registry at pinned
-versions, checks them against their published hashes and keeps them in `practice/.cache/` for
+(Python), ruff, javac with TeaVM (Java) and clang (C++), plus Transformers.js and ONNX Runtime
+Web, which transcribe design recordings. They come from the npm registry at pinned versions;
+the build checks them against their published hashes and keeps them in `practice/.cache/` for
 later builds, with the precompiled headers (about half a minute to make). The local server only hands the
 files to the browser and listens on 127.0.0.1. Any static file server would do, but opening
 `site/index.html` as a file won't work: browsers don't run its modules and workers from a
@@ -221,15 +225,15 @@ Diagrams like this hash ring are drawn from a few lines of markdown.
 
 ![System design foundations page on consistent hashing](docs/screenshots/foundations.png)
 
-**System design session:** the steps on the left with a clock for each, and your notes and diagram
-on the right. Here you're 21 minutes in, drawing the high-level design.
+**System design session:** the question and the interviewer on the left, the whiteboard on the
+right. Here you're 21 minutes in, drawing the diagram, with two hints asked so far.
 
-![System design session on the diagram tab](docs/screenshots/design-session.png)
+![System design session with the whiteboard and the AI interviewer](docs/screenshots/design-session.png)
 
-**System design review:** time on each step against its target, then the self-review, your notes
-beside the reference design, and your diagram.
+**System design review:** time used, score, hints and pauses, then tabs for the self-review, your
+board, the interviewer's hints, your recording and the reference design.
 
-![System design review with pacing and self-review score](docs/screenshots/design-review.png)
+![System design review with the self-review score](docs/screenshots/design-review.png)
 
 **Tech investigation:** the React page, at the section on queries. Each file of the project is
 shown under its path, with the explanation around it.
@@ -349,22 +353,52 @@ they stay locked while a session on that problem is running.
 - **Pick a question** or a random one, then the timer mode. Strict and pausable work as for coding,
   with a 45-minute clock. A design session can run alongside a coding session; only one of each
   can be active.
-- **Seven steps, each with a target:** requirements 5 min, estimates 3, API 5, data model 5,
-  high-level design 10, deep dives 15, wrap-up 2. The current step shows its guide and a clock
-  against its target. **Next** moves on, and steps only go forward. You can still open any step's
-  notes tab, for example to fill a gap you noticed later.
-- **Notes:** each step has a tab that starts with a short template (for example functional,
-  non-functional and out of scope for requirements). Notes save every few seconds.
-- **Diagram:** add clients, services, databases, queues and notes. Drag a shape to move it, drag
-  its dot onto another shape to draw an arrow, double-click to label, and press Delete to remove.
+- **One clock, no steps.** The round isn't split up on screen. The framework guide's seven steps
+  (READDDD: Requirements 5 min, Estimates 3, API 5, Data model 5, Diagram 10, Deep dives 15,
+  Done 2) are the pace to aim for.
+- **Whiteboard:** one board for the whole round, with six tools: text, box, circle, diamond, line
+  and arrow. Double-click empty space to type, or add a shape and type inside it; Enter starts a
+  new line, Esc finishes, and a `# ` line is a heading. **Line** and **Arrow** (or L and A) draw
+  from one item to another, so they connect shapes and text; an end dropped on empty space stays
+  where it is. Drag a selected line's end dot to reconnect it. A line can be switched to one-way,
+  two-way or plain, dashed, and labeled. Anything placed entirely inside a shape moves with it,
+  and double-clicking inside a big box away from its label adds text there. Undo, copy and paste,
+  zoom and Fit work as usual. The board saves every few seconds.
+- **AI interviewer:** below the question, with two profiles. **Strict** answers yes or no and little
+  else; **Helpful** answers in about three sentences of background or a follow-up nudge. Ask a
+  question, or leave it blank for a hint on where you are. Each request carries the question, the
+  time used, the board as text, the hints so far and, if you record, a transcript of what you
+  said (see Record).
+  - With your own API key for **Claude**, **Gemini** or **ChatGPT** (AI settings), the page asks
+    that service's API directly: the Claude API, the Gemini API or the OpenAI API. Each service
+    has its own key and model; pick a suggested model or type any model ID. Keys stay in this
+    browser: for the tab only, or remembered if you tick the box. These requests also carry the
+    question's interviewer notes (key points and the reference design) so verdicts are grounded;
+    the interviewer is told never to reveal them. Opening AI settings pauses a pausable session,
+    which stays paused until you press Resume; a strict session's clock keeps running.
+  - With no key, **Copy prompt** puts the request on the clipboard, without the notes, for any AI
+    agent. Paste its reply back to log it.
+
+  Every hint is logged with its time, shown on the review and counted in history.
+- **Record:** captures sound only, for listening back to how you explained things. It pauses with
+  the session and stops when the session ends. Recordings stay in this browser (IndexedDB), are
+  not part of the history export, and can be played, downloaded or deleted on the review.
+  - Record first asks which speech model to use: **Small and fast** (41 MB, about twice as fast,
+    mishears more words) or **Large and accurate** (77 MB, better with technical terms). Your
+    last choice is preselected. While it records, the page transcribes it in the background with
+    that Whisper model (Transformers.js), in this browser: the audio is never uploaded. A model
+    downloads from Hugging Face the first time you use it. The transcript, with session times,
+    is saved with the recording, and every interviewer request carries it, so it goes to the AI
+    service you use. A request waits a few seconds while the last stretch is transcribed;
+    **Skip** sends it without the transcript.
 - **No spoilers while you work.** The hints, key points and reference design stay hidden until
   the session ends.
-- **At 0:00** you can keep going; steps you start after that are marked as overtime.
-- **End session** opens the review: time on each step against its target, then tabs for the
-  self-review, your notes next to the reference design, your diagram and the reference design.
-  The self-review has the question's key points and the framework checklist (ten items). Your
-  ticks save as you go and become the score shown in history. The reference design tab starts
-  with the hints and the foundations sections to review, grouped by page.
+- **At 0:00** you can keep going; the extra time shows as overtime.
+- **End session** opens the review: time used, score, hints and pauses, then tabs for the
+  self-review, your board, the interviewer's hints, the recording and the reference design. The
+  self-review has the question's key points and the framework checklist (ten items). Your ticks
+  save as you go and become the score shown in history. The reference design tab starts with the
+  hints and the foundations sections to review, grouped by page.
 
 Each question card also has **Hints** and **Reference design** buttons. As with coding, they ask
 you to confirm first on a question you haven't attempted, and they stay locked while a session on
@@ -469,7 +503,8 @@ algorithms/foundations/  the algorithms foundations pages (markdown)
 designs/<qid>/       system design questions: design.json (prompt, hints, key points) and
                      reference.md (SPOILER: the reference design)
 designs/foundations/ the system design foundations pages (markdown)
-designs/framework.*  the seven steps, the self-review checklist and the framework guide
+designs/framework.*  the framework guide (the seven steps) and the self-review checklist; the
+                     JSON's step titles only label old sessions' per-step notes
 tech/NN_slug.md      a tech investigation's page (markdown, with ```include blocks)
 tech/<slug>/         the project it walks through, named after the page's slug, e.g.
                      tech/react-swapi/ for 01_react_swapi.md (a Vite + React app; npm install

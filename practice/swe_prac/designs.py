@@ -1,9 +1,11 @@
 """System design questions from designs/<qid>/ and the shared 45-minute framework.
 
 Each question is designs/<qid>/design.json (prompt, hints, key points) plus reference.md (the
-worked design). designs/framework.json holds the seven steps and the self-review checklist;
-framework.md and walkthrough.md are the guide page. designs/foundations/ holds the study pages
-(see pages.py); a question's hints link to the sections it relies on.
+worked design). designs/framework.json holds the self-review checklist and the seven step
+titles, which only label the per-step notes of sessions saved before the whiteboard (the round
+itself isn't split into steps); framework.md and walkthrough.md are the guide page.
+designs/foundations/ holds the study pages (see pages.py); a question's hints link to the
+sections it relies on.
 """
 
 from __future__ import annotations
@@ -77,12 +79,16 @@ def get(question_id: str) -> Question:
     return _load(path)
 
 
+def reference_markdown(question: Question) -> str:
+    return (question.path / "reference.md").read_text(encoding="utf-8")
+
+
 def reference_html(question: Question) -> str:
-    return render_markdown((question.path / "reference.md").read_text(encoding="utf-8"))
+    return render_markdown(reference_markdown(question))
 
 
 def framework() -> dict:
-    """{"steps": [...], "checklist": [...]} from designs/framework.json."""
+    """{"steps": [{step, title}], "checklist": [...]} from designs/framework.json."""
     return json.loads((config.DESIGNS_DIR / "framework.json").read_text(encoding="utf-8"))
 
 
@@ -92,11 +98,6 @@ def steps() -> list[dict]:
 
 def checklist() -> list[str]:
     return framework()["checklist"]
-
-
-def starter_notes() -> dict[str, str]:
-    """Each step's notes start with its small template (headings to fill in)."""
-    return {str(s["step"]): s.get("starter", "") for s in steps()}
 
 
 def guide_html(name: str) -> str:

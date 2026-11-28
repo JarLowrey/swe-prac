@@ -11,7 +11,7 @@ version of these five. Your job is to give them clear evidence for each one.
 | Category | What they want to see | Evidence you can hand them |
 | --- | --- | --- |
 | Problem navigation | You turn a vague prompt into a clear, scoped problem. | A written list of requirements, scale numbers and what's out of scope. |
-| High-level design | You can lay out a working system end to end. | A diagram where every requirement maps to a component. |
+| Diagram (high-level design) | You can lay out a working system end to end. | A diagram where every requirement maps to a component. |
 | Technical depth | You know how the parts actually behave, not just their names. | Two or three deep dives with real mechanisms, numbers and failure modes. |
 | Trade-offs | You choose between options for reasons, not by habit. | "I picked X over Y because of Z; if Z changes, I'd switch." |
 | Communication | You lead the conversation and the interviewer can follow it. | Narrating your plan, checking in at each stage, writing things down. |
@@ -26,19 +26,20 @@ which parts to go deep on, and raise risks before the interviewer does.
 
 ## The 45-minute framework
 
-Use the same seven steps every time. The timings are for a 45-minute design slot; scale them if
-your interview is longer. Say each step out loud as you start it, so the interviewer always knows
-where you are.
+Use the same seven steps every time, in the order **READDDD**: Requirements, Estimates, API, Data
+model, Diagram, Deep dives, Done. The timings are for a 45-minute design slot; scale them if your
+interview is longer. Say each step out loud as you start it, so the interviewer always knows where
+you are.
 
 | Step | Time | Output on the board |
 | --- | --- | --- |
-| 1. Requirements | 5 min | Functional list, non-functional list, out of scope |
-| 2. Estimates | 3 min | Users, QPS, storage: only the numbers that change a decision |
-| 3. API | 5 min | 3–6 endpoints with inputs and outputs |
-| 4. Data model | 5 min | Main entities, keys, and which store holds them |
-| 5. High-level design | 10 min | Diagram covering every functional requirement |
-| 6. Deep dives | 15 min | 2–3 hardest parts, designed properly |
-| 7. Wrap-up | 2 min | Bottlenecks, failure modes, what you'd do next |
+| 1. **R**equirements | 5 min | Functional list, non-functional list, out of scope |
+| 2. **E**stimates | 3 min | Users, QPS, storage: only the numbers that change a decision |
+| 3. **A**PI | 5 min | 3–6 endpoints with inputs and outputs |
+| 4. **D**ata model | 5 min | Main entities, keys, and which store holds them |
+| 5. **D**iagram (high level) | 10 min | Diagram covering every functional requirement |
+| 6. **D**eep dives | 15 min | 2–3 hardest parts, designed properly |
+| 7. **D**one (wrap-up) | 2 min | Bottlenecks, failure modes, what you'd do next |
 
 ### 1. Requirements (5 minutes)
 
@@ -81,11 +82,11 @@ List the main entities, their keys, and the relationships between them. Then pic
 and give one reason: "Bookings go in a relational database because I need transactions to prevent
 double booking."
 
-### 5. High-level design (10 minutes)
+### 5. Diagram (10 minutes)
 
-Draw the simplest system that satisfies every functional requirement: clients, load balancer,
-services, databases, caches, queues. Then trace one request through it out loud. If a requirement
-has no box that serves it, you've found a gap.
+Draw the high-level design, the simplest system that satisfies every functional requirement:
+clients, load balancer, services, databases, caches, queues. Then trace one request through it out
+loud. If a requirement has no box that serves it, you've found a gap.
 
 Keep it simple on purpose. Scaling comes next, and it's easier to discuss when the base design is
 clear.
@@ -103,9 +104,9 @@ At senior level, propose the deep dives yourself: "The two hardest parts here ar
 bookings and keeping search fast. I'd like to start with double bookings." If the interviewer
 redirects you, follow them; they're telling you what they want to grade.
 
-### 7. Wrap-up (2 minutes)
+### 7. Done (2 minutes)
 
-Name the biggest remaining bottleneck, one or two failure modes and how you'd detect them, and what
+Wrap up: name the biggest remaining bottleneck, one or two failure modes and how you'd detect them, and what
 you'd build next. Ending on a clear summary leaves a strong last impression.
 
 ## What makes an answer senior

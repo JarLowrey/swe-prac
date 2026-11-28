@@ -34,7 +34,7 @@ LEVELS = (1, 2, 3, 4)
 ALGO_MINUTES = {"Easy": 20, "Medium": 30, "Hard": 40}
 ALGO_DIFFICULTIES = tuple(ALGO_MINUTES)
 
-# System design: one 45-minute slot, split by the seven framework steps in designs/framework.json.
+# System design: one 45-minute round on a single whiteboard.
 DESIGN_TIME_LIMIT_SECONDS = 45 * 60
 
 # Limits on a run. static/python.js applies the same ones in the browser.

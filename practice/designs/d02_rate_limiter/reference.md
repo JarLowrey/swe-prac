@@ -14,7 +14,7 @@ flowchart LR
 
 **Estimates.** 1M requests/s globally at peak, 50M active keys. Per-key state for a [token bucket](#/design/learn/building-blocks/token-bucket) is about 16 bytes (count + timestamp) plus key overhead, say 100 bytes: 50M × 100 B = 5 GB, which fits in one Redis shard's memory. Throughput is the constraint: 1M checks/s needs about 10–20 Redis shards at [roughly 100K ops/s each](#/design/learn/building-blocks/estimation-and-benchmarks).
 
-**API and behavior.** The limiter has three interfaces: the check the gateway runs on every request, the response a rejected client sees, and an admin API for the rules.
+**API.** The limiter has three interfaces: the check the gateway runs on every request, the response a rejected client sees, and an admin API for the rules.
 
 **The check** is a library call inside the gateway, not a separate service: a limiter service would add a second network hop to a 5 ms budget, on top of the Redis call.
 
@@ -85,7 +85,7 @@ erDiagram
   }
 ```
 
-**High-level design.**
+**Diagram.**
 
 1. Request hits the API gateway.
 2. The gateway extracts the key (API key, user ID, or IP) and loads the matching rule from a locally cached rules table (rules live in a config store, pushed to gateways).
@@ -141,4 +141,4 @@ flowchart TD
   L -.->|"counts, drift, top keys"| M[Metrics]:::good
 ```
 
-**Wrap-up.** Observability: allowed/rejected counts per rule, Redis latency, local-vs-central drift, top rejected keys. Extensions: concurrency limits (in-flight requests), quotas with durable daily/monthly counters, and adaptive limits that tighten when the backend is stressed ([load shedding](#/design/learn/reliability/load-shedding)).
+**Done.** Observability: allowed/rejected counts per rule, Redis latency, local-vs-central drift, top rejected keys. Extensions: concurrency limits (in-flight requests), quotas with durable daily/monthly counters, and adaptive limits that tighten when the backend is stressed ([load shedding](#/design/learn/reliability/load-shedding)).

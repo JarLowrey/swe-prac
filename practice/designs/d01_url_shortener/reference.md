@@ -78,7 +78,7 @@ erDiagram
 
 Recommend the [range-allocation counter](#/design/learn/building-blocks/ticket-servers-and-id-ranges) with bit scrambling, or random codes with a conditional insert. Custom aliases use the same unique constraint and return `409` on conflict.
 
-**High-level design.** Client → load balancer → stateless redirect service → cache (Redis) → database. A separate write service handles creation, taking codes from ID ranges it leases.
+**Diagram.** Client → load balancer → stateless redirect service → cache (Redis) → database. A separate write service handles creation, taking codes from ID ranges it leases.
 
 ```mermaid
 flowchart TD
@@ -132,4 +132,4 @@ flowchart TD
   J[Expiry cleanup job]:::good --> DB
 ```
 
-**Failure modes and wrap-up.** Cache down: reads fall back to the database (add [load shedding](#/design/learn/reliability/load-shedding) and a [circuit breaker](#/design/learn/reliability/circuit-breakers)). Database shard down: replicas serve reads; writes for that range [fail over](#/design/learn/reliability/redundancy-and-failover). ID service down: servers hold ranges and keep issuing. Monitor redirect latency p99, error rate, cache hit rate and creation errors. If asked to scale 10x: more cache nodes and shards, and push hot links to the CDN.
+**Done.** Failure modes. Cache down: reads fall back to the database (add [load shedding](#/design/learn/reliability/load-shedding) and a [circuit breaker](#/design/learn/reliability/circuit-breakers)). Database shard down: replicas serve reads; writes for that range [fail over](#/design/learn/reliability/redundancy-and-failover). ID service down: servers hold ranges and keep issuing. Monitor redirect latency p99, error rate, cache hit rate and creation errors. If asked to scale 10x: more cache nodes and shards, and push hot links to the CDN.

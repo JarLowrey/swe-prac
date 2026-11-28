@@ -92,7 +92,7 @@ erDiagram
   }
 ```
 
-**High-level design (a pipeline of queues).**
+**Diagram.** A pipeline of queues.
 
 1. **Ingest API** validates, [dedupes on `dedupe_key`](#/design/learn/networking/idempotency-keys), persists, and publishes to a **[priority-partitioned queue](#/design/learn/building-blocks/message-queues-and-streams)** (separate topics for transactional vs marketing [so a campaign can't starve a password reset](#/design/learn/reliability/bulkheads)).
 2. **Orchestrator / routing workers** consume: look up the user's preferences and quiet hours, pick channels (fallback order, for example push, then SMS for critical), render the template in the user's locale, apply per-user frequency caps, and enqueue per-channel jobs. Large audiences are expanded here, in chunks, from a query or segment, not by the caller.
@@ -139,4 +139,4 @@ flowchart TD
   CW -->|"failed for good"| DLQ[[Dead-letter queue]]:::good
 ```
 
-**Wrap-up.** Extensions: in-app notification feed (stored per user, read/unread state, real-time push over the chat-style WebSocket), A/B testing of content, digest batching (combine ten notifications into one summary), and analytics on opens and conversions.
+**Done.** Extensions: in-app notification feed (stored per user, read/unread state, real-time push over the chat-style WebSocket), A/B testing of content, digest batching (combine ten notifications into one summary), and analytics on opens and conversions.

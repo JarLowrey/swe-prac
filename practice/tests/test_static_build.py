@@ -61,7 +61,9 @@ class StaticBuildTests(EnvCase):
 
     def test_bundle_has_the_system_design_section(self):
         design = self.data()["design"]
-        self.assertEqual([s["step"] for s in design["steps"]], [1, 2, 3])
+        # Step titles only label old sessions' per-step notes.
+        titles = [s["title"] for s in design["steps"]]
+        self.assertEqual(titles, ["Requirements", "Diagram", "Done"])
         self.assertEqual(len(design["checklist"]), 3)
         self.assertEqual(design["time_limit"], 45 * 60)
         self.assertIn("test fixture", design["guide_html"])
@@ -70,8 +72,30 @@ class StaticBuildTests(EnvCase):
         self.assertEqual(item["hints"]["hard_part"], "Read-heavy traffic")
         self.assertEqual(len(item["key_points"]), 2)
         self.assertIn("Cache hot pastes", item["reference_html"])
-        self.assertTrue((self.out / "design.js").exists())
-        self.assertTrue((self.out / "diagram.js").exists())
+        self.assertIn("Cache hot pastes", item["reference_md"])  # the AI interviewer's notes
+        self.assertNotIn("<p>", item["reference_md"])  # markdown, not HTML
+        scripts = ("design.js", "whiteboard.js", "board-model.js", "interviewer.js", "recorder.js")
+        for name in (*scripts, "transcribe.js", "asr-worker.js", "pcm-tap.js"):
+            self.assertTrue((self.out / name).exists(), name)
+        self.assertTrue((self.out / "vendor" / "anthropic" / "anthropic-sdk.mjs").exists())
+
+    def test_the_speech_runtime_is_the_one_transformers_js_was_built_with(self):
+        """asr-worker.js loads ONNX Runtime's WebAssembly from vendor/onnxruntime/; it has to be
+        the version bundled into transformers.min.js (its package.json pins it exactly)."""
+        worker = (config.STATIC_DIR / "asr-worker.js").read_text(encoding="utf-8")
+        self.assertIn("./vendor/transformers/transformers.min.js", worker)
+        self.assertIn("./vendor/onnxruntime/ort-wasm-simd-threaded.", worker)
+        tjs, ort = build_static.RUNTIMES["transformers"], build_static.RUNTIMES["onnxruntime"]
+        self.assertIn("dist/transformers.min.js", tjs["files"])
+        self.assertEqual(
+            sorted(ort["files"].values()),
+            ["ort-wasm-simd-threaded.mjs", "ort-wasm-simd-threaded.wasm"],
+        )
+        if not (build_static.CACHE_DIR / f"transformers-{tjs['version']}.tgz").exists():
+            self.skipTest("Transformers.js isn't downloaded yet: run the build first")
+        with tarfile.open(fileobj=io.BytesIO(build_static._tarball(tjs)), mode="r:gz") as tar:
+            package = json.load(tar.extractfile("package/package.json"))
+        self.assertEqual(package["dependencies"]["onnxruntime-web"], ort["version"])
 
     def test_bundle_has_the_algorithms_track(self):
         algo = self.data()["algo"]

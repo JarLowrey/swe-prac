@@ -18,7 +18,7 @@ flowchart LR
 
 **Estimates.** 500M DAU, 40 messages sent per user per day = 20B messages/day ≈ 230,000/s average, 500,000+/s peak. At ~200 bytes per message, 4 TB/day, about 1.5 PB/year (4.5 PB with three replicas), so storage is large and must be partitioned. Concurrent connections: say 100M open sockets; at [~100K connections per gateway server](#/design/learn/building-blocks/estimation-and-benchmarks), that's 1,000+ gateway servers.
 
-**API and protocol.** Use a persistent **[WebSocket](#/design/learn/networking/websockets)** per device for everything real-time, in both directions: sending, delivery, receipts, typing and presence. Use plain HTTPS for everything else: the conversation list, history, media upload and login. Fall back to [long polling](#/design/learn/networking/long-polling) where WebSockets are blocked; push notifications (APNs/FCM) reach devices with no open socket.
+**API.** Use a persistent **[WebSocket](#/design/learn/networking/websockets)** per device for everything real-time, in both directions: sending, delivery, receipts, typing and presence. Use plain HTTPS for everything else: the conversation list, history, media upload and login. Fall back to [long polling](#/design/learn/networking/long-polling) where WebSockets are blocked; push notifications (APNs/FCM) reach devices with no open socket.
 
 The client opens `wss://chat.example/v1/connect` with its access token. A bad token gets `401` before the upgrade. A token that expires mid-session gets an `error` frame and a close with an application close code (4000–4999), and the client reconnects with a fresh token.
 
@@ -94,7 +94,7 @@ erDiagram
   }
 ```
 
-**High-level design.**
+**Diagram.**
 
 1. Client opens a WebSocket to a **chat gateway**, which authenticates and registers `user_id → gateway_id` in a **presence/session store** (Redis) with a TTL [refreshed by heartbeats](#/design/learn/networking/heartbeats-presence-and-reconnects).
 2. The sender transmits a message to its gateway. The gateway forwards it to the **chat service**, which assigns an ordered ID and persists it (and acks the sender: "stored").
@@ -154,4 +154,4 @@ flowchart TD
   CS --> PN[[Push notifications]]
 ```
 
-**Wrap-up.** Metrics: end-to-end delivery latency, connection count and churn, undelivered backlog, reconnect rate. Mention end-to-end encryption: it removes server-side search and moderation and complicates multi-device sync, so it's a product decision.
+**Done.** Metrics: end-to-end delivery latency, connection count and churn, undelivered backlog, reconnect rate. Mention end-to-end encryption: it removes server-side search and moderation and complicates multi-device sync, so it's a product decision.

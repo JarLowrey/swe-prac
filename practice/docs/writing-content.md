@@ -281,7 +281,12 @@ question's hints and review to the foundations sections it needs, as `"page/sect
 They show up as "Foundations to review" in the hints box and on the review page. `reference.md`
 (the worked answer) can also link to foundations sections inline.
 
-`reference.md` draws the design as it grows. It needs at least one Mermaid diagram
+`reference.md` follows the framework's seven steps, READDDD. Each step opens a paragraph with its
+bold label, in this order: `**Requirements.**`, `**Estimates.**`, `**API.**`, `**Data model.**`,
+`**Diagram.**`, `**Deep dives.**` and `**Done.**`. Other bold labels (a sub-part of the API, a
+variant) can sit between them. `tests/test_designs.py` checks the labels and their order.
+
+It draws the design as it grows. It needs at least one Mermaid diagram
 (`tools/check_content.py` reports one without), and the ten questions follow this pattern:
 
 - **Requirements**: a map of the requirements paragraph, as a `flowchart LR` three columns wide.
@@ -296,15 +301,17 @@ They show up as "Foundations to review" in the hints box and on the review page.
   and keep comments to a few words, since a comment column widens the box. Label each
   relationship with what it means ("one row per night"). Where a question's data isn't a set of
   tables, draw the structure instead, as autocomplete's trie does.
-- **High-level design**: the first architecture, as a `flowchart TD` with no colours.
+- **Diagram**: the first architecture, as a `flowchart TD` with no colours.
 - The flow the question hinges on, as a `sequenceDiagram` or `stateDiagram-v2`: two requests
   racing, a retry after a timeout, a payment's states.
 - **The design after the deep dives**: the same architecture again, with every box the deep dives
   added or changed marked `:::good` (green), and the line "Green marks what they added or
   changed." above it.
 
-The review's compare tab shows the reference beside the user's notes, in a column about 500 px
-wide, and a wider diagram shrinks to fit. Keep a flowchart to about 12 nodes and at most four
+The reference shows on its own, on the review's Reference design tab and on the study page, in a
+column about 1,000 px wide, and a wider diagram shrinks to fit. The AI interviewer also reads
+`reference.md`, with the key points and hints, as its notes when the user asks through their own
+API key, so say things plainly enough to judge an answer against. Keep a flowchart to about 12 nodes and at most four
 side by side; prefer `TD` to a long `LR` chain. A sequence diagram gets 150 px per participant, so
 use three participants where you can, and break long messages and notes with `<br/>`.
 

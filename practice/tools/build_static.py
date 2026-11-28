@@ -10,8 +10,9 @@ loads Pyodide from this section's vendor/.
 The output is static files: the frontend (swe_prac/static/), data.json (every question, study
 page and review text, pre-rendered), each problem's tests, the test runner, and the WebAssembly
 runtimes the browser runs your code with: Pyodide (CPython) and ruff for Python, javac and TeaVM
-for Java, clang for C++. GitHub Pages publishes it as it is; locally, --serve hands the files to
-the browser (it runs nothing itself).
+for Java, clang for C++. Transformers.js and ONNX Runtime Web transcribe design recordings. GitHub
+Pages publishes it as it is; locally, --serve hands the files to the browser (it runs nothing
+itself).
 
 The runtimes come from npm at the versions pinned below, checked against their published
 SHA-512 and kept in .cache/ so later builds work offline. The C++ standard headers are
@@ -116,6 +117,34 @@ RUNTIMES = {
         "notice": "@yowasp/clang {version} (https://yowasp.org, ISC licensed): LLVM, clang and\n"
         "lld (Apache 2.0 with the LLVM Exception) compiled to WebAssembly, with the wasi-libc and\n"
         "libc++ of the wasm32-wasip1 target. lang-compile.js loads it to compile C++.\n",
+    },
+    # Speech to text for the design interviewer's paste prompt: Whisper, run in the browser.
+    "transformers": {
+        "package": "@huggingface/transformers",
+        "version": "4.3.2",
+        "integrity": "sha512-V3+dqf3iWlRYJ9I9GreM3zGQd0lAXnnoPeddmkOQYWAEE4l/+Fi6p7tx/qVUJlKQ"
+        "gLXGim2W76rTOzz+eC0i7g==",
+        # The self-contained build: it bundles ONNX Runtime Web's JavaScript.
+        "files": {"dist/transformers.min.js": "transformers.min.js", "LICENSE": "LICENSE"},
+        "notice": "Transformers.js {version} (https://github.com/huggingface/transformers.js),\n"
+        "Apache 2.0: see LICENSE. It bundles ONNX Runtime Web (MIT), @huggingface/jinja and\n"
+        "@huggingface/tokenizers (MIT). asr-worker.js loads it to transcribe recordings with\n"
+        "Whisper; the model downloads from the Hugging Face Hub on first use.\n",
+    },
+    # The WebAssembly build of ONNX Runtime that transformers.min.js was bundled with: the CPU
+    # one (WebGPU needs a 27 MB build), loaded from here instead of a CDN.
+    "onnxruntime": {
+        "package": "onnxruntime-web",
+        "version": "1.31.0-dev.20260914-8d85527a0",
+        "integrity": "sha512-Iy7rtadoBgxS/LLvDr3QW38DB1PNXRnr0GJMcL0TAt7c9qjgVQl83UlGCVyeAnK2"
+        "InpmW8Uc3PL8XIuqtDeF6g==",
+        "files": {
+            "dist/ort-wasm-simd-threaded.mjs": "ort-wasm-simd-threaded.mjs",
+            "dist/ort-wasm-simd-threaded.wasm": "ort-wasm-simd-threaded.wasm",
+        },
+        "notice": "ONNX Runtime Web {version} (https://github.com/microsoft/onnxruntime), MIT\n"
+        "licensed (https://github.com/microsoft/onnxruntime/blob/main/LICENSE). Transformers.js\n"
+        "runs Whisper on it, in asr-worker.js.\n",
     },
 }
 # The C++ standard headers, precompiled with the app's flags (see tools/build_cpp_pch.mjs).
@@ -246,9 +275,12 @@ def design_bundle() -> dict:
                 "hints": q.hints(),
                 "key_points": list(q.key_points),
                 "reference_html": designs.reference_html(q),
+                # The AI interviewer's notes (never shown during a session; see interviewer.js).
+                "reference_md": designs.reference_markdown(q),
             }
             for q in designs.list_questions()
         ],
+        # Step titles, for the per-step notes of sessions from before the whiteboard.
         "steps": framework.get("steps", []),
         "checklist": framework.get("checklist", []),
         "time_limit": config.DESIGN_TIME_LIMIT_SECONDS,
