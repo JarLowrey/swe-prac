@@ -50,7 +50,7 @@ export async function prepare(clientId) {
       if (!w) return;
       if (resp.error) return w.reject(new Error(resp.error_description || resp.error));
       if (!google.accounts.oauth2.hasGrantedAllScopes(resp, SCOPE)) {
-        return w.reject(new Error("Google didn't grant read access to Gmail. Connect again and leave “Read your email” ticked."));
+        return w.reject(new Error("Google didn't grant read access to Gmail. Connect again and tick “View your email messages and settings”."));
       }
       token = { access_token: resp.access_token, expires_at: Date.now() + Number(resp.expires_in || 3600) * 1000 };
       w.resolve(token.access_token);

@@ -2,7 +2,7 @@
 // nobody's mail passes through anyone else's app), the client ID box, the tracker's settings, and
 // your data in this browser (export, import, delete).
 
-import { prepare } from "./gmail.js";
+import { prepare, SCOPE } from "./gmail.js";
 import { clearAll, countMessages, exportAll, getKV, importAll, setKV } from "./store.js";
 import { bindCopy, copyBlock, esc, isoDay, mount, plural, toast, topnav } from "./ui.js";
 
@@ -32,26 +32,47 @@ export async function renderGmail(rescan) {
     <section class="panel">
       <h2>1. Google Cloud project</h2>
       <ol class="setup-steps">
-        <li>${link("https://console.cloud.google.com/projectcreate", "Create a project")} (free, any name).</li>
-        <li>${link("https://console.cloud.google.com/apis/library/gmail.googleapis.com", "Enable the Gmail API")}.</li>
+        <li>${link("https://console.cloud.google.com/projectcreate", "Create a project")}: any name, then <strong>Create</strong>.</li>
+        <li>Check that it's selected in the project picker at the top. The links below open the selected project.</li>
+        <li>${link("https://console.cloud.google.com/apis/library/gmail.googleapis.com", "Gmail API")} &gt; <strong>Enable</strong>.</li>
       </ol>
-      <h2>2. Sign-in client</h2>
+      <h2>2. Consent screen</h2>
       <ol class="setup-steps">
-        <li>${link("https://console.cloud.google.com/auth/overview", "Google Auth Platform")} &gt; Get started:
-          audience <strong>External</strong>, fill in the required fields.</li>
-        <li><strong>Audience &gt; Test users</strong>: add your Gmail address. Leave the app in Testing.</li>
-        <li><strong>Data Access</strong>: add the scope <code>https://www.googleapis.com/auth/gmail.readonly</code>.</li>
-        <li><strong>Clients &gt; Create client &gt; Web application</strong>, with this
-          <strong>Authorized JavaScript origin</strong>: ${copyBlock(origin)}</li>
+        <li>${link("https://console.cloud.google.com/auth/overview", "Google Auth Platform")} &gt; <strong>Get started</strong>.</li>
+        <li><strong>App information</strong>: any app name, your email as the support email. Next.</li>
+        <li><strong>Audience</strong>: External. Next.</li>
+        <li><strong>Contact information</strong>: your email. Next.</li>
+        <li><strong>Finish</strong>: agree to the policy, Continue, then <strong>Create</strong>.</li>
+        <li>${link("https://console.cloud.google.com/auth/audience", "Audience")} &gt; <strong>Test users</strong> &gt;
+          <strong>Add users</strong>: your Gmail address, then Save. Leave the app in Testing.</li>
+        <li>${link("https://console.cloud.google.com/auth/scopes", "Data Access")} &gt; <strong>Add or remove scopes</strong>.
+          Paste this under <strong>Manually add scopes</strong>: ${copyBlock(SCOPE)}
+          Add to table, Update, then <strong>Save</strong> at the bottom of the page.</li>
       </ol>
-      <h2>3. Client ID</h2>
+      <h2>3. Sign-in client</h2>
+      <ol class="setup-steps">
+        <li>${link("https://console.cloud.google.com/auth/clients/create", "Create client")}: application type
+          <strong>Web application</strong>, any name.</li>
+        <li><strong>Authorized JavaScript origins</strong> &gt; Add URI: ${copyBlock(origin)} Leave redirect URIs empty.</li>
+        <li><strong>Create</strong>, then copy the <strong>Client ID</strong> from the dialog. It's also listed under
+          ${link("https://console.cloud.google.com/auth/clients", "Clients")}.</li>
+      </ol>
+      <h2>4. Client ID</h2>
       <div class="inline-form">
         <input id="client-id" type="text" spellcheck="false" placeholder="1234567890-abc123.apps.googleusercontent.com" value="${esc(s.clientId)}" aria-label="Client ID">
         <button class="primary" data-save-client>Save</button>
         <span id="client-state" class="dim small">${s.clientId ? "Saved. Connect from the Tracker." : ""}</span>
       </div>
-      <p class="dim small">Google will call the app unverified: it's yours, so choose Continue. Access is read-only and
-        lasts 7 days. ${link("https://myaccount.google.com/connections", "Revoke it any time")}.</p>
+      <p class="dim small">A new client can take a few minutes, sometimes hours, to start working. If Google shows an
+        origin error, wait and try again.</p>
+      <h2>5. Connect</h2>
+      <ol class="setup-steps">
+        <li>On the <a href="#/">Tracker</a>, choose <strong>Connect Gmail and sync</strong>.</li>
+        <li>Pick your account. Google says the app is unverified: it's yours, so choose <strong>Continue</strong>.</li>
+        <li>Tick <strong>View your email messages and settings</strong>, then Continue.</li>
+      </ol>
+      <p class="dim small">Access is read-only and lasts 7 days, then you connect again.
+        ${link("https://myaccount.google.com/connections", "Revoke it any time")}.</p>
     </section>
 
     <section class="panel">
