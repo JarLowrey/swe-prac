@@ -383,14 +383,17 @@ they stay locked while a session on that problem is running.
 - **Record:** captures sound only, for listening back to how you explained things. It pauses with
   the session and stops when the session ends. Recordings stay in this browser (IndexedDB), are
   not part of the history export, and can be played, downloaded or deleted on the review.
-  - Record first asks which speech model to use: **Small and fast** (41 MB, about twice as fast,
-    mishears more words) or **Large and accurate** (77 MB, better with technical terms). Your
-    last choice is preselected. While it records, the page transcribes it in the background with
-    that Whisper model (Transformers.js), in this browser: the audio is never uploaded. A model
-    downloads from Hugging Face the first time you use it. The transcript, with session times,
-    is saved with the recording, and every interviewer request carries it, so it goes to the AI
-    service you use. A request waits a few seconds while the last stretch is transcribed;
-    **Skip** sends it without the transcript.
+  - Record first asks which speech model to use: **Small and fast** (Whisper tiny.en, 39M
+    parameters, 44 MB, about twice as fast, mishears more words) or **Large and accurate**
+    (Whisper base.en, 74M parameters, 80 MB, better with technical terms). Your last choice is
+    preselected, and a model already in this browser says so. The model starts loading as soon
+    as you pick it, with its progress beside Record. It downloads from Hugging Face the first
+    time only: the browser keeps it (Cache Storage), so after that it loads with no network,
+    offline too. While it records, the page transcribes it in the background with that Whisper
+    model (Transformers.js), in this browser: the audio is never uploaded. The transcript, with
+    session times, is saved with the recording, and every interviewer request carries it, so it
+    goes to the AI service you use. A request waits a few seconds while the last stretch is
+    transcribed; **Skip** sends it without the transcript.
 - **No spoilers while you work.** The hints, key points and reference design stay hidden until
   the session ends.
 - **At 0:00** you can keep going; the extra time shows as overtime.

@@ -3,31 +3,51 @@
 // audio is never uploaded. The model downloads from the Hugging Face Hub once, and the browser
 // keeps it.
 //
-// It runs in the background while recording. Whisper hears at most 30 s at a time, so the audio
-// goes to it in pieces, each cut at a quiet moment so that no word is split, and each finished
-// piece is saved beside the recording (recorder.js). While recording, the pieces are short and
-// done every few seconds, so when the candidate asks for a hint only the last few seconds are left
-// to transcribe. The background works from the recorder's live samples; a recording left
-// unfinished by a reload is decoded from its saved file.
+// The model loads when Record is pressed, and the recording is transcribed in the background as
+// it's made. Whisper hears at most 30 s at a time, so the audio goes to it in pieces, each cut at
+// a quiet moment so that no word is split, and each finished piece is saved beside the recording
+// (recorder.js). While recording, the pieces are short and done every few seconds, so when the
+// candidate asks for a hint only the last few seconds are left to transcribe. The background
+// works from the recorder's live samples; a recording left unfinished by a reload is decoded
+// from its saved file.
 //
 // No DOM at import time: tests/js/ imports pieces, cleanText and transcriptLines in Node.
 
 import { clipBlob, getTranscript, listClips, putTranscript } from "./recorder.js";
 
 // The speech models to pick from when recording starts: English-only Whisper, its 8-bit
-// weights, each pinned to a revision of its model repo. A recording keeps the one it was started
+// weights, each pinned to a revision of its model repo. params: millions of parameters; mb: the
+// whole download (weights, tokenizer and config) in MB. A recording keeps the one it was started
 // with (its clip's `speech`), and its saved transcript says which made it.
 export const MODELS = {
   fast: {
-    name: "Small and fast", id: "onnx-community/whisper-tiny.en",
-    revision: "794207fec2761281fe63a23a94b7e9f53a4efbc1", mb: 41,
+    name: "Small and fast", label: "Whisper tiny.en", id: "onnx-community/whisper-tiny.en",
+    revision: "794207fec2761281fe63a23a94b7e9f53a4efbc1", params: 39, mb: 44,
   },
   accurate: {
-    name: "Large and accurate", id: "onnx-community/whisper-base.en",
-    revision: "51eefc0af78b103839eda9e7e4f4186acc6517fe", mb: 77,
+    name: "Large and accurate", label: "Whisper base.en", id: "onnx-community/whisper-base.en",
+    revision: "51eefc0af78b103839eda9e7e4f4186acc6517fe", params: 74, mb: 80,
   },
 };
 export const DEFAULT_SPEECH = "accurate";
+
+// Transformers.js keeps every file it downloads in the browser's Cache Storage, under this
+// name, keyed by the file's Hub URL, so a model downloads once and then loads from the browser.
+// The weights are most of the download: the files asr-worker.js's 8-bit (q8) weights come from.
+const CACHE = "transformers-cache";
+const WEIGHTS = ["onnx/encoder_model_quantized.onnx", "onnx/decoder_model_merged_quantized.onnx"];
+export const weightUrls = (model) => WEIGHTS.map((file) => `https://huggingface.co/${model.id}/resolve/${model.revision}/${file}`);
+
+// Whether this browser already has the model, so it loads without a download. False when it
+// can't tell.
+export async function modelSaved(model) {
+  try {
+    const found = await Promise.all(weightUrls(model).map((url) => globalThis.caches.match(url, { cacheName: CACHE })));
+    return found.every(Boolean);
+  } catch {
+    return false;
+  }
+}
 
 // The model for a recording: the one its transcript was started with, else the one picked when
 // it was recorded, else the default (recordings from before there was a choice).
@@ -286,11 +306,15 @@ export function createTranscriber({ sessionId, recorder = null }) {
       queue = run.catch(() => {});
       return run;
     },
-    // The recorder's onChange: a recording starting loads the model; one stopping is finished.
+    // Loads a speech model, so the recording about to start is transcribed without a wait. It
+    // stays loaded for the page. Resolves once it's ready; onLoad gets (loaded, total) bytes of
+    // the model as they come, from the Hub the first time and from the browser after that.
+    load(model, onLoad = () => {}) {
+      return whisper(null, model, onLoad).then(() => {});
+    },
+    // The recorder's onChange: a recording that stops is finished in the background.
     recordingChanged() {
-      const state = recorder?.state();
-      if (state === "recording") whisper(null, clipModel(recorder.current())).catch(() => {}); // a prompt shows any error
-      else if (state === "inactive") background();
+      if (recorder?.state() === "inactive") background();
     },
     stop() {
       stopped = true;

@@ -14,7 +14,7 @@ import {
 import {
   clipBlob, clipExtension, createRecorder, deleteClip, listClips, recordingSupported,
 } from "./recorder.js";
-import { DEFAULT_SPEECH, MODELS, createTranscriber, transcriptionSupported } from "./transcribe.js";
+import { DEFAULT_SPEECH, MODELS, createTranscriber, modelSaved, transcriptionSupported } from "./transcribe.js";
 import { foundationsSection } from "./learn.js";
 
 const MINUTES = 45;
@@ -22,16 +22,19 @@ const timerLabel = (t) => (t.paused ? "paused" : t.overtime ? "overtime" : `${fm
 const scoreText = (score) => (score ? `${score.done}/${score.total}` : "not reviewed");
 
 // Which speech model transcribes the recording about to start: a key of MODELS, or null to not
-// record after all. The last choice is preselected.
+// record after all. The last choice is preselected, and a model already in this browser says so.
 async function chooseSpeech() {
   const last = MODELS[storage("swe-prac-design-speech")] ? storage("swe-prac-design-speech") : DEFAULT_SPEECH;
   const { fast, accurate } = MODELS;
+  const [fastSaved, accurateSaved] = await Promise.all([modelSaved(fast), modelSaved(accurate)]);
+  const about = (m, saved) => `${m.label}, ${m.params}M parameters, ${m.mb} MB ${saved ? "(already downloaded)" : "download"}`;
   const pending = modal({
     title: "Transcribe with which model?",
-    body: `<p>Your recording is transcribed in this browser as you talk, for the AI interviewer.</p>
+    body: `<p>Your recording is transcribed in this browser as you talk, for the AI interviewer. The
+        model loads when you pick it, and downloads only the first time.</p>
       <ul class="mode-help">
-        <li><strong>${fast.name}</strong> &mdash; ${fast.mb} MB download. About twice as fast; mishears more words.</li>
-        <li><strong>${accurate.name}</strong> &mdash; ${accurate.mb} MB download. Better with technical terms.</li>
+        <li><strong>${fast.name}</strong> &mdash; ${about(fast, fastSaved)}. About twice as fast; mishears more words.</li>
+        <li><strong>${accurate.name}</strong> &mdash; ${about(accurate, accurateSaved)}. Better with technical terms.</li>
       </ul>`,
     actions: [
       { label: "Cancel", value: null, kind: "ghost" },
@@ -272,6 +275,7 @@ export async function renderDesignSession(sessionId) {
       <span class="mode-badge">${session.mode}</span>
       <span class="spacer"></span>
       <span class="save-state" data-save-state></span>
+      <span class="rec-status hidden" data-rec-status aria-live="polite"></span>
       <button class="rec-btn ${recordingSupported() ? "" : "hidden"}" data-rec title="Record sound only. It stays in this browser.">● Record</button>
       <span class="timer" data-timer>--:--</span>
       <button data-pause class="${session.mode === "pausable" ? "" : "hidden"}">Pause</button>
@@ -361,6 +365,35 @@ export async function renderDesignSession(sessionId) {
     btn.title = state === "inactive" ? "Record sound only. It stays in this browser." : "Stop recording";
     btn.disabled = st.timer.paused && state === "inactive";
   }
+  // Loads the speech model picked for a recording, at once (the microphone may still be asking),
+  // with its progress beside the Record button. Once loaded it stays loaded for the page.
+  const loadedModels = new Set(); // ids
+  let lastLoad = 0;
+  async function loadSpeech(model) {
+    if (loadedModels.has(model.id)) return;
+    const el = q("[data-rec-status]");
+    const mine = ++lastLoad;
+    const show = (text) => {
+      if (st.closed || mine !== lastLoad) return;
+      el.textContent = text;
+      el.classList.toggle("hidden", !text);
+    };
+    const saved = await modelSaved(model);
+    const loading = "Loading speech model…";
+    show(saved ? loading : `Downloading speech model… 0 of ${model.mb} MB`);
+    try {
+      await transcriber.load(model, (loaded) => {
+        const mb = Math.floor(loaded / 1e6);
+        if (!saved) show(mb < model.mb ? `Downloading speech model… ${mb} of ${model.mb} MB` : loading);
+      });
+      loadedModels.add(model.id);
+      show("Speech model ready");
+      setTimeout(() => show(""), 4000);
+    } catch (err) {
+      show("");
+      if (!st.closed) toast(err.message, "bad");
+    }
+  }
   q("[data-rec]").onclick = async () => {
     if (!recorder) return;
     try {
@@ -369,6 +402,7 @@ export async function renderDesignSession(sessionId) {
         const speech = transcriber ? await chooseSpeech() : null;
         if (transcriber && !speech) return;
         if (st.timer.paused || recorder.state() !== "inactive") return; // paused while choosing
+        if (speech) loadSpeech(MODELS[speech]);
         await recorder.start(speech ? { speech } : {});
         toast("Recording sound. Stop it any time; it plays back in the review.", "good");
       } else {
@@ -507,7 +541,7 @@ export async function renderDesignSession(sessionId) {
     const progress = (p) => {
       if (st.transcribing !== job) return; // skipped: it still finishes, saved for next time
       status(p.phase === "load"
-        ? `Loading the speech model (${p.mb} MB the first time)… ${pct(p.loaded, p.total)}`
+        ? `Loading the speech model (${p.mb} MB the first time)… ${pct(p.loaded, p.mb * 1e6)}`
         : `Transcribing your recording… ${pct(p.done, p.total)}`);
     };
     let skip;

@@ -312,8 +312,36 @@ describe("recording transcript (transcribe.js)", () => {
     assert.equal(speech.clipModel({}), accurate); // recorded before there was a choice
     assert.equal(speech.clipModel({ speech: "fast" }, { model: accurate.id }), accurate); // its transcript says
     assert.equal(speech.clipModel({ speech: "fast" }, { model: "gone/model" }), fast);
-    assert.ok(fast.mb < accurate.mb);
+    assert.ok(fast.mb < accurate.mb && fast.params < accurate.params);
     for (const m of [fast, accurate]) assert.match(m.revision, /^[0-9a-f]{40}$/);
+  });
+
+  test("a model counts as downloaded once both its weight files are in the browser's cache", async () => {
+    const { fast, accurate } = speech.MODELS;
+    assert.deepEqual(speech.weightUrls(fast), [
+      `https://huggingface.co/onnx-community/whisper-tiny.en/resolve/${fast.revision}/onnx/encoder_model_quantized.onnx`,
+      `https://huggingface.co/onnx-community/whisper-tiny.en/resolve/${fast.revision}/onnx/decoder_model_merged_quantized.onnx`,
+    ]);
+    const had = Object.getOwnPropertyDescriptor(globalThis, "caches");
+    const stored = new Set();
+    globalThis.caches = {
+      async match(url, { cacheName }) { return cacheName === "transformers-cache" && stored.has(url) ? {} : undefined; },
+    };
+    try {
+      assert.equal(await speech.modelSaved(fast), false);
+      stored.add(speech.weightUrls(fast)[0]);
+      assert.equal(await speech.modelSaved(fast), false); // half a download
+      stored.add(speech.weightUrls(fast)[1]);
+      assert.equal(await speech.modelSaved(fast), true);
+      assert.equal(await speech.modelSaved(accurate), false);
+      globalThis.caches = { match: async () => { throw new Error("SecurityError"); } };
+      assert.equal(await speech.modelSaved(fast), false);
+      delete globalThis.caches;
+      assert.equal(await speech.modelSaved(fast), false); // no Cache Storage here
+    } finally {
+      if (had) Object.defineProperty(globalThis, "caches", had);
+      else delete globalThis.caches;
+    }
   });
 
   test("each recording's lines are placed at the session time it started", () => {

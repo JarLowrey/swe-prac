@@ -384,6 +384,7 @@ details.walkthrough .md { padding: 0 16px 16px; }
 .rec-btn.on { color: var(--fail); border-color: var(--fail); background: var(--fail-soft); }
 .rec-btn.on:not(.held) { animation: rec-pulse 1.6s ease-in-out infinite; }
 .rec-btn.held { color: var(--text-dim); }
+.rec-status { font-size: 12px; color: var(--text-dim); white-space: nowrap; font-variant-numeric: tabular-nums; }
 @keyframes rec-pulse { 50% { border-color: transparent; } }
 @media (prefers-reduced-motion: reduce) { .rec-btn.on:not(.held) { animation: none; } }
 
